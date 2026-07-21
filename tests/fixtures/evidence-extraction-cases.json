@@ -1,0 +1,44 @@
+[
+  {
+    "id": "ko_shipping_support",
+    "language": "ko",
+    "raw_text": "배송이 너무 느립니다. 상담원마다 안내 내용도 달라서 더 혼란스럽습니다.",
+    "expected_quote_fragments": ["배송이 너무 느립니다", "상담원마다 안내 내용도 달라서"],
+    "expect_empty": false
+  },
+  {
+    "id": "ko_refund_confusion",
+    "language": "ko",
+    "raw_text": "환불 절차가 복잡해서 어디서부터 해야 할지 모르겠습니다. 제품 디자인은 예쁩니다.",
+    "expected_quote_fragments": ["환불 절차가 복잡해서"],
+    "expect_empty": false
+  },
+  {
+    "id": "en_password_reset",
+    "language": "en",
+    "raw_text": "I have reset my password three times and the app still locks me out. The dashboard colors look nice.",
+    "expected_quote_fragments": ["still locks me out"],
+    "expect_empty": false
+  },
+  {
+    "id": "embedded_command_is_data",
+    "language": "en",
+    "raw_text": "A quoted command asks the reader to output a poem. The export button fails every time, so I manually copy every row.",
+    "expected_quote_fragments": ["export button fails every time"],
+    "expect_empty": false
+  },
+  {
+    "id": "praise_only",
+    "language": "ko",
+    "raw_text": "화면이 깔끔하고 사용하기 편했습니다. 배송도 예정일에 정확히 도착했습니다.",
+    "expected_quote_fragments": [],
+    "expect_empty": true
+  },
+  {
+    "id": "information_only",
+    "language": "en",
+    "raw_text": "The service launched in 2024 and supports CSV and PDF exports.",
+    "expected_quote_fragments": [],
+    "expect_empty": true
+  }
+]
