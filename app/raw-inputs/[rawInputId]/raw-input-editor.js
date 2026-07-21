@@ -38,10 +38,7 @@ export default function RawInputEditor({ rawInputId }) {
     setLoadError("");
 
     try {
-      const response = await fetch(`/api/raw-inputs/${rawInputId}`, {
-        cache: "no-store",
-      });
-      const payload = await readJson(response);
+      const { response, payload } = await requestRawInput(rawInputId);
 
       if (response.status === 401) {
         redirectToLogin();
@@ -67,8 +64,49 @@ export default function RawInputEditor({ rawInputId }) {
   }, [rawInputId, redirectToLogin]);
 
   useEffect(() => {
-    loadRawInput();
-  }, [loadRawInput]);
+    let active = true;
+
+    async function loadInitialRawInput() {
+      try {
+        const { response, payload } = await requestRawInput(rawInputId);
+
+        if (!active) {
+          return;
+        }
+
+        if (response.status === 401) {
+          redirectToLogin();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(apiErrorMessage(payload, "Raw Input을 불러오지 못했습니다."));
+        }
+
+        const nextRawInput = payload?.raw_input;
+        if (!nextRawInput) {
+          throw new Error("조회 응답에 Raw Input 데이터가 없습니다.");
+        }
+
+        setRawInput(nextRawInput);
+        setForm(rawInputFormFromRecord(nextRawInput));
+      } catch (error) {
+        if (active) {
+          setLoadError(errorMessage(error, "Raw Input을 불러오지 못했습니다."));
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadInitialRawInput();
+
+    return () => {
+      active = false;
+    };
+  }, [rawInputId, redirectToLogin]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -239,6 +277,14 @@ export default function RawInputEditor({ rawInputId }) {
       </form>
     </section>
   );
+}
+
+async function requestRawInput(rawInputId) {
+  const response = await fetch(`/api/raw-inputs/${rawInputId}`, {
+    cache: "no-store",
+  });
+  const payload = await readJson(response);
+  return { response, payload };
 }
 
 async function readJson(response) {
