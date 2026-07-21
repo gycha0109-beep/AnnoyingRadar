@@ -118,7 +118,7 @@ export default function RawInputEditor({ rawInputId }) {
 
       setRawInput(updatedRawInput);
       setForm(rawInputFormFromRecord(updatedRawInput));
-      setSaveMessage("변경 내용을 저장하고 서버 재조회 기준선과 동기화했습니다.");
+      setSaveMessage("변경 내용을 저장하고 서버 응답 기준선과 동기화했습니다.");
     } catch (error) {
       setSaveError(errorMessage(error, "Raw Input을 수정하지 못했습니다."));
     } finally {
@@ -140,6 +140,10 @@ export default function RawInputEditor({ rawInputId }) {
         </div>
       </section>
     );
+  }
+
+  if (!rawInput || !form) {
+    return <section className="card"><p className="muted">로그인 화면으로 이동하는 중…</p></section>;
   }
 
   return (
@@ -183,6 +187,7 @@ export default function RawInputEditor({ rawInputId }) {
           <label className="field stack-sm">
             <span>출처 유형</span>
             <select name="source_type" onChange={updateField} value={form.source_type}>
+              <option value="">미지정</option>
               <option value="manual">직접 입력</option>
               <option value="review">리뷰</option>
               <option value="community">커뮤니티</option>
@@ -194,6 +199,7 @@ export default function RawInputEditor({ rawInputId }) {
           <label className="field stack-sm">
             <span>언어</span>
             <select name="language" onChange={updateField} value={form.language}>
+              <option value="">미지정</option>
               <option value="ko">한국어</option>
               <option value="en">영어</option>
               <option value="ja">일본어</option>
@@ -205,7 +211,7 @@ export default function RawInputEditor({ rawInputId }) {
 
         <label className="field stack-sm">
           <span>출처 URL</span>
-          <input name="source_url" onChange={updateField} type="url" value={form.source_url} />
+          <input inputMode="url" name="source_url" onChange={updateField} value={form.source_url} />
         </label>
 
         <label className="field stack-sm">
