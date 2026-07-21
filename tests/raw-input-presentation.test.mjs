@@ -53,22 +53,22 @@ test("sourceTypeLabel returns known labels and preserves unknown values", () => 
   assert.equal(sourceTypeLabel(null), "출처 미지정");
 });
 
-test("form conversion and change detection use the API record as baseline", () => {
+test("form conversion preserves nullable metadata without inventing values", () => {
   const record = {
     raw_text: "원문",
     source_type: null,
     source_url: null,
     source_memo: "메모",
-    language: "ko",
+    language: null,
   };
   const form = rawInputFormFromRecord(record);
 
   assert.deepEqual(form, {
     raw_text: "원문",
-    source_type: "manual",
+    source_type: "",
     source_url: "",
     source_memo: "메모",
-    language: "ko",
+    language: "",
   });
   assert.equal(hasRawInputChanges(record, form), false);
   assert.equal(hasRawInputChanges(record, { ...form, source_memo: "수정" }), true);
