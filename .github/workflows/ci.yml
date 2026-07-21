@@ -19,14 +19,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Lint
-        run: npm run lint 2>&1 | tee lint.log
-      - name: Upload lint diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-diagnostics
-          path: lint.log
-          retention-days: 3
+        run: npm run lint
       - name: Unit and contract tests
         run: npm run test
       - name: Build
