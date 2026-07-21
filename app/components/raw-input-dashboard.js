@@ -40,10 +40,7 @@ export default function RawInputDashboard() {
     setRecentError("");
 
     try {
-      const response = await fetch("/api/raw-inputs/recent", {
-        cache: "no-store",
-      });
-      const payload = await readJson(response);
+      const { response, payload } = await requestRecentRawInputs();
 
       if (response.status === 401) {
         redirectToLogin();
@@ -65,8 +62,45 @@ export default function RawInputDashboard() {
   }, [redirectToLogin]);
 
   useEffect(() => {
-    refreshRecent();
-  }, [refreshRecent]);
+    let active = true;
+
+    async function loadInitialRecent() {
+      try {
+        const { response, payload } = await requestRecentRawInputs();
+
+        if (!active) {
+          return;
+        }
+
+        if (response.status === 401) {
+          redirectToLogin();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            apiErrorMessage(payload, "최근 입력을 불러오지 못했습니다."),
+          );
+        }
+
+        setRecentRawInputs(Array.isArray(payload?.raw_inputs) ? payload.raw_inputs : []);
+      } catch (error) {
+        if (active) {
+          setRecentError(errorMessage(error, "최근 입력을 불러오지 못했습니다."));
+        }
+      } finally {
+        if (active) {
+          setIsLoadingRecent(false);
+        }
+      }
+    }
+
+    void loadInitialRecent();
+
+    return () => {
+      active = false;
+    };
+  }, [redirectToLogin]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -114,6 +148,7 @@ export default function RawInputDashboard() {
       router.push(`/raw-inputs/${rawInputId}`);
     } catch (error) {
       setSubmitError(errorMessage(error, "Raw Input을 저장하지 못했습니다."));
+    } finally {
       setIsSubmitting(false);
     }
   }
@@ -241,6 +276,14 @@ export default function RawInputDashboard() {
       </aside>
     </div>
   );
+}
+
+async function requestRecentRawInputs() {
+  const response = await fetch("/api/raw-inputs/recent", {
+    cache: "no-store",
+  });
+  const payload = await readJson(response);
+  return { response, payload };
 }
 
 async function readJson(response) {
