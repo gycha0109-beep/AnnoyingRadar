@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
+import EvidenceReview from "./evidence-review.js";
 import RawInputEditor from "./raw-input-editor.js";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function RawInputDetailPage({ params }) {
         <Link className="button-link" href="/">대시보드</Link>
       </nav>
       <RawInputEditor rawInputId={rawInputId} />
+      <EvidenceReview rawInputId={rawInputId} />
     </main>
   );
 }
