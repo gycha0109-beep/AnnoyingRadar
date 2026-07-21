@@ -16,5 +16,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run verify
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Unit and contract tests
+        run: npm run test
+      - name: Build
+        run: npm run build
+      - name: Runtime smoke
+        run: npm run test:runtime
