@@ -100,6 +100,13 @@ test("grouping request uses strict structured output and treats Evidence as data
   assert.match(request.instructions, /exactly once/);
   assert.doesNotMatch(JSON.stringify(request), /11111111-1111/);
   assert.match(JSON.stringify(request), /E001/);
+  assert.equal(
+    Object.hasOwn(
+      request.text.format.schema.properties.candidates.items.properties.evidence_refs,
+      "uniqueItems",
+    ),
+    false,
+  );
 });
 
 test("provider result maps opaque refs to Evidence ids and preserves a full partition", async () => {
