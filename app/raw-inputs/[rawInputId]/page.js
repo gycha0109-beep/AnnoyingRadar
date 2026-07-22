@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
+import CandidateGrouping from "./candidate-grouping.js";
 import EvidenceReview from "./evidence-review.js";
 import RawInputEditor from "./raw-input-editor.js";
 
@@ -27,6 +28,7 @@ export default async function RawInputDetailPage({ params }) {
       </nav>
       <RawInputEditor rawInputId={rawInputId} />
       <EvidenceReview rawInputId={rawInputId} />
+      <CandidateGrouping rawInputId={rawInputId} />
     </main>
   );
 }
