@@ -14,6 +14,19 @@ import { createServiceClient } from "../../../../../lib/supabase/service.js";
 
 export const runtime = "nodejs";
 
+const RAW_INPUT_EVIDENCE_STATE_SELECT = [
+  "id",
+  "analysis_status",
+  "extraction_model",
+  "extraction_prompt_version",
+  "extraction_provider_request_id",
+  "extraction_error_code",
+  "extraction_started_at",
+  "extraction_completed_at",
+  "extraction_input_tokens",
+  "extraction_output_tokens",
+].join(", ");
+
 async function getRawInputId(params) {
   const resolvedParams = await params;
   return resolvedParams.rawInputId;
@@ -50,6 +63,21 @@ function mapEvidenceRpcError(error, fallbackCode, fallbackMessage) {
   return new ApiError(500, fallbackCode, fallbackMessage);
 }
 
+function extractionMetadata(rawInput) {
+  return {
+    model: rawInput.extraction_model ?? null,
+    prompt_version: rawInput.extraction_prompt_version ?? null,
+    provider_request_id: rawInput.extraction_provider_request_id ?? null,
+    error_code: rawInput.extraction_error_code ?? null,
+    started_at: rawInput.extraction_started_at ?? null,
+    completed_at: rawInput.extraction_completed_at ?? null,
+    usage: {
+      input_tokens: rawInput.extraction_input_tokens ?? null,
+      output_tokens: rawInput.extraction_output_tokens ?? null,
+    },
+  };
+}
+
 export async function GET(_request, { params }) {
   try {
     const rawInputId = await getRawInputId(params);
@@ -60,7 +88,7 @@ export async function GET(_request, { params }) {
       rawInputId,
       userId,
       serviceClient,
-      "id, analysis_status",
+      RAW_INPUT_EVIDENCE_STATE_SELECT,
     );
 
     const { data, error } = await serviceClient
@@ -79,6 +107,7 @@ export async function GET(_request, { params }) {
 
     return NextResponse.json({
       analysis_status: rawInput.analysis_status,
+      extraction: extractionMetadata(rawInput),
       evidences: data ?? [],
     });
   } catch (error) {

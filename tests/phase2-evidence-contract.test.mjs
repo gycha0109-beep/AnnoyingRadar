@@ -39,9 +39,9 @@ test("Evidence confirmation is atomic and service-role only", async () => {
   assert.match(combined, /grant execute on function public\.ar_confirm_evidence_review[^;]+service_role/);
 });
 
-test("Evidence UI exposes fixture, edit, delete and confirm flow", async () => {
+test("Evidence UI preserves fixture regression, edit, delete and confirm flow", async () => {
   const reviewUi = await readFile(files.reviewUi, "utf8");
-  assert.match(reviewUi, /고정 Evidence 준비/);
+  assert.match(reviewUi, /개발용 고정 fixture/);
   assert.match(reviewUi, /수정 내용 저장/);
   assert.match(reviewUi, /deleted 처리/);
   assert.match(reviewUi, /grouping 진입/);
