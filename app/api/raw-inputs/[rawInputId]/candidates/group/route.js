@@ -111,6 +111,29 @@ export async function POST(_request, { params }) {
   let userId;
   let attemptId;
   let groupingStarted = false;
+  let groupingCompleted = false;
+  let failureRecorded = false;
+
+  async function recordFailure(errorCode) {
+    if (
+      failureRecorded ||
+      groupingCompleted ||
+      !groupingStarted ||
+      !serviceClient ||
+      !rawInputId ||
+      !userId ||
+      !attemptId
+    ) {
+      return;
+    }
+    failureRecorded = true;
+    await markFailed(serviceClient, {
+      rawInputId,
+      userId,
+      attemptId,
+      errorCode,
+    });
+  }
 
   try {
     rawInputId = await getRawInputId(params);
@@ -142,7 +165,13 @@ export async function POST(_request, { params }) {
 
     if (evidenceError) {
       console.error(evidenceError);
-      throw new ApiError(500, "confirmed_evidence_load_failed", "Failed to load confirmed Evidence");
+      const mappedError = new ApiError(
+        500,
+        "confirmed_evidence_load_failed",
+        "Failed to load confirmed Evidence",
+      );
+      await recordFailure(mappedError.code);
+      throw mappedError;
     }
 
     let grouping;
@@ -155,12 +184,7 @@ export async function POST(_request, { params }) {
       });
     } catch (error) {
       const mappedError = mapProviderError(error);
-      await markFailed(serviceClient, {
-        rawInputId,
-        userId,
-        attemptId,
-        errorCode: mappedError.code,
-      });
+      await recordFailure(mappedError.code);
       throw mappedError;
     }
 
@@ -177,14 +201,10 @@ export async function POST(_request, { params }) {
 
     if (completeError) {
       const mappedError = mapCompletionError(completeError);
-      await markFailed(serviceClient, {
-        rawInputId,
-        userId,
-        attemptId,
-        errorCode: mappedError.code,
-      });
+      await recordFailure(mappedError.code);
       throw mappedError;
     }
+    groupingCompleted = true;
 
     let candidates;
     try {
@@ -209,20 +229,8 @@ export async function POST(_request, { params }) {
       },
     });
   } catch (error) {
-    if (
-      groupingStarted &&
-      serviceClient &&
-      rawInputId &&
-      userId &&
-      attemptId &&
-      !(error instanceof ApiError)
-    ) {
-      await markFailed(serviceClient, {
-        rawInputId,
-        userId,
-        attemptId,
-        errorCode: "unexpected_grouping_error",
-      });
+    if (!(error instanceof ApiError)) {
+      await recordFailure("unexpected_grouping_error");
     }
     return jsonError(error);
   }
