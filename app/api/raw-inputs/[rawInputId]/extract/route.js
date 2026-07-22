@@ -7,14 +7,14 @@ import {
   assertRawInputOwner,
   jsonError,
   requireUser,
-} from "../../../../../../lib/auth/require-user.js";
+} from "../../../../../lib/auth/require-user.js";
 import {
   EVIDENCE_PROMPT_VERSION,
   EvidenceProviderError,
   extractPainEvidence,
   getEvidenceProviderConfig,
-} from "../../../../../../lib/evidence/openai-extractor.mjs";
-import { createServiceClient } from "../../../../../../lib/supabase/service.js";
+} from "../../../../../lib/evidence/openai-extractor.mjs";
+import { createServiceClient } from "../../../../../lib/supabase/service.js";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
