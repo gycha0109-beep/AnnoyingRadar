@@ -50,7 +50,14 @@ for (const testCase of cases) {
       usage: output.usage,
     });
   } catch (error) {
-    results.push({ id: testCase.id, pass: false, error: error.code || error.message });
+    results.push({
+      id: testCase.id,
+      pass: false,
+      error: error.code || error.message,
+      message: error.message || null,
+      provider_status: error.providerStatus ?? null,
+      retryable: error.retryable ?? false,
+    });
   }
 }
 
