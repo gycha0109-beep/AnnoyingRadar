@@ -22,7 +22,6 @@ export default function CandidateGrouping({ rawInputId }) {
   }, []);
 
   const loadCandidates = useCallback(async () => {
-    setError("");
     try {
       const response = await fetch(`/api/raw-inputs/${rawInputId}/candidates`, {
         cache: "no-store",
@@ -67,7 +66,10 @@ export default function CandidateGrouping({ rawInputId }) {
   }, [applyPayload, rawInputId]);
 
   useEffect(() => {
-    void loadCandidates();
+    const timer = window.setTimeout(() => {
+      void loadCandidates();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadCandidates]);
 
   useEffect(() => {
@@ -81,11 +83,16 @@ export default function CandidateGrouping({ rawInputId }) {
   useEffect(() => {
     if (analysisStatus !== "grouping") {
       autoAttemptedRef.current = false;
-      return;
+      return undefined;
     }
-    if (isLoading || candidates.length > 0 || workingRef.current || autoAttemptedRef.current) return;
+    if (isLoading || candidates.length > 0 || workingRef.current || autoAttemptedRef.current) {
+      return undefined;
+    }
     autoAttemptedRef.current = true;
-    void runGrouping();
+    const timer = window.setTimeout(() => {
+      void runGrouping();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [analysisStatus, candidates.length, isLoading, runGrouping]);
 
   if (isLoading) return null;
