@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const GROUPABLE_STATUSES = new Set(["grouping", "grouping_failed"]);
@@ -10,6 +11,7 @@ export default function CandidateGrouping({ rawInputId }) {
   const [candidates, setCandidates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
+  const [showDiscarded, setShowDiscarded] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const workingRef = useRef(false);
@@ -17,15 +19,16 @@ export default function CandidateGrouping({ rawInputId }) {
 
   const applyPayload = useCallback((payload) => {
     setAnalysisStatus(payload.analysis_status ?? null);
-    setGrouping(payload.grouping ?? null);
+    if (Object.hasOwn(payload, "grouping")) setGrouping(payload.grouping ?? null);
     setCandidates(Array.isArray(payload.candidates) ? payload.candidates : []);
   }, []);
 
   const loadCandidates = useCallback(async () => {
     try {
-      const response = await fetch(`/api/raw-inputs/${rawInputId}/candidates`, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/raw-inputs/${rawInputId}/candidates?include_discarded=1`,
+        { cache: "no-store" },
+      );
       const payload = await readJson(response);
       if (!response.ok) {
         throw new Error(apiMessage(payload, "Problem Candidate를 불러오지 못했습니다."));
@@ -54,7 +57,7 @@ export default function CandidateGrouping({ rawInputId }) {
       if (!response.ok) {
         throw new Error(apiMessage(payload, "Problem Candidate 생성에 실패했습니다."));
       }
-      applyPayload(payload);
+      await loadCandidates();
       setMessage(`AI가 Problem Candidate ${payload.candidates?.length ?? 0}개를 생성했습니다.`);
     } catch (groupingError) {
       setAnalysisStatus("grouping_failed");
@@ -63,7 +66,52 @@ export default function CandidateGrouping({ rawInputId }) {
       workingRef.current = false;
       setIsWorking(false);
     }
+  }, [loadCandidates, rawInputId]);
+
+  const completeReview = useCallback(async () => {
+    if (workingRef.current) return;
+    workingRef.current = true;
+    setIsWorking(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/raw-inputs/${rawInputId}/complete`, {
+        method: "PATCH",
+      });
+      const payload = await readJson(response);
+      if (!response.ok) {
+        throw new Error(apiMessage(payload, "Candidate 검토 완료에 실패했습니다."));
+      }
+      applyPayload(payload);
+      setMessage("Problem Candidate 검토를 완료했습니다.");
+    } catch (completeError) {
+      setError(errorMessage(completeError));
+    } finally {
+      workingRef.current = false;
+      setIsWorking(false);
+    }
   }, [applyPayload, rawInputId]);
+
+  const restoreCandidate = useCallback(async (candidateId) => {
+    if (workingRef.current) return;
+    workingRef.current = true;
+    setIsWorking(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/problem-candidates/${candidateId}/restore`, {
+        method: "PATCH",
+      });
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(apiMessage(payload, "Candidate 복구에 실패했습니다."));
+      await loadCandidates();
+      setMessage("폐기 Candidate를 draft로 복구했습니다.");
+    } catch (restoreError) {
+      setError(errorMessage(restoreError));
+    } finally {
+      workingRef.current = false;
+      setIsWorking(false);
+    }
+  }, [loadCandidates]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -105,18 +153,27 @@ export default function CandidateGrouping({ rawInputId }) {
     return null;
   }
 
+  const activeCandidates = candidates.filter((candidate) => candidate.status !== "discarded");
+  const discardedCandidates = candidates.filter((candidate) => candidate.status === "discarded");
+  const draftCount = candidates.filter((candidate) => candidate.status === "draft").length;
+  const confirmedCount = candidates.filter((candidate) => candidate.status === "confirmed").length;
+  const canComplete =
+    analysisStatus === "reviewing_candidates" &&
+    draftCount === 0 &&
+    confirmedCount > 0;
+
   return (
     <section className="card stack" aria-labelledby="candidate-grouping-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Phase 4 · Problem Candidate Grouping</p>
-          <h2 id="candidate-grouping-title">유사 Evidence 문제 후보 묶기</h2>
+          <p className="eyebrow">Phase 5 · Problem Candidate Review</p>
+          <h2 id="candidate-grouping-title">문제 후보 검토 및 Problem Card 확정</h2>
         </div>
         <span className="status-badge">{analysisStatus ?? "unknown"}</span>
       </div>
 
       <p className="muted">
-        확정된 Evidence를 대상 사용자·상황·행동 흐름·해결 방향 기준으로 묶습니다. 모든 후보는 아직 AI 초안입니다.
+        AI 초안의 근거를 확인하고 수정·병합·분리한 뒤, 의미 있는 후보만 Problem Card로 확정합니다.
       </p>
 
       {grouping ? <GroupingMetadata grouping={grouping} /> : null}
@@ -155,43 +212,129 @@ export default function CandidateGrouping({ rawInputId }) {
         </div>
       ) : null}
 
-      {candidates.length > 0 ? (
+      {activeCandidates.length > 0 ? (
         <div className="candidate-grid">
-          {candidates.map((candidate, index) => (
-            <article className="candidate-card stack" key={candidate.id}>
-              <div className="section-heading">
-                <div className="stack-sm">
-                  <span className="muted">Problem Candidate {index + 1}</span>
-                  <strong>{candidate.title}</strong>
-                </div>
-                <span className="status-badge">{candidate.status}</span>
-              </div>
-
-              <p>{candidate.summary}</p>
-
-              <dl className="candidate-metrics">
-                <Metric label="근거 수" value={candidate.evidence_count} />
-                <Metric label="감정 강도" value={candidate.intensity_level} />
-                <Metric label="반복 패턴" value={candidate.repeat_pattern_level} />
-                <Metric label="문제 명확도" value={candidate.clarity_level} />
-              </dl>
-
-              {candidate.target_user ? <p className="muted">대상 사용자: {candidate.target_user}</p> : null}
-              {candidate.situation ? <p className="muted">상황: {candidate.situation}</p> : null}
-
-              <div className="stack-sm">
-                <strong>연결 Evidence</strong>
-                {(candidate.evidences ?? []).map((evidence) => (
-                  <blockquote className="evidence-quote" key={evidence.id}>
-                    {evidence.original_text}
-                  </blockquote>
-                ))}
-              </div>
-            </article>
+          {activeCandidates.map((candidate, index) => (
+            <CandidateCard candidate={candidate} index={index} key={candidate.id} />
           ))}
+        </div>
+      ) : analysisStatus === "reviewing_candidates" || analysisStatus === "completed" ? (
+        <div className="empty-state">
+          <strong>표시할 활성 Problem Candidate가 없습니다.</strong>
+        </div>
+      ) : null}
+
+      {analysisStatus === "reviewing_candidates" ? (
+        <div className="review-completion stack-sm">
+          <strong>검토 진행</strong>
+          <p className="muted">
+            draft {draftCount}개 · Problem Card {confirmedCount}개 · 폐기 {discardedCandidates.length}개
+          </p>
+          {draftCount > 0 ? (
+            <p className="notice warning">모든 draft Candidate를 확정하거나 폐기해야 완료할 수 있습니다.</p>
+          ) : null}
+          {confirmedCount === 0 ? (
+            <p className="notice warning">최소 1개의 Problem Card 확정이 필요합니다.</p>
+          ) : null}
+          <div className="inline-actions">
+            <button disabled={!canComplete || isWorking} onClick={completeReview} type="button">
+              {isWorking ? "검토 완료 처리 중…" : "Candidate 검토 완료"}
+            </button>
+            <button className="button-secondary" disabled={isWorking} onClick={loadCandidates} type="button">
+              서버 재조회
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {analysisStatus === "completed" ? (
+        <p className="notice success">이 분석은 완료됐습니다. 확정된 Candidate만 Problem Card로 취급됩니다.</p>
+      ) : null}
+
+      {discardedCandidates.length > 0 ? (
+        <div className="stack-sm">
+          <button
+            className="button-secondary button-compact"
+            onClick={() => setShowDiscarded((current) => !current)}
+            type="button"
+          >
+            {showDiscarded ? "폐기 기록 숨기기" : `폐기 기록 ${discardedCandidates.length}개 보기`}
+          </button>
+          {showDiscarded ? (
+            <div className="candidate-grid">
+              {discardedCandidates.map((candidate) => (
+                <article className="candidate-card candidate-card-discarded stack" key={candidate.id}>
+                  <div className="section-heading">
+                    <div className="stack-sm">
+                      <span className="muted">Discarded Candidate</span>
+                      <strong>{candidate.title}</strong>
+                    </div>
+                    <span className="status-badge">discarded</span>
+                  </div>
+                  {candidate.discard_reason ? <p className="muted">사유: {candidate.discard_reason}</p> : null}
+                  <div className="inline-actions">
+                    <Link className="button-link" href={`/problem-candidates/${candidate.id}`}>
+                      폐기 상세
+                    </Link>
+                    {analysisStatus === "reviewing_candidates" ? (
+                      <button
+                        className="button-secondary"
+                        disabled={isWorking || candidate.evidence_count < 1}
+                        onClick={() => restoreCandidate(candidate.id)}
+                        type="button"
+                      >
+                        draft로 복구
+                      </button>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
+  );
+}
+
+function CandidateCard({ candidate, index }) {
+  const isProblemCard = candidate.status === "confirmed";
+  return (
+    <article className={`candidate-card stack${isProblemCard ? " candidate-card-confirmed" : ""}`}>
+      <div className="section-heading">
+        <div className="stack-sm">
+          <span className="muted">{isProblemCard ? "Problem Card" : `Problem Candidate ${index + 1}`}</span>
+          <strong>{candidate.title}</strong>
+        </div>
+        <span className="status-badge">{candidate.status}</span>
+      </div>
+
+      <p>{candidate.summary || "요약이 아직 없습니다."}</p>
+
+      <dl className="candidate-metrics">
+        <Metric label="근거 수" value={candidate.evidence_count} />
+        <Metric label="감정 강도" value={candidate.intensity_level} />
+        <Metric label="반복 패턴" value={candidate.repeat_pattern_level} />
+        <Metric label="문제 명확도" value={candidate.clarity_level} />
+      </dl>
+
+      {candidate.evidence_count === 1 ? <span className="status-badge warning-badge">근거 부족</span> : null}
+      {candidate.target_user ? <p className="muted">대상 사용자: {candidate.target_user}</p> : null}
+      {candidate.situation ? <p className="muted">상황: {candidate.situation}</p> : null}
+
+      <div className="stack-sm">
+        <strong>대표 Evidence</strong>
+        {(candidate.evidences ?? []).slice(0, 2).map((evidence) => (
+          <blockquote className="evidence-quote" key={evidence.id}>
+            {evidence.original_text}
+          </blockquote>
+        ))}
+      </div>
+
+      <Link className="button-link" href={`/problem-candidates/${candidate.id}`}>
+        {isProblemCard ? "Problem Card 상세" : "후보 검토 및 수정"}
+      </Link>
+    </article>
   );
 }
 

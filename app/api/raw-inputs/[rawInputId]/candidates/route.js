@@ -32,11 +32,12 @@ async function getRawInputId(params) {
   return resolvedParams.rawInputId;
 }
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   try {
     const rawInputId = await getRawInputId(params);
     const { userId } = await requireUser();
     const serviceClient = createServiceClient();
+    const includeDiscarded = new URL(request.url).searchParams.get("include_discarded") === "1";
 
     const rawInput = await assertRawInputOwner(
       rawInputId,
@@ -47,7 +48,12 @@ export async function GET(_request, { params }) {
 
     let candidates;
     try {
-      candidates = await loadCandidateReview(serviceClient, rawInputId, userId);
+      candidates = await loadCandidateReview(
+        serviceClient,
+        rawInputId,
+        userId,
+        { includeDiscarded },
+      );
     } catch (error) {
       console.error(error);
       throw new ApiError(500, "candidate_list_failed", "Failed to load Problem Candidates");
@@ -57,6 +63,11 @@ export async function GET(_request, { params }) {
       analysis_status: rawInput.analysis_status,
       grouping: groupingMetadata(rawInput),
       candidates,
+      review_summary: {
+        draft: candidates.filter((candidate) => candidate.status === "draft").length,
+        confirmed: candidates.filter((candidate) => candidate.status === "confirmed").length,
+        discarded: candidates.filter((candidate) => candidate.status === "discarded").length,
+      },
     });
   } catch (error) {
     return jsonError(error);
