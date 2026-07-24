@@ -22,6 +22,8 @@ jobs:
         run: npm run lint
       - name: Unit and contract tests
         run: npm run test
+      - name: Release hardening
+        run: npm run test:release
       - name: Build
         run: npm run build
       - name: Runtime smoke
