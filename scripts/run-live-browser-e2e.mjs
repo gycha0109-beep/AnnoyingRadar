@@ -33,6 +33,7 @@ const result = {
   raw_input_id: null,
   evidence_count: null,
   candidate_count: null,
+  evidence_move: false,
   structural_path: null,
   status: "running",
 };
@@ -46,9 +47,7 @@ async function main() {
     await ensureApplicationServer();
     const chromium = await loadChromium();
     browser = await launchBrowser(chromium);
-    context = await browser.newContext({
-      viewport: { width: 1440, height: 1000 },
-    });
+    context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     traceStarted = true;
 
@@ -57,13 +56,12 @@ async function main() {
 
     await step("login", authenticateManually);
     const rawPath = await step("create-raw-input", createRawInput);
-    const evidenceCount = await step("live-evidence-extraction", extractAndReviewEvidence);
-    result.evidence_count = evidenceCount;
+    result.evidence_count = await step("live-evidence-extraction", extractAndReviewEvidence);
 
     const candidates = await step("live-candidate-grouping", confirmEvidenceAndGroupCandidates);
     result.candidate_count = candidates.length;
 
-    await step("candidate-review-structure", () => reviewCandidateStructure(candidates, rawPath));
+    await step("candidate-review-structure", () => reviewCandidateStructure(candidates));
     await step("confirm-problem-cards", () => confirmAllActiveCandidates(rawPath));
     await step("complete-analysis", () => completeAnalysis(rawPath));
     await step("recent-reentry-readonly", () => verifyRecentReentryAndReadOnly(rawPath));
@@ -126,10 +124,10 @@ async function authenticateManually() {
 }
 
 async function createRawInput() {
-  await page.getByRole("textbox", { name: "원문", exact: true }).fill(RAW_INPUT_TEXT);
+  await page.locator('textarea[name="raw_text"]').fill(RAW_INPUT_TEXT);
   await page.getByLabel("출처 유형").selectOption("review");
   await page.getByLabel("언어").selectOption("ko");
-  await page.getByRole("textbox", { name: "출처 메모" }).fill(MARKER);
+  await page.locator('input[name="source_memo"]').fill(MARKER);
   await page.getByRole("button", { name: "Raw Input 저장" }).click();
   await page.waitForURL(/\/raw-inputs\/[0-9a-f-]+$/i, { timeout: 30_000 });
 
@@ -159,8 +157,7 @@ async function extractAndReviewEvidence() {
 
   const firstCard = section.locator("article.evidence-card").first();
   const summaryInput = firstCard.getByRole("textbox", { name: "한국어 요약" });
-  const currentSummary = await summaryInput.inputValue();
-  await summaryInput.fill(`${currentSummary} · E2E 검증`);
+  await summaryInput.fill(`${await summaryInput.inputValue()} · E2E 검증`);
   await section.getByRole("button", { name: "수정 내용 저장" }).click();
   await section.getByText("Evidence 수정 내용을 저장했습니다.", { exact: true }).waitFor({
     state: "visible",
@@ -185,12 +182,13 @@ async function waitForEvidenceResult(section, allowRetry = true) {
   return poll(
     async () => {
       const count = await section.locator("article.evidence-card").count();
-      const statusTexts = await section.locator(".status-badge").allTextContents();
-      if (statusTexts.map((text) => text.trim()).includes("reviewing_evidence") && count > 0) {
-        return count;
-      }
+      const statuses = (await section.locator(".status-badge").allTextContents())
+        .map((text) => text.trim());
+      if (statuses.includes("reviewing_evidence") && count > 0) return count;
 
-      if (allowRetry && await isVisible(section.getByRole("button", { name: "AI 추출 재시도", exact: true }))) {
+      if (allowRetry && await isVisible(
+        section.getByRole("button", { name: "AI 추출 재시도", exact: true }),
+      )) {
         return "retry";
       }
       return false;
@@ -213,18 +211,26 @@ async function confirmEvidenceAndGroupCandidates() {
   let startUsed = false;
   await poll(
     async () => {
-      const cards = await candidateSection.locator("article.candidate-card:not(.candidate-card-discarded)").count();
+      const cards = await candidateSection
+        .locator("article.candidate-card:not(.candidate-card-discarded)")
+        .count();
       const statuses = (await candidateSection.locator(".status-badge").allTextContents())
         .map((text) => text.trim());
       if (statuses.includes("reviewing_candidates") && cards > 0) return true;
 
-      const start = candidateSection.getByRole("button", { name: "Problem Candidate 생성", exact: true });
+      const start = candidateSection.getByRole("button", {
+        name: "Problem Candidate 생성",
+        exact: true,
+      });
       if (!startUsed && await isEnabledVisible(start)) {
         startUsed = true;
         await start.click();
       }
 
-      const retry = candidateSection.getByRole("button", { name: "Candidate 묶기 재시도", exact: true });
+      const retry = candidateSection.getByRole("button", {
+        name: "Candidate 묶기 재시도",
+        exact: true,
+      });
       if (!retryUsed && await isEnabledVisible(retry)) {
         retryUsed = true;
         await retry.click();
@@ -240,30 +246,38 @@ async function confirmEvidenceAndGroupCandidates() {
   return candidates;
 }
 
-async function reviewCandidateStructure(initialCandidates, rawPath) {
-  let selected = initialCandidates.find((candidate) => candidate.evidenceCount > 1)
+async function reviewCandidateStructure(initialCandidates) {
+  const selected = initialCandidates.find((candidate) => candidate.evidenceCount > 1)
     ?? initialCandidates[0];
   await openCandidate(selected.href);
   await editDiscardAndRestoreCandidate();
 
-  if (selected.evidenceCount > 1) {
-    result.structural_path = "split_then_merge";
+  result.evidence_move = await tryMoveEvidenceToSibling();
+  const currentCount = await readCurrentEvidenceCount();
+
+  if (currentCount > 1) {
+    result.structural_path = result.evidence_move
+      ? "move_split_then_merge"
+      : "split_then_merge";
     await splitCurrentCandidateThenMergeBack();
     return;
   }
 
-  assert.ok(initialCandidates.length >= 2, "병합·분리 E2E에는 Evidence 참조가 2개 이상 필요합니다.");
-  result.structural_path = "merge_then_split_then_merge";
-  await mergeCurrentCandidateIntoSibling();
-  await splitCurrentCandidateThenMergeBack();
+  if (await hasMergeTarget()) {
+    result.structural_path = result.evidence_move
+      ? "move_merge_then_split_then_merge"
+      : "merge_then_split_then_merge";
+    await mergeCurrentCandidateIntoSibling();
+    await splitCurrentCandidateThenMergeBack();
+    return;
+  }
 
-  await page.goto(new URL(rawPath, BASE_URL).href, { waitUntil: "domcontentloaded" });
+  throw new Error("병합·분리 E2E를 구성할 수 있는 Candidate 토폴로지가 없습니다.");
 }
 
 async function editDiscardAndRestoreCandidate() {
   const titleInput = page.getByRole("textbox", { name: "문제 제목" });
-  const title = await titleInput.inputValue();
-  await titleInput.fill(`${title} [E2E]`);
+  await titleInput.fill(`${await titleInput.inputValue()} [E2E]`);
   await page.getByRole("button", { name: "수정 내용 저장" }).click();
   await page.getByText("Candidate 수정 내용을 저장했습니다.", { exact: true }).waitFor({
     state: "visible",
@@ -272,9 +286,46 @@ async function editDiscardAndRestoreCandidate() {
 
   await page.getByPlaceholder("폐기 사유 (선택)").fill(`${MARKER} discard/restore verification`);
   await page.getByRole("button", { name: "Candidate 폐기" }).click();
-  await page.getByRole("button", { name: "Candidate 복구" }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByRole("button", { name: "Candidate 복구" }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
   await page.getByRole("button", { name: "Candidate 복구" }).click();
-  await page.getByRole("button", { name: "문제 카드로 확정" }).waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByRole("button", { name: "문제 카드로 확정" }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+}
+
+async function tryMoveEvidenceToSibling() {
+  if (await readCurrentEvidenceCount() <= 1) return false;
+
+  const moveSelect = page.locator('select[aria-label="Evidence 이동 대상"]').first();
+  if (!(await isVisible(moveSelect)) || await moveSelect.locator("option").count() < 2) return false;
+
+  const evidenceCard = moveSelect.locator("xpath=ancestor::article[1]");
+  const moveButton = evidenceCard.getByRole("button", { name: "Evidence 이동" });
+  await moveSelect.selectOption({ index: 1 });
+  await poll(() => moveButton.isEnabled(), 10_000, "Evidence 이동 버튼 활성화");
+  await moveButton.click();
+  await page.getByText("Evidence를 다른 Candidate로 이동했습니다.", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+  return true;
+}
+
+async function readCurrentEvidenceCount() {
+  const heading = page.getByRole("heading", { name: /^연결 Evidence \d+개$/ });
+  await heading.waitFor({ state: "visible", timeout: 30_000 });
+  const match = (await heading.textContent() ?? "").match(/(\d+)개/);
+  return Number.parseInt(match?.[1] ?? "0", 10);
+}
+
+async function hasMergeTarget() {
+  const structure = page.locator('section[aria-labelledby="candidate-structure-title"]');
+  if (!(await isVisible(structure))) return false;
+  return await structure.locator("select").first().locator("option").count() >= 2;
 }
 
 async function mergeCurrentCandidateIntoSibling() {
@@ -294,7 +345,9 @@ async function splitCurrentCandidateThenMergeBack() {
   assert.ok(await checkboxes.count() >= 1, "분리 가능한 Evidence가 없습니다.");
   await checkboxes.first().check();
   await page.getByPlaceholder("새 Candidate 제목").fill(`${MARKER} 분리 후보`);
-  await page.getByPlaceholder("새 Candidate 요약").fill("브라우저 E2E에서 분리 후 병합 복원을 검증하는 후보입니다.");
+  await page.getByPlaceholder("새 Candidate 요약").fill(
+    "브라우저 E2E에서 분리 후 병합 복원을 검증하는 후보입니다.",
+  );
 
   const sourcePath = new URL(page.url()).pathname;
   await page.getByRole("button", { name: "새 Candidate로 분리" }).click();
@@ -310,8 +363,8 @@ async function confirmAllActiveCandidates(rawPath) {
     await page.goto(rawUrl, { waitUntil: "domcontentloaded" });
     const section = page.locator('section[aria-labelledby="candidate-grouping-title"]');
     await section.waitFor({ state: "visible", timeout: 30_000 });
-    const candidates = await readCandidateCards(section);
-    const draft = candidates.find((candidate) => candidate.status === "draft");
+    const draft = (await readCandidateCards(section))
+      .find((candidate) => candidate.status === "draft");
     if (!draft) return;
 
     await openCandidate(draft.href);
@@ -356,7 +409,9 @@ async function verifyRecentReentryAndReadOnly(rawPath) {
   const cardLink = section.getByRole("link", { name: "Problem Card 상세" }).first();
   await cardLink.waitFor({ state: "visible" });
   await cardLink.click();
-  await page.getByText("완료된 분석은 읽기 전용입니다.", { exact: true }).waitFor({ state: "visible" });
+  await page.getByText("완료된 분석은 읽기 전용입니다.", { exact: true }).waitFor({
+    state: "visible",
+  });
   assert.equal(await page.getByRole("textbox", { name: "문제 제목" }).isDisabled(), true);
 }
 
@@ -372,8 +427,9 @@ async function readCandidateCards(section) {
       .filter({ hasText: "근거 수" })
       .locator("dd")
       .textContent();
-    const link = card.getByRole("link", { name: /후보 검토 및 수정|Problem Card 상세/ });
-    const href = await link.getAttribute("href");
+    const href = await card
+      .getByRole("link", { name: /후보 검토 및 수정|Problem Card 상세/ })
+      .getAttribute("href");
     assert.ok(href, `Candidate ${index + 1} 상세 링크가 없습니다.`);
 
     candidates.push({
@@ -427,13 +483,15 @@ async function ensureApplicationServer() {
 
   serverProcess.stdout.on("data", (chunk) => void appendFile(logPath, chunk));
   serverProcess.stderr.on("data", (chunk) => void appendFile(logPath, chunk));
-
   await poll(serverAvailable, 90_000, "Next.js 개발 서버 시작");
 }
 
 async function serverAvailable() {
   try {
-    const response = await fetch(BASE_URL, { redirect: "manual", signal: AbortSignal.timeout(2_000) });
+    const response = await fetch(BASE_URL, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(2_000),
+    });
     return response.status > 0;
   } catch {
     return false;
@@ -451,8 +509,7 @@ function stopApplicationServer() {
 
 async function loadChromium() {
   try {
-    const playwright = await import("playwright");
-    return playwright.chromium;
+    return (await import("playwright")).chromium;
   } catch (error) {
     throw new Error(`Playwright 패키지가 없습니다. 먼저 npm install을 실행하십시오. (${errorMessage(error)})`);
   }
@@ -462,7 +519,10 @@ async function launchBrowser(chromium) {
   try {
     return await chromium.launch({ headless: false, slowMo: 60 });
   } catch (error) {
-    if (!/Executable doesn't exist|browser executable|playwright install/i.test(errorMessage(error))) throw error;
+    if (!/Executable doesn't exist|browser executable|playwright install/i.test(errorMessage(error))) {
+      throw error;
+    }
+
     console.log("Chromium이 없어 자동 설치합니다.");
     const npx = process.platform === "win32" ? "npx.cmd" : "npx";
     const installed = spawnSync(npx, ["playwright", "install", "chromium"], { stdio: "inherit" });
