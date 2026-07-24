@@ -1,0 +1,1 @@
+Phase 5 DB integration is executed against Supabase in a rollback-only transaction. The authoritative result is recorded in docs/phase5-verification.md.
