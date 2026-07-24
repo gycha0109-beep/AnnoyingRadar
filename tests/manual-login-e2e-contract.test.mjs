@@ -56,8 +56,8 @@ test("runner adapts structural coverage to nondeterministic AI grouping", () => 
 });
 
 test("runner uses stable form selectors for fields with dynamic accessible text", () => {
-  assert.match(script, /textarea\[name=\\"raw_text\\"\]/);
-  assert.match(script, /input\[name=\\"source_memo\\"\]/);
+  assert.equal(script.includes('textarea[name="raw_text"]'), true);
+  assert.equal(script.includes('input[name="source_memo"]'), true);
 });
 
 test("runner owns local server lifecycle and auto-installs Chromium when missing", () => {
