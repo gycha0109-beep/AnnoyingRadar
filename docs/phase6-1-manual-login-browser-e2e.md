@@ -24,7 +24,8 @@ manual login
   -> live OpenAI Candidate grouping
   -> edit Candidate
   -> discard and restore Candidate
-  -> move/merge/split structure through adaptive coverage
+  -> move Evidence when the live graph exposes a valid source and sibling
+  -> merge and split Candidate structure adaptively
   -> confirm every active Candidate as a Problem Card
   -> complete review
   -> dashboard recent-three re-entry
@@ -61,9 +62,11 @@ A GitHub-hosted runner cannot expose an interactive browser window to the operat
 
 AI grouping cardinality is nondeterministic. The runner therefore inspects the generated Candidate graph:
 
-1. Prefer splitting a Candidate with at least two Evidence items, then merge the created Candidate back.
-2. If every Candidate is a singleton but at least two Candidates exist, merge two Candidates first, then split and merge back.
-3. Fail the structural gate only when the live output contains fewer than two usable Evidence references.
+1. If a Candidate has at least two Evidence items and a draft sibling, move one Evidence through the real review UI.
+2. If the current Candidate still has at least two Evidence items, split one item and merge the created Candidate back.
+3. If the current Candidate becomes a singleton but has a draft sibling, merge first, then split and merge back.
+4. When the live graph has no valid movement topology, record Evidence movement as skipped rather than manufacturing data or bypassing constraints.
+5. Fail the structural gate only when merge and split cannot both be exercised from the generated Evidence graph.
 
 ### Test-data policy
 
@@ -81,7 +84,7 @@ Artifacts include:
 
 - step screenshots
 - Playwright trace
-- result JSON
+- result JSON, including whether Evidence movement was exercised
 - browser console messages
 - browser page errors
 - failed network requests
@@ -102,7 +105,8 @@ Artifacts include:
 - No authentication material is persisted.
 - Raw Input creation is verified through the UI.
 - Live Evidence extraction and review complete.
-- Live Candidate grouping and structural review complete.
+- Evidence movement runs when the generated topology permits it.
+- Candidate merge and split both complete.
 - All active Candidates become Problem Cards.
 - Analysis transitions to `completed`.
 - Dashboard recent-three re-entry targets the same Raw Input.
