@@ -33,6 +33,7 @@ test("runner covers the complete live workflow after login", () => {
     "Candidate 수정 내용을 저장했습니다.",
     "Candidate 폐기",
     "Candidate 복구",
+    "Evidence 이동",
     "새 Candidate로 분리",
     "선택 Candidate에 병합",
     "문제 카드로 확정",
@@ -45,10 +46,18 @@ test("runner covers the complete live workflow after login", () => {
 });
 
 test("runner adapts structural coverage to nondeterministic AI grouping", () => {
+  assert.match(script, /tryMoveEvidenceToSibling/);
+  assert.match(script, /move_split_then_merge/);
+  assert.match(script, /move_merge_then_split_then_merge/);
   assert.match(script, /split_then_merge/);
   assert.match(script, /merge_then_split_then_merge/);
-  assert.match(script, /evidenceCount > 1/);
-  assert.match(script, /initialCandidates\.length >= 2/);
+  assert.match(script, /readCurrentEvidenceCount/);
+  assert.match(script, /hasMergeTarget/);
+});
+
+test("runner uses stable form selectors for fields with dynamic accessible text", () => {
+  assert.match(script, /textarea\[name=\\"raw_text\\"\]/);
+  assert.match(script, /input\[name=\\"source_memo\\"\]/);
 });
 
 test("runner owns local server lifecycle and auto-installs Chromium when missing", () => {
