@@ -31,7 +31,20 @@ try {
   assert.equal(login.status, 200);
   assert.match(await login.text(), /로그인/);
 
-  console.log("RuntimeSmoke: PASS (/ and /login)");
+  for (const protectedPath of [
+    "/raw-inputs/11111111-1111-4111-8111-111111111111",
+    "/problem-candidates/22222222-2222-4222-8222-222222222222",
+  ]) {
+    const response = await fetch(`${baseUrl}${protectedPath}`, { redirect: "manual" });
+    assert.ok([307, 308].includes(response.status), `${protectedPath}: ${response.status}`);
+    assert.equal(new URL(response.headers.get("location"), baseUrl).pathname, "/login");
+  }
+
+  const recent = await fetch(`${baseUrl}/api/raw-inputs/recent`);
+  assert.equal(recent.status, 401);
+  assert.equal((await recent.json()).error?.code, "login_required");
+
+  console.log("RuntimeSmoke: PASS (public pages, protected redirects, unauthenticated API)");
 } finally {
   server.kill("SIGTERM");
 }
@@ -44,9 +57,7 @@ async function waitForServer() {
 
     try {
       const response = await fetch(`${baseUrl}/`, { redirect: "manual" });
-      if (response.status > 0) {
-        return;
-      }
+      if (response.status > 0) return;
     } catch {
       // Retry while Next.js starts.
     }
