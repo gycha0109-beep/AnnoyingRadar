@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASE_URL = normalizeBaseUrl(process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000");
 const LOGIN_TIMEOUT_MS = positiveInteger(process.env.E2E_LOGIN_TIMEOUT_MS, 10 * 60 * 1000);
 const AI_TIMEOUT_MS = positiveInteger(process.env.E2E_AI_TIMEOUT_MS, 4 * 60 * 1000);
@@ -468,22 +471,86 @@ async function step(name, operation) {
 async function ensureApplicationServer() {
   if (await serverAvailable()) return;
 
+  assertProjectRoot();
   const url = new URL(BASE_URL);
   if (!isLoopback(url.hostname)) {
     throw new Error(`E2E_BASE_URL에 연결할 수 없습니다: ${BASE_URL}`);
   }
 
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const args = ["run", "dev", "--", "--hostname", url.hostname, "--port", url.port || "3000"];
   const logPath = path.join(ARTIFACT_DIR, "dev-server.log");
-  serverProcess = spawn(npm, args, {
-    env: { ...process.env, NODE_ENV: "development" },
+  const command = resolvePackageManagerCommand(args);
+  serverProcess = spawn(command.file, command.args, {
+    // Next resolves .env.local from cwd. Keep the caller's environment intact;
+    // it may already contain values intentionally supplied outside .env.local.
+    cwd: PROJECT_ROOT,
+    env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
+    shell: command.shell,
   });
 
   serverProcess.stdout.on("data", (chunk) => void appendFile(logPath, chunk));
   serverProcess.stderr.on("data", (chunk) => void appendFile(logPath, chunk));
-  await poll(serverAvailable, 90_000, "Next.js 개발 서버 시작");
+  await waitForApplicationServer(command.label);
+}
+
+function assertProjectRoot() {
+  const packageJsonPath = path.join(PROJECT_ROOT, "package.json");
+  if (!existsSync(packageJsonPath)) {
+    throw new Error(`E2E 프로젝트 루트에서 package.json을 찾을 수 없습니다: ${packageJsonPath}`);
+  }
+
+  const envLocalPath = path.join(PROJECT_ROOT, ".env.local");
+  if (existsSync(envLocalPath)) {
+    console.log(`자동 시작한 Next.js 서버가 프로젝트 루트의 .env.local을 사용합니다: ${envLocalPath}`);
+  }
+}
+
+function resolvePackageManagerCommand(args) {
+  // npm, pnpm, and Yarn set this while running a package script.  Invoking the
+  // JavaScript entry point through the current Node binary avoids Windows .cmd
+  // shims, which spawn() cannot execute without a shell.
+  const packageManagerEntrypoint = process.env.npm_execpath;
+  if (packageManagerEntrypoint && existsSync(packageManagerEntrypoint)) {
+    return {
+      file: process.execPath,
+      args: [packageManagerEntrypoint, ...args],
+      shell: false,
+      label: `${process.execPath} ${packageManagerEntrypoint}`,
+    };
+  }
+
+  const packageManager = existsSync(path.join(PROJECT_ROOT, "pnpm-lock.yaml"))
+    ? "pnpm"
+    : existsSync(path.join(PROJECT_ROOT, "yarn.lock"))
+      ? "yarn"
+      : "npm";
+  return {
+    file: packageManager,
+    args,
+    // Windows package-manager commands resolve to .cmd shims.  They require a
+    // command shell when no JavaScript entry point was inherited from a script.
+    shell: process.platform === "win32",
+    label: packageManager,
+  };
+}
+
+async function waitForApplicationServer(commandLabel) {
+  const earlyExit = new Promise((_, reject) => {
+    serverProcess.once("error", (error) => {
+      reject(new Error(`개발 서버를 시작하지 못했습니다 (${commandLabel}): ${errorMessage(error)}`));
+    });
+    serverProcess.once("exit", (code, signal) => {
+      reject(new Error(
+        `개발 서버가 준비 전에 종료되었습니다 (${commandLabel}, code=${code}, signal=${signal ?? "none"}).`,
+      ));
+    });
+  });
+
+  await Promise.race([
+    poll(serverAvailable, 90_000, "Next.js 개발 서버 시작"),
+    earlyExit,
+  ]);
 }
 
 async function serverAvailable() {

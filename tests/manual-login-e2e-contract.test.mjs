@@ -62,7 +62,14 @@ test("runner uses stable form selectors for fields with dynamic accessible text"
 
 test("runner owns local server lifecycle and auto-installs Chromium when missing", () => {
   assert.match(script, /ensureApplicationServer/);
-  assert.match(script, /npm\.cmd/);
+  assert.match(script, /resolvePackageManagerCommand/);
+  assert.match(script, /npm_execpath/);
+  assert.match(script, /pnpm-lock\.yaml/);
+  assert.match(script, /yarn\.lock/);
+  assert.match(script, /fileURLToPath\(import\.meta\.url\)/);
+  assert.match(script, /cwd:\s*PROJECT_ROOT/);
+  assert.match(script, /env:\s*process\.env/);
+  assert.match(script, /\.env\.local/);
   assert.match(script, /playwright", "install", "chromium/);
   assert.match(script, /taskkill/);
   assert.match(script, /serverProcess\.kill\("SIGTERM"\)/);
