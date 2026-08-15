@@ -3,15 +3,33 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+const bootstrap = await readFile("scripts/run-live-browser-e2e-bootstrap.mjs", "utf8");
 const script = await readFile("scripts/run-live-browser-e2e.mjs", "utf8");
 const design = await readFile("docs/phase6-1-manual-login-browser-e2e.md", "utf8");
 const gitignore = await readFile(".gitignore", "utf8");
 
 test("package exposes a pinned one-command live browser runner", () => {
-  assert.equal(packageJson.scripts["e2e:live"], "node scripts/run-live-browser-e2e.mjs");
+  assert.equal(packageJson.scripts["e2e:live"], "node scripts/run-live-browser-e2e-bootstrap.mjs");
   assert.equal(packageJson.devDependencies.playwright, "1.61.1");
+  assert.match(packageJson.scripts["test:release"], /node --check scripts\/run-live-browser-e2e-bootstrap\.mjs/);
   assert.match(packageJson.scripts["test:release"], /node --check scripts\/run-live-browser-e2e\.mjs/);
   assert.match(packageJson.scripts["test:release"], /manual-login-e2e-contract\.test\.mjs/);
+});
+
+test("bootstrap loads project env before starting the live runner", () => {
+  assert.match(bootstrap, /process\.loadEnvFile/);
+  assert.match(bootstrap, /\.env\.development\.local/);
+  assert.match(bootstrap, /\.env\.local/);
+  assert.match(bootstrap, /\.env\.development/);
+  assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.match(bootstrap, /SUPABASE_SECRET_KEY/);
+  assert.match(bootstrap, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(bootstrap, /OPENAI_API_KEY/);
+  assert.match(bootstrap, /allocateLoopbackBaseUrl/);
+  assert.match(bootstrap, /spawn\(process\.execPath/);
+  assert.match(bootstrap, /env:\s*process\.env/);
 });
 
 test("authentication remains manual and no reusable session secret is persisted", () => {
@@ -69,7 +87,6 @@ test("runner owns local server lifecycle and auto-installs Chromium when missing
   assert.match(script, /fileURLToPath\(import\.meta\.url\)/);
   assert.match(script, /cwd:\s*PROJECT_ROOT/);
   assert.match(script, /env:\s*process\.env/);
-  assert.match(script, /\.env\.local/);
   assert.match(script, /playwright", "install", "chromium/);
   assert.match(script, /taskkill/);
   assert.match(script, /serverProcess\.kill\("SIGTERM"\)/);
@@ -91,4 +108,5 @@ test("design records the one-human-action boundary and audit policy", () => {
   assert.match(design, /never writes Playwright storage state or Supabase tokens/i);
   assert.match(design, /unique `AR-E2E` marker/i);
   assert.match(design, /recent-three re-entry/i);
+  assert.match(design, /environment bootstrap/i);
 });
