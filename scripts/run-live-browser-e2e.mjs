@@ -25,6 +25,7 @@ let serverProcess;
 let stepIndex = 0;
 let traceStarted = false;
 let rawInputId = null;
+let ideaCandidatePath = null;
 const consoleMessages = [];
 const pageErrors = [];
 const requestFailures = [];
@@ -38,6 +39,12 @@ const result = {
   candidate_count: null,
   evidence_move: false,
   structural_path: null,
+  idea_candidate_count: null,
+  idea_candidate_id: null,
+  idea_title: null,
+  idea_status: null,
+  idea_history_verified: false,
+  idea_reentry_verified: false,
   status: "running",
 };
 
@@ -67,7 +74,17 @@ async function main() {
     await step("candidate-review-structure", () => reviewCandidateStructure(candidates));
     await step("confirm-problem-cards", () => confirmAllActiveCandidates(rawPath));
     await step("complete-analysis", () => completeAnalysis(rawPath));
-    await step("recent-reentry-readonly", () => verifyRecentReentryAndReadOnly(rawPath));
+    const problemCardPath = await step(
+      "recent-reentry-readonly",
+      () => verifyRecentReentryAndReadOnly(rawPath),
+    );
+    result.idea_candidate_count = await step(
+      "live-idea-generation",
+      () => generateIdeasFromProblemCard(problemCardPath),
+    );
+    await step("idea-review-edit", reviewFirstIdeaCandidate);
+    await step("idea-status-lifecycle", advanceIdeaStatusLifecycle);
+    await step("idea-reentry-persistence", verifyIdeaReentryPersistence);
 
     result.status = "passed";
     result.completed_at = new Date().toISOString();
@@ -416,6 +433,133 @@ async function verifyRecentReentryAndReadOnly(rawPath) {
     state: "visible",
   });
   assert.equal(await page.getByRole("textbox", { name: "문제 제목" }).isDisabled(), true);
+  return new URL(page.url()).pathname;
+}
+
+async function generateIdeasFromProblemCard(problemCardPath) {
+  await page.goto(new URL(problemCardPath, BASE_URL).href, { waitUntil: "domcontentloaded" });
+  const section = page.locator('section[aria-labelledby="problem-card-ideas-title"]');
+  await section.waitFor({ state: "visible", timeout: 30_000 });
+
+  const generate = section.getByRole("button", {
+    name: /^(Idea Candidate 생성|아이디어 추가 생성)$/,
+  });
+  await poll(() => isEnabledVisible(generate), 30_000, "Idea Candidate 생성 버튼 활성화");
+  await generate.click();
+
+  const count = await poll(
+    async () => {
+      const cards = await section.locator("a.idea-compact-card").count();
+      if (cards > 0) return cards;
+      const alert = section.getByRole("alert");
+      if (await isVisible(alert)) {
+        throw new Error((await alert.first().textContent())?.trim() || "Idea Candidate 생성 실패");
+      }
+      return false;
+    },
+    AI_TIMEOUT_MS,
+    "Live Idea Candidate 생성",
+  );
+
+  assert.ok(count >= 1 && count <= 3, `첫 Idea generation batch는 1~3개여야 합니다: ${count}`);
+  const href = await section.locator("a.idea-compact-card").first().getAttribute("href");
+  assert.match(href ?? "", /^\/idea-candidates\/[0-9a-f-]{36}$/i);
+  ideaCandidatePath = href;
+  result.idea_candidate_id = href.split("/").filter(Boolean).at(-1);
+  return count;
+}
+
+async function reviewFirstIdeaCandidate() {
+  assert.ok(ideaCandidatePath, "검토할 Idea Candidate 경로가 없습니다.");
+  await page.goto(new URL(ideaCandidatePath, BASE_URL).href, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Idea 내용 검토·수정" }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+
+  const titleInput = page.getByRole("textbox", { name: "아이디어 이름" });
+  const originalTitle = await titleInput.inputValue();
+  const editedTitle = `${originalTitle.slice(0, 190)} [E2E]`;
+  await titleInput.fill(editedTitle);
+  await page.getByRole("button", { name: "수정 내용 저장" }).click();
+  await page.getByText("Idea Candidate 수정 내용을 저장했습니다.", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+  assert.equal(await titleInput.inputValue(), editedTitle);
+  result.idea_title = editedTitle;
+}
+
+async function advanceIdeaStatusLifecycle() {
+  assert.ok(ideaCandidatePath, "상태를 변경할 Idea Candidate 경로가 없습니다.");
+  const section = page.locator('section[aria-labelledby="idea-status-title"]');
+  await section.waitFor({ state: "visible", timeout: 30_000 });
+  const select = section.locator("select");
+  const change = section.getByRole("button", { name: "상태 변경" });
+
+  await select.selectOption("researching");
+  await change.click();
+  await page.getByText("Idea Candidate 상태를 researching(으)로 변경했습니다.", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+
+  await select.selectOption("build_soon");
+  await change.click();
+  await page.getByText("Idea Candidate 상태를 build_soon(으)로 변경했습니다.", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+
+  const history = page.locator('section[aria-labelledby="idea-history-title"] li');
+  await poll(
+    async () => {
+      const entries = (await history.allTextContents()).map((text) => text.replace(/\s+/g, " ").trim());
+      return entries.some((entry) => entry.includes("created → candidate"))
+        && entries.some((entry) => entry.includes("candidate → researching"))
+        && entries.some((entry) => entry.includes("researching → build_soon"));
+    },
+    30_000,
+    "Idea status history",
+  );
+
+  result.idea_status = "build_soon";
+  result.idea_history_verified = true;
+}
+
+async function verifyIdeaReentryPersistence() {
+  assert.ok(ideaCandidatePath, "재진입할 Idea Candidate 경로가 없습니다.");
+  assert.ok(result.idea_title, "검증할 Idea Candidate 제목이 없습니다.");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Idea 내용 검토·수정" }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+  assert.equal(
+    await page.getByRole("textbox", { name: "아이디어 이름" }).inputValue(),
+    result.idea_title,
+  );
+  await page.getByText("build_soon", { exact: true }).first().waitFor({ state: "visible" });
+
+  await page.goto(new URL("/ideas", BASE_URL).href, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "검토 중인 Idea Candidate" }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
+  const listItem = page.locator(`a.idea-list-item[href="${ideaCandidatePath}"]`).first();
+  await listItem.waitFor({ state: "visible", timeout: 30_000 });
+  await listItem.getByText(result.idea_title, { exact: true }).waitFor({ state: "visible" });
+  await listItem.getByText("build_soon", { exact: true }).waitFor({ state: "visible" });
+
+  await listItem.click();
+  await page.waitForURL((url) => url.pathname === ideaCandidatePath, { timeout: 30_000 });
+  assert.equal(
+    await page.getByRole("textbox", { name: "아이디어 이름" }).inputValue(),
+    result.idea_title,
+  );
+  await page.getByText("build_soon", { exact: true }).first().waitFor({ state: "visible" });
+  result.idea_reentry_verified = true;
 }
 
 async function readCandidateCards(section) {
