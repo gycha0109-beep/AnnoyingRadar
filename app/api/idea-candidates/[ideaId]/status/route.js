@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 import { ApiError, jsonError, requireUser } from "../../../../../lib/auth/require-user.js";
 import { readObjectBody } from "../../../../../lib/candidates/review-api.mjs";
+import { normalizeIdeaStatusRequest } from "../../../../../lib/ideas/contracts.mjs";
 import {
   assertIdeaOwner,
   mapIdeaReviewRpcError,
-  normalizeIdeaStatusRequest,
 } from "../../../../../lib/ideas/review-api.mjs";
 import { loadIdeaCandidateDetail } from "../../../../../lib/ideas/service.mjs";
 import { createServiceClient } from "../../../../../lib/supabase/service.js";
