@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   IDEA_STATUSES,
@@ -117,10 +117,9 @@ export default function IdeaReview({ ideaId }) {
   }
 
   const idea = detail?.idea ?? null;
-  const allowedStatuses = useMemo(() => {
-    if (!idea?.status) return [];
-    return IDEA_STATUSES.filter((status) => canTransitionIdeaStatus(idea.status, status));
-  }, [idea?.status]);
+  const allowedStatuses = idea?.status
+    ? IDEA_STATUSES.filter((status) => canTransitionIdeaStatus(idea.status, status))
+    : [];
 
   if (isLoading) return <section className="card">Idea Candidate 상세를 불러오는 중입니다.</section>;
   if (!idea) {
