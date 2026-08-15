@@ -53,8 +53,8 @@ test("Phase 7.2 source loader locks eligibility to confirmed + completed + linke
 });
 
 test("Idea generation route validates source before provider call and persists through Phase 7.1 RPC", () => {
-  const sourceLoadIndex = generateRoute.indexOf("loadIdeaGenerationSource");
-  const providerCallIndex = generateRoute.indexOf("generateGroundedIdeas");
+  const sourceLoadIndex = generateRoute.indexOf("source = await loadIdeaGenerationSource");
+  const providerCallIndex = generateRoute.indexOf("generation = await generateGroundedIdeas");
   assert.ok(sourceLoadIndex >= 0);
   assert.ok(providerCallIndex > sourceLoadIndex);
 
