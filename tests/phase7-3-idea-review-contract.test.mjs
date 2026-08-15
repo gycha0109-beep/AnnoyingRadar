@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { normalizeIdeaStatusRequest } from "../lib/ideas/review-api.mjs";
+import { normalizeIdeaStatusRequest } from "../lib/ideas/contracts.mjs";
 
 const migration = await readFile(
   new URL("../supabase/migrations/012_idea_review_edit_guard.sql", import.meta.url),
