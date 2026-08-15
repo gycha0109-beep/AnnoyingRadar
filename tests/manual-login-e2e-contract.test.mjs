@@ -6,6 +6,7 @@ const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const bootstrap = await readFile("scripts/run-live-browser-e2e-bootstrap.mjs", "utf8");
 const script = await readFile("scripts/run-live-browser-e2e.mjs", "utf8");
 const design = await readFile("docs/phase6-1-manual-login-browser-e2e.md", "utf8");
+const phase74 = await readFile("docs/phase7-4-idea-live-browser-e2e.md", "utf8");
 const gitignore = await readFile(".gitignore", "utf8");
 
 test("package exposes a pinned one-command live browser runner", () => {
@@ -58,9 +59,40 @@ test("runner covers the complete live workflow after login", () => {
     "Candidate 검토 완료",
     "최근 입력 3개",
     "완료된 분석은 읽기 전용입니다.",
+    "Idea Candidate 생성",
+    "Idea Candidate 수정 내용을 저장했습니다.",
+    "researching",
+    "build_soon",
+    "idea-status-title",
+    "idea-history-title",
+    "idea-list-item",
   ]) {
     assert.match(script, new RegExp(required), required);
   }
+});
+
+test("runner validates the Phase 7.4 Idea lifecycle and persistence", () => {
+  for (const required of [
+    "live-idea-generation",
+    "idea-review-edit",
+    "idea-status-lifecycle",
+    "idea-reentry-persistence",
+    "generateIdeasFromProblemCard",
+    "reviewFirstIdeaCandidate",
+    "advanceIdeaStatusLifecycle",
+    "verifyIdeaReentryPersistence",
+    "created → candidate",
+    "candidate → researching",
+    "researching → build_soon",
+    "idea_candidate_id",
+    "idea_history_verified",
+    "idea_reentry_verified",
+  ]) {
+    assert.match(script, new RegExp(required), required);
+  }
+  assert.match(script, /count >= 1 && count <= 3/);
+  assert.match(script, /page\.reload/);
+  assert.match(script, /new URL\("\/ideas", BASE_URL\)/);
 });
 
 test("runner adapts structural coverage to nondeterministic AI grouping", () => {
@@ -109,4 +141,11 @@ test("design records the one-human-action boundary and audit policy", () => {
   assert.match(design, /unique `AR-E2E` marker/i);
   assert.match(design, /recent-three re-entry/i);
   assert.match(design, /environment bootstrap/i);
+
+  assert.match(phase74, /manual login/i);
+  assert.match(phase74, /Problem Card → Idea Candidate/i);
+  assert.match(phase74, /candidate → researching → build_soon/i);
+  assert.match(phase74, /reload/i);
+  assert.match(phase74, /\/ideas/);
+  assert.match(phase74, /no additional human action/i);
 });
