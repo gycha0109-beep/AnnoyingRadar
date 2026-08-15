@@ -1,0 +1,85 @@
+.idea-compact-list,
+.idea-list {
+  display: grid;
+  gap: 12px;
+}
+
+.idea-compact-card,
+.idea-list-item,
+.idea-source-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  padding: 16px;
+}
+
+.idea-compact-card,
+.idea-list-item {
+  text-decoration: none;
+}
+
+.idea-compact-card:hover,
+.idea-list-item:hover {
+  border-color: var(--accent-strong);
+}
+
+.idea-generation-summary,
+.idea-list-date {
+  font-size: 0.82rem;
+}
+
+.idea-status-actions > select {
+  min-width: 220px;
+  width: auto;
+}
+
+.idea-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.idea-meta-grid > div {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  padding: 12px;
+}
+
+.idea-meta-grid dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.idea-meta-grid dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.idea-history-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.idea-history-list li {
+  display: grid;
+  gap: 4px;
+  padding-left: 4px;
+}
+
+@media (max-width: 860px) {
+  .idea-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .idea-status-actions > select {
+    width: 100%;
+  }
+}

@@ -39,9 +39,12 @@ export default async function HomePage() {
           <Link className="brand" href="/">어노잉 레이더</Link>
           <p className="muted user-line">{user.email ?? user.id}</p>
         </div>
-        <form action={logout}>
-          <button className="button-secondary button-compact" type="submit">로그아웃</button>
-        </form>
+        <div className="inline-actions">
+          <Link className="button-link button-compact" href="/ideas">Idea 목록</Link>
+          <form action={logout}>
+            <button className="button-secondary button-compact" type="submit">로그아웃</button>
+          </form>
+        </div>
       </nav>
 
       <header className="hero stack-sm">

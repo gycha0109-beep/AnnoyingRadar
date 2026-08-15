@@ -1,5 +1,6 @@
 import "./globals.css";
 import "./candidate-review.css";
+import "./idea-review.css";
 
 export const metadata = {
   title: "어노잉 레이더",
