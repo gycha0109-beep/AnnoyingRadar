@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function IdeaSection({ candidate, rawInput }) {
+  const candidateId = candidate?.id ?? "";
   const eligible = candidate?.status === "confirmed"
     && rawInput?.analysis_status === "completed"
     && Number(candidate?.evidence_count ?? 0) >= 1;
@@ -14,10 +15,10 @@ export default function IdeaSection({ candidate, rawInput }) {
   const [message, setMessage] = useState("");
 
   const loadIdeas = useCallback(async () => {
-    if (!eligible) return;
+    if (!eligible || !candidateId) return;
     setError("");
     try {
-      const response = await fetch(`/api/problem-candidates/${candidate.id}/ideas`, {
+      const response = await fetch(`/api/problem-candidates/${candidateId}/ideas`, {
         cache: "no-store",
       });
       const result = await readJson(response);
@@ -28,18 +29,13 @@ export default function IdeaSection({ candidate, rawInput }) {
     } finally {
       setIsLoading(false);
     }
-  }, [candidate?.id, eligible]);
+  }, [candidateId, eligible]);
 
   useEffect(() => {
     if (!eligible) return undefined;
     const timer = window.setTimeout(() => void loadIdeas(), 0);
     return () => window.clearTimeout(timer);
   }, [eligible, loadIdeas]);
-
-  const latestBatch = useMemo(() => {
-    const batches = payload?.batches ?? [];
-    return batches.length ? batches[batches.length - 1] : null;
-  }, [payload?.batches]);
 
   if (!eligible) return null;
 
@@ -49,7 +45,7 @@ export default function IdeaSection({ candidate, rawInput }) {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`/api/problem-candidates/${candidate.id}/ideas/generate`, {
+      const response = await fetch(`/api/problem-candidates/${candidateId}/ideas/generate`, {
         method: "POST",
       });
       const result = await readJson(response);
@@ -64,6 +60,8 @@ export default function IdeaSection({ candidate, rawInput }) {
   }
 
   const ideas = payload?.ideas ?? [];
+  const batches = payload?.batches ?? [];
+  const latestBatch = batches.length ? batches[batches.length - 1] : null;
 
   return (
     <section className="card stack" aria-labelledby="problem-card-ideas-title">
