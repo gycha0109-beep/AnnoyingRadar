@@ -8,6 +8,10 @@ const migration = await readFile(
   new URL("../supabase/migrations/012_idea_review_edit_guard.sql", import.meta.url),
   "utf8",
 );
+const hardeningMigration = await readFile(
+  new URL("../supabase/migrations/013_idea_review_edit_guard_hardening.sql", import.meta.url),
+  "utf8",
+);
 const detailRoute = await readFile(
   new URL("../app/api/idea-candidates/[ideaId]/route.js", import.meta.url),
   "utf8",
@@ -33,9 +37,11 @@ const ideaService = await readFile(new URL("../lib/ideas/service.mjs", import.me
 
 test("inactive Idea Candidates are read-only at the database boundary", () => {
   assert.match(migration, /old\.status in \('discarded', 'archived'\)/);
-  assert.match(migration, /is distinct from/);
-  assert.match(migration, /must be restored before editing/);
   assert.match(migration, /before update on public\.ar_idea_candidates/);
+  assert.match(hardeningMigration, /new\.status = old\.status/);
+  assert.match(hardeningMigration, /must be restored before editing/);
+  assert.match(hardeningMigration, /status transition must not edit content or source identity/);
+  assert.match(hardeningMigration, /is distinct from/);
 });
 
 test("Idea content API keeps edit and status mutation separated", () => {
@@ -71,6 +77,7 @@ test("Problem Card exposes append-only Idea generation only at the completed con
   assert.match(ideaSection, /\/ideas\/generate/);
   assert.match(ideaSection, /아이디어 추가 생성/);
   assert.match(ideaSection, /\/idea-candidates\/\$\{idea\.id\}/);
+  assert.doesNotMatch(ideaSection, /\.from\("ar_idea_candidates"\)/);
 });
 
 test("Idea detail UX covers content, provenance, evidence, and status history", () => {
@@ -92,6 +99,7 @@ test("Idea detail UX covers content, provenance, evidence, and status history", 
   assert.match(ideaReview, /Generation Provenance/);
   assert.match(ideaReview, /Status History/);
   assert.match(ideaReview, /\/status/);
+  assert.doesNotMatch(ideaReview, /\.from\("ar_idea_candidates"\)/);
 });
 
 test("global Ideas page stays a lightweight owner-scoped list", () => {
