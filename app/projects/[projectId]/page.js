@@ -21,6 +21,7 @@ export default async function ResearchProjectPage({ params }) {
         <Link className="brand" href="/">어노잉 레이더</Link>
         <div className="inline-actions">
           <Link className="button-link" href="/projects">Projects</Link>
+          <Link className="button-link" href={`/ideas?project=${encodeURIComponent(projectId)}`}>Project Idea Board</Link>
           <Link className="button-link" href="/problems">Problem Cards</Link>
           <Link className="button-link" href="/ideas">Ideas</Link>
           <Link className="button-link" href="/">대시보드</Link>

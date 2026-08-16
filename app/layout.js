@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./candidate-review.css";
 import "./idea-review.css";
+import "./idea-board.css";
 import "./saved-problems.css";
 import "./research-projects.css";
 
