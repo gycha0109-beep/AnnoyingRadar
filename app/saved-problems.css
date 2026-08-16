@@ -7,7 +7,7 @@
   border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 1rem;
-  background: var(--surface-subtle);
+  background: var(--surface-strong);
 }
 
 .saved-problem-meta {
