@@ -142,17 +142,19 @@ Deterministic CI must cover:
 
 Hosted migration verification must confirm the actual table, RLS policy and service-role-only mutation RPC privileges before merge.
 
-The Phase 8 browser gate is explicit and does not repeat live OpenAI generation already closed by Phase 7.4. It reuses one of the current user's recent completed Problem Cards and requires only manual authentication:
+The Phase 8 browser gate is explicit and does not repeat live OpenAI generation already closed by Phase 7.4. It requires only manual authentication and intentionally operates only on a recent, completed, **unsaved Phase 7 live-E2E Problem Card**. Existing user Saved Problems are never selected or overwritten.
 
 ```text
 npm run e2e:saved-problems:live
 ```
 
+If no eligible unsaved Phase 7 E2E Problem Card remains in the recent-three window, run the existing `npm run e2e:live` gate first to create a fresh E2E source, then rerun the Phase 8 gate.
+
 The runner verifies:
 
 ```text
 manual login
--> locate recent completed Problem Card
+-> locate recent unsaved Phase 7 E2E completed Problem Card
 -> save Problem Card
 -> edit category/memo
 -> /problems active-library re-entry
