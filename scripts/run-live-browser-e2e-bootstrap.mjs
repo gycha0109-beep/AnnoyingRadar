@@ -1,13 +1,28 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { parseEnv } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER_PATH = path.join(PROJECT_ROOT, "scripts", "run-live-browser-e2e.mjs");
 const EXPLICIT_BASE_URL = process.env.E2E_BASE_URL;
+const PROJECT_PREFERRED_ENV_KEYS = new Set([
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_SECRET_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "OPENAI_API_KEY",
+  "OPENAI_EVIDENCE_MODEL",
+  "OPENAI_EVIDENCE_TIMEOUT_MS",
+  "OPENAI_CANDIDATE_MODEL",
+  "OPENAI_CANDIDATE_TIMEOUT_MS",
+  "OPENAI_IDEA_MODEL",
+  "OPENAI_IDEA_TIMEOUT_MS",
+]);
 
 assertProjectRoot();
 const loadedEnvFiles = loadProjectEnvironment();
@@ -60,12 +75,30 @@ function loadProjectEnvironment() {
     ".env",
   ];
   const loaded = [];
+  const preferredValues = new Map();
 
   for (const filename of candidates) {
     const envPath = path.join(PROJECT_ROOT, filename);
     if (!existsSync(envPath)) continue;
+
+    const parsed = parseEnv(readFileSync(envPath, "utf8"));
+    for (const key of PROJECT_PREFERRED_ENV_KEYS) {
+      if (!preferredValues.has(key) && Object.prototype.hasOwnProperty.call(parsed, key)) {
+        preferredValues.set(key, String(parsed[key] ?? ""));
+      }
+    }
+
     process.loadEnvFile(envPath);
     loaded.push(filename);
+  }
+
+  // Node keeps an already-exported shell variable ahead of loadEnvFile(). For
+  // this project-owned live gate, the highest-precedence project env file is
+  // authoritative for managed Supabase/OpenAI values so stale shell secrets do
+  // not silently shadow .env.local. Shell values remain available when no
+  // project env file defines the key.
+  for (const [key, value] of preferredValues) {
+    process.env[key] = value;
   }
 
   return loaded;
