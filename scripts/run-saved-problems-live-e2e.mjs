@@ -137,13 +137,15 @@ async function findCompletedProblemCard() {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "최근 입력 3개" }).waitFor({ state: "visible" });
   const recentItems = page.locator("a.recent-item");
-  const recentCount = await recentItems.count();
+  await recentItems.first().waitFor({ state: "visible", timeout: 30_000 });
+  const recentEntries = await recentItems.evaluateAll((items) => items.map((item) => ({
+    text: (item.textContent ?? "").replace(/\s+/g, " "),
+    href: item.getAttribute("href"),
+  })));
 
-  for (let index = 0; index < recentCount; index += 1) {
-    const item = recentItems.nth(index);
-    const itemText = (await item.textContent() ?? "").replace(/\s+/g, " ");
-    const rawPath = await item.getAttribute("href");
-    if (!rawPath || !itemText.includes("[AR-E2E:")) continue;
+  for (const entry of recentEntries) {
+    const rawPath = entry.href;
+    if (!rawPath || !entry.text.includes("[AR-E2E:")) continue;
 
     await page.goto(new URL(rawPath, baseUrl).href, { waitUntil: "domcontentloaded" });
     const section = page.locator('section[aria-labelledby="candidate-grouping-title"]');
@@ -152,31 +154,35 @@ async function findCompletedProblemCard() {
       .map((text) => text.trim());
     if (!statuses.includes("completed")) continue;
 
-    const cardLink = section.getByRole("link", { name: "Problem Card 상세" }).first();
-    if (!(await isVisible(cardLink))) continue;
-    const problemCardPath = await cardLink.getAttribute("href");
-    if (!problemCardPath) continue;
+    const cardLinks = section.getByRole("link", { name: "Problem Card 상세" });
+    const cardCount = await cardLinks.count();
+    for (let cardIndex = 0; cardIndex < cardCount; cardIndex += 1) {
+      const problemCardPath = await cardLinks.nth(cardIndex).getAttribute("href");
+      if (!problemCardPath) continue;
 
-    await page.goto(new URL(problemCardPath, baseUrl).href, { waitUntil: "domcontentloaded" });
-    const savedSection = page.locator('section[aria-labelledby="saved-problem-title"]');
-    await savedSection.waitFor({ state: "visible", timeout: 30_000 });
-    const sourceState = await poll(
-      async () => {
-        if (await isEnabledVisible(savedSection.getByRole("button", { name: "Problem Card 저장" }))) {
-          return "unsaved";
-        }
-        if (await isVisible(savedSection.getByRole("textbox", { name: "카테고리" }))) {
-          return "already_saved";
-        }
-        return false;
-      },
-      30_000,
-      "Saved Problem source state",
-    );
+      await page.goto(new URL(problemCardPath, baseUrl).href, { waitUntil: "domcontentloaded" });
+      const savedSection = page.locator('section[aria-labelledby="saved-problem-title"]');
+      if (!(await isVisible(savedSection))) continue;
+      const sourceState = await poll(
+        async () => {
+          if (await isEnabledVisible(savedSection.getByRole("button", { name: "Problem Card 저장" }))) {
+            return "unsaved";
+          }
+          if (await isVisible(savedSection.getByRole("textbox", { name: "카테고리" }))) {
+            return "already_saved";
+          }
+          return false;
+        },
+        30_000,
+        "Saved Problem source state",
+      );
 
-    if (sourceState === "unsaved") {
-      result.test_source_verified = true;
-      return problemCardPath;
+      if (sourceState === "unsaved") {
+        result.test_source_verified = true;
+        return problemCardPath;
+      }
+
+      await page.goto(new URL(rawPath, baseUrl).href, { waitUntil: "domcontentloaded" });
     }
   }
 
