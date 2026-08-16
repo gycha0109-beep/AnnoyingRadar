@@ -71,7 +71,7 @@ test("Board does not reinterpret generation order_index as Kanban position", asy
 test("Board keeps drag-and-drop optional with a status select fallback", async () => {
   const board = await read("app/ideas/idea-board.js");
 
-  assert.match(board, /draggable=!\{pending\}/);
+  assert.match(board, /draggable=\{!pending\}/);
   assert.match(board, /onDragStart/);
   assert.match(board, /onDrop/);
   assert.match(board, /상태 이동/);
