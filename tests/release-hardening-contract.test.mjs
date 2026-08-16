@@ -19,6 +19,8 @@ const MUTATION_ROUTES = [
   "app/api/problem-candidates/[candidateId]/evidence/route.js",
   "app/api/problem-candidates/[candidateId]/merge/route.js",
   "app/api/problem-candidates/[candidateId]/split/route.js",
+  "app/api/problem-candidates/[candidateId]/save/route.js",
+  "app/api/problem-candidates/[candidateId]/save/status/route.js",
 ];
 
 test("all workflow mutation routes authenticate and retain user scoping", async () => {

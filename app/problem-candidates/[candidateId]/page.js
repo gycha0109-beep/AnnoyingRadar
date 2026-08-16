@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import CandidateReview from "./candidate-review.js";
 import ProblemCardIdeas from "./problem-card-ideas.js";
+import SavedProblemPanel from "./saved-problem-panel.js";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +22,13 @@ export default async function ProblemCandidatePage({ params }) {
       <nav className="topbar">
         <Link className="brand" href="/">어노잉 레이더</Link>
         <div className="inline-actions">
+          <Link className="button-link" href="/problems">Problem Cards</Link>
           <Link className="button-link" href="/ideas">Idea 목록</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
       </nav>
       <CandidateReview candidateId={candidateId} />
+      <SavedProblemPanel candidateId={candidateId} />
       <ProblemCardIdeas candidateId={candidateId} />
     </main>
   );
