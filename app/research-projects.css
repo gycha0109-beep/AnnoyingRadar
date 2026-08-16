@@ -1,0 +1,59 @@
+.research-project-list,
+.research-project-asset-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.research-project-card,
+.research-project-asset {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.research-project-card:hover {
+  border-color: var(--accent);
+}
+
+.research-project-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.research-project-link-row {
+  align-items: stretch;
+}
+
+.research-project-link-row select,
+.research-project-link-row input {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.research-project-inline {
+  border-top: 1px solid var(--border);
+  padding-top: 0.8rem;
+}
+
+.research-project-memberships {
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  padding: 0.8rem;
+}
+
+.research-project-membership {
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .research-project-link-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
