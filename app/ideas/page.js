@@ -29,6 +29,8 @@ export default async function IdeasPage({ searchParams }) {
   const board = await loadIdeaBoardOverview(serviceClient, user.id, { projectId });
   if (board.invalid_project) redirect("/ideas");
 
+  const boardKey = board.selected_project?.id ?? "all";
+
   return (
     <main className="stack page-shell idea-board-page">
       <nav className="topbar">
@@ -61,6 +63,7 @@ export default async function IdeasPage({ searchParams }) {
       </header>
 
       <IdeaBoard
+        key={boardKey}
         initialIdeas={board.ideas}
         projects={board.projects}
         selectedProjectId={board.selected_project?.id ?? null}
