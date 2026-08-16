@@ -33,6 +33,18 @@ test("bootstrap loads project env before starting the live runner", () => {
   assert.match(bootstrap, /env:\s*process\.env/);
 });
 
+test("bootstrap makes project env authoritative for managed live credentials", () => {
+  assert.match(bootstrap, /parseEnv/);
+  assert.match(bootstrap, /PROJECT_PREFERRED_ENV_KEYS/);
+  assert.match(bootstrap, /preferredValues/);
+  assert.match(bootstrap, /process\.env\[key\]\s*=\s*value/);
+  assert.ok(
+    bootstrap.indexOf(".env.development.local") < bootstrap.indexOf('".env.local"'),
+    "higher-precedence project env file must be checked first",
+  );
+  assert.match(bootstrap, /stale shell secrets do/);
+});
+
 test("authentication remains manual and no reusable session secret is persisted", () => {
   assert.match(script, /headless:\s*false/);
   assert.match(script, /브라우저에서 로그인하십시오/);
