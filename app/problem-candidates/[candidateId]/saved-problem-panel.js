@@ -14,7 +14,6 @@ export default function SavedProblemPanel({ candidateId }) {
   const [message, setMessage] = useState("");
 
   const load = useCallback(async (signal) => {
-    setError("");
     try {
       const response = await fetch(`/api/problem-candidates/${candidateId}/save`, {
         cache: "no-store",
