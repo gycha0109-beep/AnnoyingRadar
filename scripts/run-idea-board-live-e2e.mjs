@@ -53,7 +53,6 @@ await main();
 
 async function main() {
   await mkdir(ARTIFACT_DIR, { recursive: true });
-
   try {
     if (!baseUrl) throw new Error("E2E_BASE_URL is required. Run this through npm run e2e:idea-board:live.");
     console.log(`Idea Board Live E2E 서버 주소: ${baseUrl}`);
@@ -72,7 +71,7 @@ async function main() {
     await step("drag-to-reversible-status", () => dragToTargetStatus(source));
     await step("reload-persistence", () => verifyReloadPersistence(source));
     await step("status-history", () => verifyStatusHistory(source));
-    await step("project-filter", () => verifyProjectFilter(source));
+    await step("project-filter-control", () => verifyProjectFilterControl(source));
     await step("fallback-restore", () => restoreWithFallback(source));
     await step("final-state", () => verifyFinalState(source));
 
@@ -168,10 +167,7 @@ async function findSafeBoardSource() {
         result.initial_status = idea.status;
         result.target_status = targetStatus;
         result.source_discovery_verified = true;
-
         return {
-          rawInputId: rawInput.id,
-          problemCandidateId: candidate.id,
           ideaId: idea.id,
           ideaTitle: idea.title,
           initialStatus: idea.status,
@@ -200,9 +196,7 @@ async function verifyInitialLane(source) {
 async function dragToTargetStatus(source) {
   const fromLane = laneFor(source.initialStatus);
   const targetLane = laneFor(source.targetStatus);
-  const card = cardInLane(fromLane, source.ideaTitle);
-  await card.dragTo(targetLane);
-
+  await cardInLane(fromLane, source.ideaTitle).dragTo(targetLane);
   await page.getByText(`${source.ideaTitle} → ${statusLabel(source.targetStatus)} 이동을 저장했습니다.`, { exact: true }).waitFor({
     state: "visible",
     timeout: 30_000,
@@ -214,7 +208,7 @@ async function dragToTargetStatus(source) {
 
 async function verifyReloadPersistence(source) {
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Idea Candidate 의사결정 보드" }).waitFor({ state: "visible", timeout: 30_000 });
+  await boardHeading().waitFor({ state: "visible", timeout: 30_000 });
   await cardInLane(laneFor(source.targetStatus), source.ideaTitle).waitFor({ state: "visible", timeout: 30_000 });
   result.reload_persistence_verified = true;
 }
@@ -229,21 +223,27 @@ async function verifyStatusHistory(source) {
   result.history_verified = true;
 }
 
-async function verifyProjectFilter(source) {
-  await page.goto(new URL(`/ideas?project=${encodeURIComponent(source.projectId)}`, baseUrl).href, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Idea Candidate 의사결정 보드" }).waitFor({ state: "visible", timeout: 30_000 });
+async function verifyProjectFilterControl(source) {
+  await openBoard();
   const projectSelect = page.getByRole("combobox", { name: "Project 기준으로 보기" });
-  assert.equal(await projectSelect.inputValue(), source.projectId);
+  await projectSelect.selectOption(source.projectId);
+  await page.waitForURL(
+    (url) => url.pathname === "/ideas" && url.searchParams.get("project") === source.projectId,
+    { timeout: 30_000 },
+  );
+  await boardHeading().waitFor({ state: "visible", timeout: 30_000 });
+  assert.equal(
+    await page.getByRole("combobox", { name: "Project 기준으로 보기" }).inputValue(),
+    source.projectId,
+  );
   await page.getByText(`Project: ${source.projectTitle}`, { exact: true }).waitFor({ state: "visible" });
   await cardInLane(laneFor(source.targetStatus), source.ideaTitle).waitFor({ state: "visible", timeout: 30_000 });
   result.project_filter_verified = true;
 }
 
 async function restoreWithFallback(source) {
-  const lane = laneFor(source.targetStatus);
-  const card = cardInLane(lane, source.ideaTitle);
-  const moveSelect = card.getByRole("combobox", { name: `${source.ideaTitle} 상태 이동` });
-  await moveSelect.selectOption(source.initialStatus);
+  const card = cardInLane(laneFor(source.targetStatus), source.ideaTitle);
+  await card.getByRole("combobox", { name: `${source.ideaTitle} 상태 이동` }).selectOption(source.initialStatus);
   await page.getByText(`${source.ideaTitle} → ${statusLabel(source.initialStatus)} 이동을 저장했습니다.`, { exact: true }).waitFor({
     state: "visible",
     timeout: 30_000,
@@ -255,7 +255,7 @@ async function restoreWithFallback(source) {
 
 async function verifyFinalState(source) {
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Idea Candidate 의사결정 보드" }).waitFor({ state: "visible", timeout: 30_000 });
+  await boardHeading().waitFor({ state: "visible", timeout: 30_000 });
   await cardInLane(laneFor(source.initialStatus), source.ideaTitle).waitFor({ state: "visible", timeout: 30_000 });
   await assertIdeaStatus(source.ideaId, source.initialStatus);
   result.final_state_restored = true;
@@ -263,7 +263,11 @@ async function verifyFinalState(source) {
 
 async function openBoard() {
   await page.goto(new URL("/ideas", baseUrl).href, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Idea Candidate 의사결정 보드" }).waitFor({ state: "visible", timeout: 30_000 });
+  await boardHeading().waitFor({ state: "visible", timeout: 30_000 });
+}
+
+function boardHeading() {
+  return page.getByRole("heading", { name: "Idea Candidate 의사결정 보드" });
 }
 
 function laneFor(status) {
@@ -316,7 +320,7 @@ async function safeScreenshot(filename) {
   try {
     await page.screenshot({ path: path.join(ARTIFACT_DIR, filename), fullPage: true });
   } catch {
-    // Screenshots are diagnostics only.
+    // Diagnostics only.
   }
 }
 
@@ -344,8 +348,7 @@ async function isVisible(locator) {
 
 function normalizeBaseUrl(value) {
   if (!value) return null;
-  const url = new URL(value);
-  return url.href.replace(/\/$/, "");
+  return new URL(value).href.replace(/\/$/, "");
 }
 
 function positiveInteger(value, fallback) {
