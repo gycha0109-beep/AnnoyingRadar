@@ -35,12 +35,14 @@ test("Saved Problem live runner verifies complete Phase 8 lifecycle", async () =
   assert.match(source, /saved_problem_restore_verified/);
 });
 
-test("Saved Problem live gate uses an unsaved Phase 7 E2E source and does not overwrite user metadata", async () => {
+test("Saved Problem live gate waits for recent E2E sources and does not overwrite user metadata", async () => {
   const source = await read("scripts/run-saved-problems-live-e2e.mjs");
   assert.match(source, /최근 입력 3개/);
-  assert.match(source, /itemText\.includes\(\"\[AR-E2E:\"\)/);
+  assert.match(source, /recentItems\.first\(\)\.waitFor/);
+  assert.match(source, /recentItems\.evaluateAll/);
+  assert.match(source, /entry\.text\.includes\(\"\[AR-E2E:\"\)/);
   assert.match(source, /statuses\.includes\(\"completed\"\)/);
-  assert.match(source, /Problem Card 상세/);
+  assert.match(source, /getByRole\(\"link\", \{ name: \"Problem Card 상세\" \}\)/);
   assert.match(source, /sourceState === \"unsaved\"/);
   assert.match(source, /기존 저장 카드는 사용하지 않습니다/);
   assert.doesNotMatch(source, /OPENAI_API_KEY/);
