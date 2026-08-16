@@ -11,6 +11,7 @@ import {
 
 const ACTIVE_STATUSES = ["candidate", "researching", "build_soon", "paused"];
 const STORAGE_STATUSES = ["discarded", "archived"];
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const STATUS_LABELS = Object.freeze({
   candidate: "Candidate",
   researching: "Researching",
@@ -349,7 +350,12 @@ function compareByRecentUpdate(left, right) {
   const leftTime = Date.parse(left.updated_at || left.created_at || 0) || 0;
   const rightTime = Date.parse(right.updated_at || right.created_at || 0) || 0;
   if (leftTime !== rightTime) return rightTime - leftTime;
-  return String(left.id).localeCompare(String(right.id));
+
+  const leftId = String(left.id);
+  const rightId = String(right.id);
+  if (leftId < rightId) return -1;
+  if (leftId > rightId) return 1;
+  return 0;
 }
 
 async function readJson(response) {
@@ -371,5 +377,12 @@ function errorMessage(error) {
 function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("ko-KR");
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const kst = new Date(date.getTime() + KST_OFFSET_MS);
+  return `${kst.getUTCFullYear()}. ${pad2(kst.getUTCMonth() + 1)}. ${pad2(kst.getUTCDate())}. ${pad2(kst.getUTCHours())}:${pad2(kst.getUTCMinutes())}:${pad2(kst.getUTCSeconds())} KST`;
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
 }
