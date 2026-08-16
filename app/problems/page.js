@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { loadSavedProblemOverview } from "../../lib/saved-problems/service.mjs";
 import { createServerSupabaseClient } from "../../lib/supabase/server.js";
 import { createServiceClient } from "../../lib/supabase/service.js";
+import ProjectLinkControl from "./project-link-control.js";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function SavedProblemsPage({ searchParams }) {
           <p className="muted user-line">Saved Problem Library</p>
         </div>
         <div className="inline-actions">
+          <Link className="button-link" href="/projects">Projects</Link>
           <Link className="button-link" href="/ideas">Ideas</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
@@ -102,6 +104,11 @@ export default async function SavedProblemsPage({ searchParams }) {
                       Idea Candidate 보기
                     </Link>
                   </div>
+
+                  <ProjectLinkControl
+                    problemCandidateId={savedProblem.problem_candidate_id}
+                    savedStatus={savedProblem.status}
+                  />
                   <p className="muted saved-problem-date">최근 관리 {formatDate(savedProblem.updated_at)}</p>
                 </article>
               );
