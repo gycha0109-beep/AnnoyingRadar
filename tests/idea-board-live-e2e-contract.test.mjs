@@ -34,13 +34,14 @@ test("Idea Board live runner discovers only safe AR-E2E source assets", async ()
   assert.doesNotMatch(runner, /password|credential/i);
 });
 
-test("Idea Board live runner verifies drag, persistence, history, project filter and fallback restore", async () => {
+test("Idea Board live runner verifies drag, persistence, actual project filter control and fallback restore", async () => {
   const runner = await read("scripts/run-idea-board-live-e2e.mjs");
 
   assert.match(runner, /dragTo\(targetLane\)/);
   assert.match(runner, /reload-persistence/);
   assert.match(runner, /상태 변경 이력/);
-  assert.match(runner, /\/ideas\?project=/);
+  assert.match(runner, /selectOption\(source\.projectId\)/);
+  assert.match(runner, /searchParams\.get\("project"\) === source\.projectId/);
   assert.match(runner, /selectOption\(source\.initialStatus\)/);
   assert.match(runner, /final_state_restored = true/);
   assert.match(runner, /IdeaBoardLiveE2E: PASS/);
