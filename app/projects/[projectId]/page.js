@@ -1,20 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import IdeaReview from "./idea-review.js";
-import ResearchProjectPanel from "./research-project-panel.js";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
+import ProjectDetail from "./project-detail.js";
 
 export const dynamic = "force-dynamic";
 
-export default async function IdeaCandidatePage({ params }) {
+export default async function ResearchProjectPage({ params }) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user?.id) redirect("/login");
-  const { ideaId } = await params;
+
+  const { projectId } = await params;
 
   return (
     <main className="stack page-shell">
@@ -23,12 +22,11 @@ export default async function IdeaCandidatePage({ params }) {
         <div className="inline-actions">
           <Link className="button-link" href="/projects">Projects</Link>
           <Link className="button-link" href="/problems">Problem Cards</Link>
-          <Link className="button-link" href="/ideas">Idea 목록</Link>
+          <Link className="button-link" href="/ideas">Ideas</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
       </nav>
-      <IdeaReview ideaId={ideaId} />
-      <ResearchProjectPanel ideaId={ideaId} />
+      <ProjectDetail projectId={projectId} />
     </main>
   );
 }
