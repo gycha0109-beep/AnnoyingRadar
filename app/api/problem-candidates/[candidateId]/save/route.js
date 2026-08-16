@@ -68,7 +68,7 @@ export async function POST(_request, { params }) {
       throw new ApiError(409, eligibility.reason, "Only a confirmed Problem Card from a completed analysis can be saved");
     }
 
-    const { data, error } = await serviceClient.rpc("ar_save_problem_card", {
+    const { error } = await serviceClient.rpc("ar_save_problem_card", {
       p_problem_candidate_id: candidateId,
       p_user_id: userId,
     });
@@ -76,7 +76,9 @@ export async function POST(_request, { params }) {
       throw mapSavedProblemRpcError(error, "saved_problem_create_failed", "Failed to save Problem Card");
     }
 
-    return NextResponse.json({ saved_problem: data }, { status: 201 });
+    const savedProblem = await loadSavedProblemByCandidate(serviceClient, candidateId, userId);
+    if (!savedProblem) throw new ApiError(500, "saved_problem_create_failed", "Saved Problem was not persisted");
+    return NextResponse.json({ saved_problem: savedProblem });
   } catch (error) {
     return jsonError(error);
   }
@@ -97,7 +99,7 @@ export async function PATCH(request, { params }) {
 
     const serviceClient = createServiceClient();
     await assertCandidateOwner(candidateId, userId, serviceClient, "id");
-    const { data, error } = await serviceClient.rpc("ar_update_saved_problem_metadata", {
+    const { error } = await serviceClient.rpc("ar_update_saved_problem_metadata", {
       p_problem_candidate_id: candidateId,
       p_user_id: userId,
       p_patch: patch,
@@ -106,7 +108,9 @@ export async function PATCH(request, { params }) {
       throw mapSavedProblemRpcError(error, "saved_problem_update_failed", "Failed to update Saved Problem");
     }
 
-    return NextResponse.json({ saved_problem: data });
+    const savedProblem = await loadSavedProblemByCandidate(serviceClient, candidateId, userId);
+    if (!savedProblem) throw new ApiError(404, "saved_problem_not_found", "Saved Problem not found");
+    return NextResponse.json({ saved_problem: savedProblem });
   } catch (error) {
     return jsonError(error);
   }
