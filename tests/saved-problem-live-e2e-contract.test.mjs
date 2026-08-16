@@ -28,6 +28,7 @@ test("Saved Problem live runner verifies complete Phase 8 lifecycle", async () =
   }
 
   assert.match(source, /SavedProblemsLiveE2E: PASS/);
+  assert.match(source, /test_source_raw_input_id/);
   assert.match(source, /test_source_verified/);
   assert.match(source, /saved_problem_memo_verified/);
   assert.match(source, /saved_problem_library_reentry_verified/);
@@ -35,16 +36,18 @@ test("Saved Problem live runner verifies complete Phase 8 lifecycle", async () =
   assert.match(source, /saved_problem_restore_verified/);
 });
 
-test("Saved Problem live gate waits for recent E2E sources and does not overwrite user metadata", async () => {
+test("Saved Problem live gate discovers a safe source through authenticated APIs instead of client-render timing", async () => {
   const source = await read("scripts/run-saved-problems-live-e2e.mjs");
-  assert.match(source, /최근 입력 3개/);
-  assert.match(source, /recentItems\.first\(\)\.waitFor/);
-  assert.match(source, /recentItems\.evaluateAll/);
-  assert.match(source, /entry\.text\.includes\(\"\[AR-E2E:\"\)/);
-  assert.match(source, /statuses\.includes\(\"completed\"\)/);
-  assert.match(source, /getByRole\(\"link\", \{ name: \"Problem Card 상세\" \}\)/);
-  assert.match(source, /sourceState === \"unsaved\"/);
+  assert.match(source, /context\.request\.get\(new URL\(\"\/api\/raw-inputs\/recent\"/);
+  assert.match(source, /analysis_status !== \"completed\"/);
+  assert.match(source, /raw_text.*includes\(\"\[AR-E2E:\"\)/s);
+  assert.match(source, /\/api\/raw-inputs\/\$\{rawInput\.id\}\/candidates\?include_discarded=1/);
+  assert.match(source, /candidate\?\.status === \"confirmed\"/);
+  assert.match(source, /\/api\/problem-candidates\/\$\{candidate\.id\}\/save/);
+  assert.match(source, /savePayload\?\.eligibility\?\.eligible === true/);
+  assert.match(source, /savePayload\?\.saved_problem === null/);
   assert.match(source, /기존 저장 카드는 사용하지 않습니다/);
+  assert.doesNotMatch(source, /recentItems\.count\(\)/);
   assert.doesNotMatch(source, /OPENAI_API_KEY/);
   assert.doesNotMatch(source, /Idea Candidate 생성/);
 });
