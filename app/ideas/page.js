@@ -25,6 +25,7 @@ export default async function IdeasPage() {
           <p className="muted user-line">Idea Candidate 목록</p>
         </div>
         <div className="inline-actions">
+          <Link className="button-link" href="/projects">Projects</Link>
           <Link className="button-link" href="/problems">Problem Cards</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
