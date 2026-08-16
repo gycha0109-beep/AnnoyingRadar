@@ -36,7 +36,7 @@ export async function PATCH(request, { params }) {
       throw new ApiError(400, "invalid_saved_problem_status", message);
     }
 
-    const { data, error } = await serviceClient.rpc("ar_set_saved_problem_status", {
+    const { error } = await serviceClient.rpc("ar_set_saved_problem_status", {
       p_problem_candidate_id: candidateId,
       p_user_id: userId,
       p_target_status: targetStatus,
@@ -45,7 +45,9 @@ export async function PATCH(request, { params }) {
       throw mapSavedProblemRpcError(error, "saved_problem_status_update_failed", "Failed to update Saved Problem status");
     }
 
-    return NextResponse.json({ saved_problem: data });
+    const savedProblem = await loadSavedProblemByCandidate(serviceClient, candidateId, userId);
+    if (!savedProblem) throw new ApiError(404, "saved_problem_not_found", "Saved Problem not found");
+    return NextResponse.json({ saved_problem: savedProblem });
   } catch (error) {
     return jsonError(error);
   }
