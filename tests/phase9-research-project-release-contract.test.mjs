@@ -109,12 +109,11 @@ test("Project APIs split metadata, lifecycle and typed link mutations", async ()
   assert.doesNotMatch(ideaRoute, /loadSavedProblemByCandidate/);
 });
 
-test("Phase 9 UI stays a grouping layer instead of an Idea Board", async () => {
+test("Phase 9 Project UI stays a grouping layer even when later phases evolve /ideas", async () => {
   const home = await read("app/page.js");
   const projects = await read("app/projects/page.js");
   const projectDetail = await read("app/projects/[projectId]/project-detail.js");
   const problems = await read("app/problems/page.js");
-  const ideas = await read("app/ideas/page.js");
   const problemPage = await read("app/problem-candidates/[candidateId]/page.js");
   const ideaPage = await read("app/idea-candidates/[ideaId]/page.js");
 
@@ -126,8 +125,8 @@ test("Phase 9 UI stays a grouping layer instead of an Idea Board", async () => {
   assert.match(problems, /ProjectLinkControl/);
   assert.match(problemPage, /ResearchProjectPanel/);
   assert.match(ideaPage, /ResearchProjectPanel/);
-  assert.match(ideas, /단순 목록이며 보드·점수·순위 기능은 포함하지 않습니다/);
   assert.doesNotMatch(projectDetail, /Kanban|Sprint|Deadline|Progress %/i);
+  assert.doesNotMatch(projectDetail, /project_idea_status|board_status/i);
 });
 
 async function read(relativePath) {
