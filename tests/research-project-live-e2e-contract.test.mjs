@@ -5,6 +5,7 @@ import test from "node:test";
 
 const ROOT = process.cwd();
 
+const BOOTSTRAP = "scripts/run-research-projects-live-e2e-bootstrap.mjs";
 const RUNNER = "scripts/run-research-projects-live-e2e.mjs";
 
 test("Research Project live runner keeps authentication manual and secrets out of artifacts", async () => {
@@ -14,6 +15,21 @@ test("Research Project live runner keeps authentication manual and secrets out o
   assert.doesNotMatch(source, /storageState\s*:/);
   assert.doesNotMatch(source, /password\s*:/i);
   assert.doesNotMatch(source, /SUPABASE_SECRET_KEY.*writeFile|SUPABASE_SERVICE_ROLE_KEY.*writeFile/);
+});
+
+test("Research Project bootstrap preserves hardened project env and Windows-safe server spawning", async () => {
+  const source = await read(BOOTSTRAP);
+  assert.match(source, /PROJECT_ROOT/);
+  assert.match(source, /PROJECT_PREFERRED_ENV_KEYS/);
+  assert.match(source, /preferredValues/);
+  assert.match(source, /process\.env\[key\] = value/);
+  assert.match(source, /resolvePackageManagerCommand/);
+  assert.match(source, /packageManagerEntrypoint/);
+  assert.match(source, /file: process\.execPath/);
+  assert.match(source, /shell: process\.platform === "win32"/);
+  assert.match(source, /cwd: PROJECT_ROOT/);
+  assert.match(source, /env: process\.env/);
+  assert.match(source, /RUNNER_PATH/);
 });
 
 test("Research Project live runner discovers only safe Phase 7 E2E assets through authenticated APIs", async () => {
@@ -50,12 +66,13 @@ test("Research Project live runner verifies explicit Phase 9 lifecycle and leave
   assert.match(source, /final_fixture_archive_verified/);
 });
 
-test("package exposes explicit Phase 9 live gate and release syntax check", async () => {
+test("package exposes explicit Phase 9 bootstrap gate and release syntax checks", async () => {
   const packageJson = JSON.parse(await read("package.json"));
   assert.equal(
     packageJson.scripts["e2e:projects:live"],
-    "node scripts/run-research-projects-live-e2e.mjs",
+    "node scripts/run-research-projects-live-e2e-bootstrap.mjs",
   );
+  assert.match(packageJson.scripts["test:release"], /run-research-projects-live-e2e-bootstrap\.mjs/);
   assert.match(packageJson.scripts["test:release"], /run-research-projects-live-e2e\.mjs/);
   assert.match(packageJson.scripts["test:release"], /research-project-live-e2e-contract\.test\.mjs/);
 });
