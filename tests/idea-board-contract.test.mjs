@@ -54,6 +54,8 @@ test("Project selection filters membership without owning Idea lifecycle", async
 
   assert.match(page, /loadIdeaBoardOverview/);
   assert.match(page, /selectedProjectId/);
+  assert.match(page, /const boardKey = board\.selected_project\?\.id \?\? "all"/);
+  assert.match(page, /key=\{boardKey\}/);
   assert.match(page, /Project는 필터링 컨텍스트/);
   assert.match(projectPage, /\/ideas\?project=/);
 });
