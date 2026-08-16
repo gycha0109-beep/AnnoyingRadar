@@ -34,6 +34,7 @@ const result = {
   marker: MARKER,
   base_url: null,
   problem_card_path: null,
+  test_source_raw_input_id: null,
   test_source_verified: false,
   saved_problem_category: CATEGORY,
   saved_problem_memo_verified: false,
@@ -134,62 +135,54 @@ async function authenticateManually() {
 }
 
 async function findCompletedProblemCard() {
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "최근 입력 3개" }).waitFor({ state: "visible" });
-  const recentItems = page.locator("a.recent-item");
-  await recentItems.first().waitFor({ state: "visible", timeout: 30_000 });
-  const recentEntries = await recentItems.evaluateAll((items) => items.map((item) => ({
-    text: (item.textContent ?? "").replace(/\s+/g, " "),
-    href: item.getAttribute("href"),
-  })));
+  const recentResponse = await context.request.get(new URL("/api/raw-inputs/recent", baseUrl).href);
+  if (!recentResponse.ok()) {
+    throw new Error(`최근 Raw Input API 조회 실패: HTTP ${recentResponse.status()}`);
+  }
 
-  for (const entry of recentEntries) {
-    const rawPath = entry.href;
-    if (!rawPath || !entry.text.includes("[AR-E2E:")) continue;
+  const recentPayload = await recentResponse.json();
+  const recentRawInputs = Array.isArray(recentPayload?.raw_inputs) ? recentPayload.raw_inputs : [];
 
-    await page.goto(new URL(rawPath, baseUrl).href, { waitUntil: "domcontentloaded" });
-    const section = page.locator('section[aria-labelledby="candidate-grouping-title"]');
-    if (!(await isVisible(section))) continue;
-    const statuses = (await section.locator(".status-badge").allTextContents())
-      .map((text) => text.trim());
-    if (!statuses.includes("completed")) continue;
+  for (const rawInput of recentRawInputs) {
+    if (
+      rawInput?.analysis_status !== "completed"
+      || !String(rawInput?.raw_text ?? "").includes("[AR-E2E:")
+    ) {
+      continue;
+    }
 
-    const cardLinks = section.getByRole("link", { name: "Problem Card 상세" });
-    const cardCount = await cardLinks.count();
-    for (let cardIndex = 0; cardIndex < cardCount; cardIndex += 1) {
-      const problemCardPath = await cardLinks.nth(cardIndex).getAttribute("href");
-      if (!problemCardPath) continue;
+    const candidatesResponse = await context.request.get(
+      new URL(`/api/raw-inputs/${rawInput.id}/candidates?include_discarded=1`, baseUrl).href,
+    );
+    if (!candidatesResponse.ok()) {
+      throw new Error(`Problem Candidate API 조회 실패 (${rawInput.id}): HTTP ${candidatesResponse.status()}`);
+    }
 
-      await page.goto(new URL(problemCardPath, baseUrl).href, { waitUntil: "domcontentloaded" });
-      const savedSection = page.locator('section[aria-labelledby="saved-problem-title"]');
-      if (!(await isVisible(savedSection))) continue;
-      const sourceState = await poll(
-        async () => {
-          if (await isEnabledVisible(savedSection.getByRole("button", { name: "Problem Card 저장" }))) {
-            return "unsaved";
-          }
-          if (await isVisible(savedSection.getByRole("textbox", { name: "카테고리" }))) {
-            return "already_saved";
-          }
-          return false;
-        },
-        30_000,
-        "Saved Problem source state",
+    const candidatesPayload = await candidatesResponse.json();
+    const confirmedCandidates = (Array.isArray(candidatesPayload?.candidates) ? candidatesPayload.candidates : [])
+      .filter((candidate) => candidate?.status === "confirmed");
+
+    for (const candidate of confirmedCandidates) {
+      const saveResponse = await context.request.get(
+        new URL(`/api/problem-candidates/${candidate.id}/save`, baseUrl).href,
       );
-
-      if (sourceState === "unsaved") {
-        result.test_source_verified = true;
-        return problemCardPath;
+      if (!saveResponse.ok()) {
+        throw new Error(`Saved Problem 상태 API 조회 실패 (${candidate.id}): HTTP ${saveResponse.status()}`);
       }
 
-      await page.goto(new URL(rawPath, baseUrl).href, { waitUntil: "domcontentloaded" });
+      const savePayload = await saveResponse.json();
+      if (savePayload?.eligibility?.eligible === true && savePayload?.saved_problem === null) {
+        result.test_source_raw_input_id = rawInput.id;
+        result.test_source_verified = true;
+        return `/problem-candidates/${candidate.id}`;
+      }
     }
   }
 
   throw new Error(
     "최근 입력 3개에서 아직 저장되지 않은 Phase 7 E2E completed Problem Card를 찾지 못했습니다. "
       + "사용자 Saved Problem을 덮어쓰지 않기 위해 기존 저장 카드는 사용하지 않습니다. "
-      + "먼저 npm run e2e:live를 실행해 새 E2E completed Problem Card를 만든 뒤 다시 실행하십시오.",
+      + "최근 completed E2E source가 실제로 없다면 npm run e2e:live를 실행해 새 source를 만드십시오.",
   );
 }
 
