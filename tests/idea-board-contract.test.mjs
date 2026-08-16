@@ -80,6 +80,16 @@ test("Board keeps drag-and-drop optional with a status select fallback", async (
   assert.match(board, /<select/);
 });
 
+test("Board date rendering is deterministic across SSR and browser hydration", async () => {
+  const board = await read("app/ideas/idea-board.js");
+
+  assert.doesNotMatch(board, /toLocaleString|toLocaleDateString|Intl\.DateTimeFormat/);
+  assert.match(board, /KST_OFFSET_MS/);
+  assert.match(board, /getUTCFullYear/);
+  assert.match(board, /getUTCHours/);
+  assert.match(board, / KST/);
+});
+
 async function read(relativePath) {
   return readFile(path.join(ROOT, relativePath), "utf8");
 }
