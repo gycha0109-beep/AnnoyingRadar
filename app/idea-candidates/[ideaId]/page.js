@@ -20,6 +20,7 @@ export default async function IdeaCandidatePage({ params }) {
       <nav className="topbar">
         <Link className="brand" href="/">어노잉 레이더</Link>
         <div className="inline-actions">
+          <Link className="button-link" href="/problems">Problem Cards</Link>
           <Link className="button-link" href="/ideas">Idea 목록</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
