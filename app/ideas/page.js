@@ -1,28 +1,40 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { loadIdeaOverview } from "../../lib/ideas/service.mjs";
+import { loadIdeaBoardOverview } from "../../lib/ideas/board-service.mjs";
 import { createServerSupabaseClient } from "../../lib/supabase/server.js";
 import { createServiceClient } from "../../lib/supabase/service.js";
+import IdeaBoard from "./idea-board.js";
 
 export const dynamic = "force-dynamic";
 
-export default async function IdeasPage() {
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export default async function IdeasPage({ searchParams }) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.id) redirect("/login");
 
+  const resolvedSearchParams = await searchParams;
+  const rawProjectId = resolvedSearchParams?.project;
+  const projectId = typeof rawProjectId === "string" && UUID_PATTERN.test(rawProjectId)
+    ? rawProjectId.toLowerCase()
+    : null;
+
+  if (rawProjectId && !projectId) redirect("/ideas");
+
   const serviceClient = createServiceClient();
-  const ideas = await loadIdeaOverview(serviceClient, user.id);
+  const board = await loadIdeaBoardOverview(serviceClient, user.id, { projectId });
+  if (board.invalid_project) redirect("/ideas");
 
   return (
-    <main className="stack page-shell">
+    <main className="stack page-shell idea-board-page">
       <nav className="topbar">
         <div>
           <Link className="brand" href="/">어노잉 레이더</Link>
-          <p className="muted user-line">Idea Candidate 목록</p>
+          <p className="muted user-line">Idea Candidate Board</p>
         </div>
         <div className="inline-actions">
           <Link className="button-link" href="/projects">Projects</Link>
@@ -32,56 +44,27 @@ export default async function IdeasPage() {
       </nav>
 
       <header className="hero stack-sm">
-        <p className="eyebrow">Ideas</p>
-        <h1>검토 중인 Idea Candidate</h1>
+        <p className="eyebrow">Idea Board</p>
+        <h1>Idea Candidate 의사결정 보드</h1>
         <p className="hero-copy">
-          확정된 Problem Card에서 생성된 아이디어를 다시 열어 수정하고 상태를 관리합니다.
-          이 화면은 단순 목록이며 보드·점수·순위 기능은 포함하지 않습니다.
+          기존 Idea lifecycle을 Kanban으로 조회하고 상태를 변경합니다.
+          Project는 필터링 컨텍스트일 뿐이며 별도 Project 상태나 점수·순위를 만들지 않습니다.
         </p>
+        {board.selected_project ? (
+          <div className="inline-actions">
+            <span className="status-badge">Project: {board.selected_project.title}</span>
+            <Link className="button-link button-compact" href={`/projects/${board.selected_project.id}`}>
+              Project 열기
+            </Link>
+          </div>
+        ) : null}
       </header>
 
-      <section className="card stack" aria-labelledby="idea-list-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Review Queue</p>
-            <h2 id="idea-list-title">Idea Candidate {ideas.length}개</h2>
-          </div>
-        </div>
-
-        {ideas.length ? (
-          <div className="idea-list">
-            {ideas.map((idea) => (
-              <Link className="idea-list-item" href={`/idea-candidates/${idea.id}`} key={idea.id}>
-                <div className="section-heading">
-                  <div className="stack-sm">
-                    <strong>{idea.title}</strong>
-                    <p>{idea.one_liner}</p>
-                  </div>
-                  <div className="detail-statuses">
-                    <span className="status-badge">{idea.status}</span>
-                    <span className="status-badge">{idea.implementation_difficulty}</span>
-                  </div>
-                </div>
-                <p className="muted">
-                  Problem Card: {idea.problem_card?.title || "source unavailable"}
-                </p>
-                <p className="muted idea-list-date">최근 수정 {formatDate(idea.updated_at)}</p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <strong>아직 Idea Candidate가 없습니다.</strong>
-            <p className="muted">완료된 Problem Card에서 Idea Candidate를 생성하면 여기에 표시됩니다.</p>
-          </div>
-        )}
-      </section>
+      <IdeaBoard
+        initialIdeas={board.ideas}
+        projects={board.projects}
+        selectedProjectId={board.selected_project?.id ?? null}
+      />
     </main>
   );
-}
-
-function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("ko-KR");
 }
