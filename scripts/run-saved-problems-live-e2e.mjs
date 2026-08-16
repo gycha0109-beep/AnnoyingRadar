@@ -34,6 +34,7 @@ const result = {
   marker: MARKER,
   base_url: null,
   problem_card_path: null,
+  test_source_verified: false,
   saved_problem_category: CATEGORY,
   saved_problem_memo_verified: false,
   saved_problem_library_reentry_verified: false,
@@ -135,25 +136,54 @@ async function authenticateManually() {
 async function findCompletedProblemCard() {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "최근 입력 3개" }).waitFor({ state: "visible" });
-  const links = await page.locator("a.recent-item").evaluateAll((items) =>
-    items.map((item) => item.getAttribute("href")).filter(Boolean),
-  );
+  const recentItems = page.locator("a.recent-item");
+  const recentCount = await recentItems.count();
 
-  for (const rawPath of links) {
+  for (let index = 0; index < recentCount; index += 1) {
+    const item = recentItems.nth(index);
+    const itemText = (await item.textContent() ?? "").replace(/\s+/g, " ");
+    const rawPath = await item.getAttribute("href");
+    if (!rawPath || !itemText.includes("[AR-E2E:")) continue;
+
     await page.goto(new URL(rawPath, baseUrl).href, { waitUntil: "domcontentloaded" });
     const section = page.locator('section[aria-labelledby="candidate-grouping-title"]');
     if (!(await isVisible(section))) continue;
-    const statuses = (await section.locator(".status-badge").allTextContents()).map((text) => text.trim());
+    const statuses = (await section.locator(".status-badge").allTextContents())
+      .map((text) => text.trim());
     if (!statuses.includes("completed")) continue;
 
     const cardLink = section.getByRole("link", { name: "Problem Card 상세" }).first();
     if (!(await isVisible(cardLink))) continue;
-    const href = await cardLink.getAttribute("href");
-    if (href) return href;
+    const problemCardPath = await cardLink.getAttribute("href");
+    if (!problemCardPath) continue;
+
+    await page.goto(new URL(problemCardPath, baseUrl).href, { waitUntil: "domcontentloaded" });
+    const savedSection = page.locator('section[aria-labelledby="saved-problem-title"]');
+    await savedSection.waitFor({ state: "visible", timeout: 30_000 });
+    const sourceState = await poll(
+      async () => {
+        if (await isEnabledVisible(savedSection.getByRole("button", { name: "Problem Card 저장" }))) {
+          return "unsaved";
+        }
+        if (await isVisible(savedSection.getByRole("textbox", { name: "카테고리" }))) {
+          return "already_saved";
+        }
+        return false;
+      },
+      30_000,
+      "Saved Problem source state",
+    );
+
+    if (sourceState === "unsaved") {
+      result.test_source_verified = true;
+      return problemCardPath;
+    }
   }
 
   throw new Error(
-    "최근 입력 3개에서 completed Problem Card를 찾지 못했습니다. 먼저 기존 npm run e2e:live를 통과시키거나 completed 분석을 준비하십시오.",
+    "최근 입력 3개에서 아직 저장되지 않은 Phase 7 E2E completed Problem Card를 찾지 못했습니다. "
+      + "사용자 Saved Problem을 덮어쓰지 않기 위해 기존 저장 카드는 사용하지 않습니다. "
+      + "먼저 npm run e2e:live를 실행해 새 E2E completed Problem Card를 만든 뒤 다시 실행하십시오.",
   );
 }
 
@@ -162,23 +192,13 @@ async function saveProblemCard(problemCardPath) {
   const section = page.locator('section[aria-labelledby="saved-problem-title"]');
   await section.waitFor({ state: "visible", timeout: 30_000 });
 
-  const restore = section.getByRole("button", { name: "Saved Problem 복구" });
-  if (await isEnabledVisible(restore)) {
-    await restore.click();
-    await section.getByText("Saved Problem을 복구했습니다.", { exact: true }).waitFor({
-      state: "visible",
-      timeout: 30_000,
-    });
-  }
-
   const save = section.getByRole("button", { name: "Problem Card 저장" });
-  if (await isEnabledVisible(save)) {
-    await save.click();
-    await section.getByText("Problem Card를 Saved Problems에 저장했습니다.", { exact: true }).waitFor({
-      state: "visible",
-      timeout: 30_000,
-    });
-  }
+  await poll(() => isEnabledVisible(save), 30_000, "Problem Card 저장 버튼 활성화");
+  await save.click();
+  await section.getByText("Problem Card를 Saved Problems에 저장했습니다.", { exact: true }).waitFor({
+    state: "visible",
+    timeout: 30_000,
+  });
 
   await section.getByRole("textbox", { name: "카테고리" }).waitFor({ state: "visible" });
   await section.getByText("active", { exact: true }).first().waitFor({ state: "visible" });
