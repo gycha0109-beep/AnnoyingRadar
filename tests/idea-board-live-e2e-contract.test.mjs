@@ -5,14 +5,21 @@ import test from "node:test";
 
 const ROOT = process.cwd();
 
-test("Idea Board live command uses the hardened bootstrap entrypoint", async () => {
+test("Idea Board live command uses strict diagnostics around the hardened bootstrap", async () => {
   const packageJson = JSON.parse(await read("package.json"));
+  const strictRunner = await read("scripts/run-idea-board-live-e2e-strict.mjs");
   const bootstrap = await read("scripts/run-idea-board-live-e2e-bootstrap.mjs");
 
   assert.equal(
     packageJson.scripts["e2e:idea-board:live"],
-    "node scripts/run-idea-board-live-e2e-bootstrap.mjs",
+    "node scripts/run-idea-board-live-e2e-strict.mjs",
   );
+  assert.match(strictRunner, /run-idea-board-live-e2e-bootstrap\.mjs/);
+  assert.match(strictRunner, /page-errors\.log/);
+  assert.match(strictRunner, /browser-console\.log/);
+  assert.match(strictRunner, /Hydration failed|hydration mismatch/);
+  assert.match(strictRunner, /IdeaBoardLiveE2EStrict: PASS/);
+
   assert.match(bootstrap, /PROJECT_ROOT/);
   assert.match(bootstrap, /cwd:\s*PROJECT_ROOT/);
   assert.match(bootstrap, /env:\s*process\.env/);
