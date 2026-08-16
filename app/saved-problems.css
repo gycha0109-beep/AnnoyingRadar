@@ -1,0 +1,34 @@
+.saved-problem-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.saved-problem-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface-subtle);
+}
+
+.saved-problem-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.saved-problem-memo {
+  white-space: pre-wrap;
+  border-left: 3px solid var(--border-strong);
+  padding-left: 0.75rem;
+}
+
+.saved-problem-actions {
+  align-items: center;
+}
+
+.saved-problem-date {
+  margin: 0;
+  font-size: 0.85rem;
+}
