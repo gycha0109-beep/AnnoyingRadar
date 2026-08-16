@@ -140,4 +140,40 @@ Deterministic CI must cover:
 - no DELETE API
 - Phase 7 source identity and Idea lifecycle remain untouched
 
-After deterministic exact-head CI passes, the live browser gate should verify save, metadata persistence, library re-entry, archive and restore using the Problem Card already produced by the existing live workflow.
+Hosted migration verification must confirm the actual table, RLS policy and service-role-only mutation RPC privileges before merge.
+
+The Phase 8 browser gate is explicit and does not repeat live OpenAI generation already closed by Phase 7.4. It reuses one of the current user's recent completed Problem Cards and requires only manual authentication:
+
+```text
+npm run e2e:saved-problems:live
+```
+
+The runner verifies:
+
+```text
+manual login
+-> locate recent completed Problem Card
+-> save Problem Card
+-> edit category/memo
+-> /problems active-library re-entry
+-> archive
+-> /problems?status=archived re-entry
+-> restore
+-> reload persistence
+-> active-library re-entry
+```
+
+No password, token, Playwright storage state or reusable login credential is written to artifacts.
+
+Phase 8 is merge-ready only after:
+
+```text
+implementation
+-> independent review
+-> exact-head deterministic CI PASS
+-> hosted migration poststate PASS
+-> npm run e2e:saved-problems:live PASS
+-> exact PR head recheck
+-> merge
+-> merged-main exact-SHA CI PASS
+```
