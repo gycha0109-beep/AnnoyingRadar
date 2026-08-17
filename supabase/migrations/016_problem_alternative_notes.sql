@@ -102,7 +102,7 @@ begin
   if p_problem_candidate_id is null or p_user_id is null then
     raise exception 'Problem Card and user_id are required' using errcode = '22023';
   end if;
-  if p_kind not in ('service', 'alternative') then
+  if p_kind is null or p_kind not in ('service', 'alternative') then
     raise exception 'kind must be service or alternative' using errcode = '22023';
   end if;
   if length(trim(coalesce(p_name, ''))) not between 1 and 200 then
@@ -191,6 +191,27 @@ begin
       using errcode = '22023';
   end if;
 
+  if p_patch ? 'kind' and (
+    p_patch->'kind' = 'null'::jsonb or jsonb_typeof(p_patch->'kind') <> 'string'
+  ) then
+    raise exception 'kind must be service or alternative' using errcode = '22023';
+  end if;
+  if p_patch ? 'name' and (
+    p_patch->'name' = 'null'::jsonb or jsonb_typeof(p_patch->'name') <> 'string'
+  ) then
+    raise exception 'name must be a string' using errcode = '22023';
+  end if;
+  if p_patch ? 'url' and (
+    p_patch->'url' <> 'null'::jsonb and jsonb_typeof(p_patch->'url') <> 'string'
+  ) then
+    raise exception 'url must be a string or null' using errcode = '22023';
+  end if;
+  if p_patch ? 'note' and (
+    p_patch->'note' <> 'null'::jsonb and jsonb_typeof(p_patch->'note') <> 'string'
+  ) then
+    raise exception 'note must be a string or null' using errcode = '22023';
+  end if;
+
   select * into v_row
   from public.ar_problem_alternative_notes
   where id = p_note_id and user_id = p_user_id
@@ -210,7 +231,7 @@ begin
     else v_row.note
   end;
 
-  if v_kind not in ('service', 'alternative') then
+  if v_kind is null or v_kind not in ('service', 'alternative') then
     raise exception 'kind must be service or alternative' using errcode = '22023';
   end if;
   if length(v_name) not between 1 and 200 then
