@@ -21,6 +21,12 @@ export default async function IdeaCandidatePage({ params }) {
       <nav className="topbar">
         <Link className="brand" href="/">어노잉 레이더</Link>
         <div className="inline-actions">
+          <a
+            className="button-link"
+            href={`/api/exports/idea-candidates/${encodeURIComponent(ideaId)}`}
+          >
+            Markdown 내보내기
+          </a>
           <Link className="button-link" href="/projects">Projects</Link>
           <Link className="button-link" href="/problems">Problem Cards</Link>
           <Link className="button-link" href="/ideas">Idea 목록</Link>
