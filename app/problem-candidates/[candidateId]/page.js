@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import AlternativeNotesPanel from "./alternative-notes-panel.js";
 import CandidateReview from "./candidate-review.js";
 import ProblemCardIdeas from "./problem-card-ideas.js";
 import ResearchProjectPanel from "./research-project-panel.js";
@@ -32,6 +33,7 @@ export default async function ProblemCandidatePage({ params }) {
       <CandidateReview candidateId={candidateId} />
       <SavedProblemPanel candidateId={candidateId} />
       <ResearchProjectPanel candidateId={candidateId} />
+      <AlternativeNotesPanel candidateId={candidateId} />
       <ProblemCardIdeas candidateId={candidateId} />
     </main>
   );
