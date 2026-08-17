@@ -51,6 +51,9 @@ export default async function SavedProblemsPage({ searchParams }) {
             </h2>
           </div>
           <div className="inline-actions">
+            <Link className="button-link button-primary-link button-compact" href="/problems/compare">
+              Problem Card 비교
+            </Link>
             <Link
               className={`button-link button-compact${status === "active" ? " button-primary-link" : ""}`}
               href="/problems"
@@ -64,6 +67,10 @@ export default async function SavedProblemsPage({ searchParams }) {
               보관
             </Link>
           </div>
+        </div>
+
+        <div className="notice">
+          비교 기능은 Saved 여부와 관계없이 현재 계정의 confirmed Problem Card를 대상으로 합니다. Saved 메타데이터는 비교표에 보조 정보로 표시됩니다.
         </div>
 
         {savedProblems.length ? (
