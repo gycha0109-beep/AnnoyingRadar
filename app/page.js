@@ -21,9 +21,9 @@ export default async function HomePage() {
     return (
       <main className="stack landing-shell">
         <p className="eyebrow">Annoying Radar</p>
-        <h1>불만 텍스트를 근거가 붙은 문제 카드로 바꾸는 작업대</h1>
+        <h1>불만 원문을 근거 기반 Problem Card와 리서치 자산으로 바꾸는 작업대</h1>
         <p className="hero-copy">
-          리뷰, 커뮤니티 글, 인터뷰 메모를 저장하고 실제 불편의 근거를 단계적으로 검토합니다.
+          리뷰, 커뮤니티 글, 인터뷰 메모에서 Pain Evidence를 확인하고 Problem Card, Idea Candidate, Research Project까지 연결합니다.
         </p>
         <div className="inline-actions">
           <Link className="button-link button-primary-link" href="/login">로그인하고 시작</Link>
@@ -42,7 +42,7 @@ export default async function HomePage() {
         <div className="inline-actions">
           <Link className="button-link button-compact" href="/projects">Projects</Link>
           <Link className="button-link button-compact" href="/problems">Problem Cards</Link>
-          <Link className="button-link button-compact" href="/ideas">Idea 목록</Link>
+          <Link className="button-link button-compact" href="/ideas">Idea Board</Link>
           <form action={logout}>
             <button className="button-secondary button-compact" type="submit">로그아웃</button>
           </form>
@@ -50,12 +50,28 @@ export default async function HomePage() {
       </nav>
 
       <header className="hero stack-sm">
-        <p className="eyebrow">Phase 1 · Raw Input Vertical Slice</p>
-        <h1>실제 불편이 담긴 원문부터 고정합니다.</h1>
+        <p className="eyebrow">v0.3 · Personal Research Workspace</p>
+        <h1>불만 원문에서 근거 기반 문제와 실행 후보까지 연결합니다.</h1>
         <p className="hero-copy">
-          저장된 원문은 다음 단계의 Evidence 추출 기준선입니다. 출처와 언어를 함께 남기고 최근 입력으로 다시 진입할 수 있습니다.
+          시작점은 여전히 Raw Input입니다. 분석으로 근거와 Problem Card를 만든 뒤 Saved Problems, Idea Board, Research Projects에서 개인 리서치 자산으로 관리합니다.
         </p>
       </header>
+
+      <section className="card stack" aria-labelledby="research-assets-title">
+        <div className="section-heading">
+          <div className="stack-sm">
+            <p className="eyebrow">Research Assets</p>
+            <h2 id="research-assets-title">v0.3 리서치 자산 바로가기</h2>
+            <p className="muted">분석 흐름을 선행 조건으로 만들지 않고, 축적된 결과에 다시 진입하는 관리 surface입니다.</p>
+          </div>
+        </div>
+        <div className="inline-actions">
+          <Link className="button-link button-compact" href="/problems">Saved Problems</Link>
+          <Link className="button-link button-compact" href="/problems/compare">Problem Compare</Link>
+          <Link className="button-link button-compact" href="/ideas">Idea Board</Link>
+          <Link className="button-link button-compact" href="/projects">Research Projects</Link>
+        </div>
+      </section>
 
       <RawInputDashboard />
     </main>
