@@ -20,6 +20,12 @@ export default async function ResearchProjectPage({ params }) {
       <nav className="topbar">
         <Link className="brand" href="/">어노잉 레이더</Link>
         <div className="inline-actions">
+          <a
+            className="button-link"
+            href={`/api/exports/projects/${encodeURIComponent(projectId)}`}
+          >
+            Markdown 내보내기
+          </a>
           <Link className="button-link" href="/projects">Projects</Link>
           <Link className="button-link" href={`/ideas?project=${encodeURIComponent(projectId)}`}>Project Idea Board</Link>
           <Link className="button-link" href="/problems">Problem Cards</Link>
