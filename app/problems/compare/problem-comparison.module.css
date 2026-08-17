@@ -2,6 +2,51 @@
   overflow: hidden;
 }
 
+.catalogGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.catalogCard {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  padding: 16px;
+  cursor: pointer;
+}
+
+.catalogCard:hover {
+  border-color: var(--accent-strong);
+}
+
+.catalogCard strong {
+  line-height: 1.45;
+}
+
+.catalogSelect {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  gap: 8px;
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.catalogSummary {
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.catalogMetrics {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .tableScroller {
   overflow-x: auto;
   border: 1px solid var(--border);
@@ -69,6 +114,12 @@
 
 .boundaryNotice {
   color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .catalogGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
