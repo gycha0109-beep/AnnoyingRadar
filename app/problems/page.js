@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { loadSavedProblemOverview } from "../../lib/saved-problems/service.mjs";
+import {
+  normalizeSavedProblemCategoryFilter,
+  savedProblemLibraryHref,
+} from "../../lib/saved-problems/category.mjs";
+import {
+  loadSavedProblemCategoryOverview,
+  loadSavedProblemOverview,
+} from "../../lib/saved-problems/service.mjs";
 import { createServerSupabaseClient } from "../../lib/supabase/server.js";
 import { createServiceClient } from "../../lib/supabase/service.js";
 import ProjectLinkControl from "./project-link-control.js";
@@ -17,8 +24,15 @@ export default async function SavedProblemsPage({ searchParams }) {
 
   const resolvedSearchParams = await searchParams;
   const status = resolvedSearchParams?.status === "archived" ? "archived" : "active";
+  const rawCategory = resolvedSearchParams?.category;
+  const category = normalizeSavedProblemCategoryFilter(rawCategory);
+  if (rawCategory && !category) redirect(savedProblemLibraryHref({ status }));
+
   const serviceClient = createServiceClient();
-  const savedProblems = await loadSavedProblemOverview(serviceClient, user.id, { status });
+  const [savedProblems, categories] = await Promise.all([
+    loadSavedProblemOverview(serviceClient, user.id, { status, category }),
+    loadSavedProblemCategoryOverview(serviceClient, user.id),
+  ]);
 
   return (
     <main className="stack page-shell">
@@ -29,7 +43,7 @@ export default async function SavedProblemsPage({ searchParams }) {
         </div>
         <div className="inline-actions">
           <Link className="button-link" href="/projects">Projects</Link>
-          <Link className="button-link" href="/ideas">Ideas</Link>
+          <Link className="button-link" href="/ideas">Idea Board</Link>
           <Link className="button-link" href="/">대시보드</Link>
         </div>
       </nav>
@@ -42,12 +56,47 @@ export default async function SavedProblemsPage({ searchParams }) {
         </p>
       </header>
 
+      <section className="card stack" aria-labelledby="saved-problem-category-title">
+        <div className="section-heading">
+          <div className="stack-sm">
+            <p className="eyebrow">v0.3 · Category Archive</p>
+            <h2 id="saved-problem-category-title">카테고리별 Problem Archive</h2>
+            <p className="muted">
+              별도 카테고리 테이블이나 taxonomy를 만들지 않고 Saved Problem의 기존 category 값을 그대로 탐색 축으로 사용합니다.
+            </p>
+          </div>
+          {category ? <span className="status-badge">선택: {category}</span> : null}
+        </div>
+        <div className="inline-actions">
+          <Link
+            className={`button-link button-compact${category ? "" : " button-primary-link"}`}
+            href={savedProblemLibraryHref({ status })}
+          >
+            전체
+          </Link>
+          {categories.map((item) => {
+            const count = status === "archived" ? item.archived_count : item.active_count;
+            if (count === 0 && item.category !== category) return null;
+            return (
+              <Link
+                className={`button-link button-compact${item.category === category ? " button-primary-link" : ""}`}
+                href={savedProblemLibraryHref({ status, category: item.category })}
+                key={item.category}
+              >
+                {item.category} ({count})
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="card stack" aria-labelledby="saved-problem-library-title">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Library</p>
             <h2 id="saved-problem-library-title">
               {status === "active" ? "활성" : "보관"} Saved Problem {savedProblems.length}개
+              {category ? ` · ${category}` : ""}
             </h2>
           </div>
           <div className="inline-actions">
@@ -56,13 +105,13 @@ export default async function SavedProblemsPage({ searchParams }) {
             </Link>
             <Link
               className={`button-link button-compact${status === "active" ? " button-primary-link" : ""}`}
-              href="/problems"
+              href={savedProblemLibraryHref({ status: "active", category })}
             >
               활성
             </Link>
             <Link
               className={`button-link button-compact${status === "archived" ? " button-primary-link" : ""}`}
-              href="/problems?status=archived"
+              href={savedProblemLibraryHref({ status: "archived", category })}
             >
               보관
             </Link>
@@ -123,9 +172,17 @@ export default async function SavedProblemsPage({ searchParams }) {
           </div>
         ) : (
           <div className="empty-state">
-            <strong>{status === "active" ? "저장된 Problem Card가 없습니다." : "보관된 Problem Card가 없습니다."}</strong>
+            <strong>
+              {category
+                ? `${category} 카테고리에 ${status === "active" ? "활성" : "보관"} Saved Problem이 없습니다.`
+                : status === "active"
+                  ? "저장된 Problem Card가 없습니다."
+                  : "보관된 Problem Card가 없습니다."}
+            </strong>
             <p className="muted">
-              완료된 Problem Card 상세에서 저장하면 이 라이브러리에서 다시 찾을 수 있습니다.
+              {category
+                ? "다른 카테고리를 선택하거나 전체 목록으로 돌아가세요."
+                : "완료된 Problem Card 상세에서 저장하면 이 라이브러리에서 다시 찾을 수 있습니다."}
             </p>
           </div>
         )}
