@@ -67,53 +67,77 @@ export default async function SavedProblemsPage({ searchParams }) {
         </div>
 
         {savedProblems.length ? (
-          <div className="saved-problem-list">
-            {savedProblems.map((savedProblem) => {
-              const problemCard = savedProblem.problem_card;
-              return (
-                <article className="saved-problem-card stack-sm" key={savedProblem.problem_candidate_id}>
-                  <div className="section-heading">
-                    <div className="stack-sm">
-                      <p className="eyebrow">{savedProblem.category || "미분류"}</p>
-                      <h3>{problemCard?.title || "Problem Card unavailable"}</h3>
+          <form action="/problems/compare" method="get" className="stack">
+            <div className="notice">
+              <div className="section-heading">
+                <div className="stack-sm">
+                  <strong>Problem Card 비교</strong>
+                  <p className="muted" id="problem-comparison-help">
+                    Saved Problem 2~4개를 선택하면 canonical 지표를 나란히 비교합니다. 종합 점수나 자동 순위는 계산하지 않습니다.
+                  </p>
+                </div>
+                <button className="button-compact" type="submit">선택한 카드 비교</button>
+              </div>
+            </div>
+
+            <div className="saved-problem-list">
+              {savedProblems.map((savedProblem) => {
+                const problemCard = savedProblem.problem_card;
+                return (
+                  <article className="saved-problem-card stack-sm" key={savedProblem.problem_candidate_id}>
+                    <div className="section-heading">
+                      <div className="stack-sm">
+                        <label className="status-badge" style={{ cursor: "pointer", gap: "8px" }}>
+                          <input
+                            aria-describedby="problem-comparison-help"
+                            name="ids"
+                            type="checkbox"
+                            value={savedProblem.problem_candidate_id}
+                            style={{ width: "auto", margin: 0, padding: 0 }}
+                          />
+                          비교 선택
+                        </label>
+                        <p className="eyebrow">{savedProblem.category || "미분류"}</p>
+                        <h3>{problemCard?.title || "Problem Card unavailable"}</h3>
+                      </div>
+                      <span className="status-badge">{savedProblem.status}</span>
                     </div>
-                    <span className="status-badge">{savedProblem.status}</span>
-                  </div>
 
-                  <p>{problemCard?.summary || "요약 없음"}</p>
-                  {savedProblem.memo ? <p className="saved-problem-memo">{savedProblem.memo}</p> : null}
+                    <p>{problemCard?.summary || "요약 없음"}</p>
+                    {savedProblem.memo ? <p className="saved-problem-memo">{savedProblem.memo}</p> : null}
 
-                  <div className="saved-problem-meta">
-                    <span>Evidence {problemCard?.evidence_count ?? "-"}</span>
-                    <span>강도 {problemCard?.intensity_level ?? "unknown"}</span>
-                    <span>반복 {problemCard?.repeat_pattern_level ?? "unknown"}</span>
-                    <span>명확도 {problemCard?.clarity_level ?? "unknown"}</span>
-                  </div>
+                    <div className="saved-problem-meta">
+                      <span>Evidence {problemCard?.evidence_count ?? "-"}</span>
+                      <span>강도 {problemCard?.intensity_level ?? "unknown"}</span>
+                      <span>반복 {problemCard?.repeat_pattern_level ?? "unknown"}</span>
+                      <span>명확도 {problemCard?.clarity_level ?? "unknown"}</span>
+                    </div>
 
-                  <div className="inline-actions">
-                    <Link
-                      className="button-link"
-                      href={`/problem-candidates/${savedProblem.problem_candidate_id}#saved-problem`}
-                    >
-                      Problem Card 열기
-                    </Link>
-                    <Link
-                      className="button-link button-compact"
-                      href={`/problem-candidates/${savedProblem.problem_candidate_id}`}
-                    >
-                      Idea Candidate 보기
-                    </Link>
-                  </div>
+                    <div className="inline-actions">
+                      <Link
+                        className="button-link"
+                        href={`/problem-candidates/${savedProblem.problem_candidate_id}#saved-problem`}
+                      >
+                        Problem Card 열기
+                      </Link>
+                      <Link
+                        className="button-link button-compact"
+                        href={`/problem-candidates/${savedProblem.problem_candidate_id}`}
+                      >
+                        Idea Candidate 보기
+                      </Link>
+                    </div>
 
-                  <ProjectLinkControl
-                    problemCandidateId={savedProblem.problem_candidate_id}
-                    savedStatus={savedProblem.status}
-                  />
-                  <p className="muted saved-problem-date">최근 관리 {formatDate(savedProblem.updated_at)}</p>
-                </article>
-              );
-            })}
-          </div>
+                    <ProjectLinkControl
+                      problemCandidateId={savedProblem.problem_candidate_id}
+                      savedStatus={savedProblem.status}
+                    />
+                    <p className="muted saved-problem-date">최근 관리 {formatDate(savedProblem.updated_at)}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </form>
         ) : (
           <div className="empty-state">
             <strong>{status === "active" ? "저장된 Problem Card가 없습니다." : "보관된 Problem Card가 없습니다."}</strong>
