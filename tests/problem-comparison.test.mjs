@@ -16,7 +16,7 @@ test("Problem comparison selection normalizes duplicate query ids while preservi
   );
 });
 
-test("Problem comparison requires between two and four unique Saved Problems", () => {
+test("Problem comparison requires between two and four unique confirmed Problem Cards", () => {
   assert.equal(MIN_PROBLEM_COMPARISON_ITEMS, 2);
   assert.equal(MAX_PROBLEM_COMPARISON_ITEMS, 4);
   assert.equal(getProblemComparisonSelectionState("a").valid, false);
@@ -25,19 +25,22 @@ test("Problem comparison requires between two and four unique Saved Problems", (
   assert.equal(getProblemComparisonSelectionState(["a", "b", "c", "d", "e"]).valid, false);
 });
 
-test("Saved Problem library exposes a GET comparison entrypoint and comparison stays read-only", async () => {
+test("Comparison catalog uses owned confirmed Problem Cards and comparison stays read-only", async () => {
   const librarySource = await readFile(new URL("../app/problems/page.js", import.meta.url), "utf8");
   const pageSource = await readFile(new URL("../app/problems/compare/page.js", import.meta.url), "utf8");
   const serviceSource = await readFile(new URL("../lib/saved-problems/service.mjs", import.meta.url), "utf8");
 
-  assert.match(librarySource, /action="\/problems\/compare"/);
-  assert.match(librarySource, /name="ids"/);
-  assert.match(pageSource, /loadSavedProblemComparison/);
+  assert.match(librarySource, /href="\/problems\/compare"/);
+  assert.match(pageSource, /action="\/problems\/compare"/);
+  assert.match(pageSource, /name="ids"/);
+  assert.match(pageSource, /loadProblemComparisonCatalog/);
+  assert.match(pageSource, /loadProblemComparison/);
   assert.match(pageSource, /종합 점수나 자동 순위를 만들지 않고/);
   assert.match(pageSource, /read-only projection/);
+  assert.match(pageSource, /Saved 여부는 비교 자격과 무관/);
 
-  const comparisonFunction = serviceSource.slice(serviceSource.indexOf("export async function loadSavedProblemComparison"));
-  assert.match(comparisonFunction, /\.select\(/);
+  const comparisonFunction = serviceSource.slice(serviceSource.indexOf("export async function loadProblemComparisonCatalog"));
   assert.match(comparisonFunction, /\.eq\("user_id", userId\)/);
+  assert.match(comparisonFunction, /\.eq\("status", "confirmed"\)/);
   assert.doesNotMatch(comparisonFunction, /\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
 });
