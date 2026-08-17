@@ -56,7 +56,7 @@ test("Markdown export routes are authenticated, no-store attachments", async () 
   const renderer = await read("lib/exports/markdown.mjs");
   assert.match(renderer, /Cache-Control.*private, no-store/);
   assert.doesNotMatch(renderer, /new Date\(/);
-}
+});
 
 test("Markdown export live gate fails on page or hydration diagnostics", async () => {
   const source = await read("scripts/run-markdown-export-live-e2e.mjs");
