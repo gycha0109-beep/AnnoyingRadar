@@ -1,0 +1,111 @@
+.panel {
+  display: grid;
+  gap: 18px;
+}
+
+.noteList {
+  display: grid;
+  gap: 12px;
+}
+
+.noteCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  padding: 16px;
+}
+
+.noteHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.noteTitle {
+  display: grid;
+  gap: 6px;
+}
+
+.noteTitle strong {
+  line-height: 1.45;
+}
+
+.kindBadge {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.noteText {
+  color: var(--muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.externalLink {
+  width: fit-content;
+  color: var(--accent-strong);
+  font-size: 0.84rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.externalLink:hover {
+  text-decoration: underline;
+}
+
+.editorGrid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.editorGrid textarea,
+.fullRow {
+  grid-column: 1 / -1;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cardActions button {
+  width: auto;
+}
+
+.dangerButton {
+  border-color: rgb(255 139 139 / 42%);
+  background: rgb(255 139 139 / 8%);
+  color: var(--danger);
+}
+
+@media (max-width: 680px) {
+  .editorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .editorGrid textarea,
+  .fullRow {
+    grid-column: auto;
+  }
+
+  .noteHeader {
+    flex-direction: column;
+  }
+
+  .cardActions,
+  .cardActions button {
+    width: 100%;
+  }
+}
