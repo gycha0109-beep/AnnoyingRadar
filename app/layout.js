@@ -4,10 +4,11 @@ import "./idea-review.css";
 import "./idea-board.css";
 import "./saved-problems.css";
 import "./research-projects.css";
+import "./radar.css";
 
 export const metadata = {
   title: "어노잉 레이더",
-  description: "근거 기반 문제 발굴 엔진",
+  description: "공개 사용자 의견 속에서 반복되는 문제를 근거와 함께 발견하는 Problem Discovery Radar",
 };
 
 export default function RootLayout({ children }) {

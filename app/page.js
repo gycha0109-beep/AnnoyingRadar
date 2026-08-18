@@ -1,79 +1,137 @@
 import Link from "next/link";
 
-import RawInputDashboard from "./components/raw-input-dashboard.js";
-import { logout } from "./login/actions.js";
+import PersonalWorkspace from "./components/personal-workspace.js";
+import { listPublishedPublicProblems } from "../lib/radar/service.mjs";
 import { createServerSupabaseClient } from "../lib/supabase/server.js";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  let user = null;
+const CATEGORIES = ["배달", "취업", "운동", "금융", "쇼핑", "여행"];
 
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data } = await supabase.auth.getUser();
-    user = data.user ?? null;
-  } catch {
-    user = null;
+function firstValue(value) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function formatPublishedAt(value) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeZone: "Asia/Seoul",
+  }).format(new Date(value));
+}
+
+export default async function HomePage({ searchParams }) {
+  const params = await searchParams;
+  const q = String(firstValue(params?.q) ?? "").trim().slice(0, 160) || null;
+  const category = String(firstValue(params?.category) ?? "").trim().slice(0, 120) || null;
+
+  const supabase = await createServerSupabaseClient();
+  const [{ data: authData }, problems] = await Promise.all([
+    supabase.auth.getUser(),
+    listPublishedPublicProblems(supabase, { q, category, limit: 30 }),
+  ]);
+  const user = authData.user ?? null;
+
+  if (process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" && user) {
+    return <PersonalWorkspace user={user} />;
   }
 
-  if (!user) {
-    return (
-      <main className="stack landing-shell">
-        <p className="eyebrow">Annoying Radar</p>
-        <h1>불만 원문을 근거 기반 Problem Card와 리서치 자산으로 바꾸는 작업대</h1>
-        <p className="hero-copy">
-          리뷰, 커뮤니티 글, 인터뷰 메모에서 Pain Evidence를 확인하고 Problem Card, Idea Candidate, Research Project까지 연결합니다.
-        </p>
-        <div className="inline-actions">
-          <Link className="button-link button-primary-link" href="/login">로그인하고 시작</Link>
-        </div>
-      </main>
-    );
-  }
+  const resultTitle = q
+    ? `“${q}” 관련 문제`
+    : category
+      ? `${category}에서 발견된 문제`
+      : "최근 발견된 문제";
 
   return (
-    <main className="stack page-shell">
-      <nav className="topbar">
-        <div>
-          <Link className="brand" href="/">어노잉 레이더</Link>
-          <p className="muted user-line">{user.email ?? user.id}</p>
-        </div>
-        <div className="inline-actions">
-          <Link className="button-link button-compact" href="/projects">Projects</Link>
-          <Link className="button-link button-compact" href="/problems">Problem Cards</Link>
-          <Link className="button-link button-compact" href="/ideas">Idea Board</Link>
-          <form action={logout}>
-            <button className="button-secondary button-compact" type="submit">로그아웃</button>
-          </form>
+    <main className="radar-shell">
+      <nav className="radar-topbar" aria-label="주요 탐색">
+        <Link className="radar-brand" href="/">어노잉 레이더</Link>
+        <div className="radar-nav-actions">
+          {user ? (
+            <Link className="radar-nav-link radar-nav-primary" href="/workspace">내 작업공간</Link>
+          ) : (
+            <Link className="radar-nav-link" href="/login">로그인</Link>
+          )}
         </div>
       </nav>
 
-      <header className="hero stack-sm">
-        <p className="eyebrow">v0.3 · Personal Research Workspace</p>
-        <h1>불만 원문에서 근거 기반 문제와 실행 후보까지 연결합니다.</h1>
-        <p className="hero-copy">
-          시작점은 여전히 Raw Input입니다. 분석으로 근거와 Problem Card를 만든 뒤 Saved Problems, Idea Board, Research Projects에서 개인 리서치 자산으로 관리합니다.
+      <section className="radar-hero" aria-labelledby="radar-title">
+        <p className="radar-kicker">Problem Discovery Radar</p>
+        <h1 id="radar-title">사람들이 요즘, 무엇을 불편해하고 있을까요?</h1>
+        <p className="radar-lead">
+          공개된 사용자 의견 속에 흩어진 불편을 모아, 반복해서 나타나는 문제를 근거와 함께 보여드립니다.
         </p>
-      </header>
 
-      <section className="card stack" aria-labelledby="research-assets-title">
-        <div className="section-heading">
-          <div className="stack-sm">
-            <p className="eyebrow">Research Assets</p>
-            <h2 id="research-assets-title">v0.3 리서치 자산 바로가기</h2>
-            <p className="muted">분석 흐름을 선행 조건으로 만들지 않고, 축적된 결과에 다시 진입하는 관리 surface입니다.</p>
-          </div>
-        </div>
-        <div className="inline-actions">
-          <Link className="button-link button-compact" href="/problems">Saved Problems</Link>
-          <Link className="button-link button-compact" href="/problems/compare">Problem Compare</Link>
-          <Link className="button-link button-compact" href="/ideas">Idea Board</Link>
-          <Link className="button-link button-compact" href="/projects">Research Projects</Link>
+        <form className="radar-search" action="/" method="get" role="search">
+          <label className="sr-only" htmlFor="radar-search-input">문제 검색</label>
+          <input
+            id="radar-search-input"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="어떤 불편이 궁금하신가요? 예: 배달, 헬스장, 취업"
+            maxLength={160}
+          />
+          {category ? <input type="hidden" name="category" value={category} /> : null}
+          <button type="submit">검색</button>
+        </form>
+
+        <div className="radar-categories" aria-label="분야별 탐색">
+          <Link className={!category ? "radar-chip is-active" : "radar-chip"} href={q ? `/?q=${encodeURIComponent(q)}` : "/"}>전체</Link>
+          {CATEGORIES.map((item) => {
+            const href = q
+              ? `/?q=${encodeURIComponent(q)}&category=${encodeURIComponent(item)}`
+              : `/?category=${encodeURIComponent(item)}`;
+            return (
+              <Link className={category === item ? "radar-chip is-active" : "radar-chip"} href={href} key={item}>
+                {item}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      <RawInputDashboard />
+      <section className="radar-results" aria-labelledby="radar-results-title">
+        <div className="radar-section-heading">
+          <div>
+            <p className="radar-section-label">Explore</p>
+            <h2 id="radar-results-title">{resultTitle}</h2>
+          </div>
+          {(q || category) ? (
+            <Link className="radar-clear-link" href="/">검색 초기화</Link>
+          ) : null}
+        </div>
+
+        {problems.length > 0 ? (
+          <div className="radar-problem-list">
+            {problems.map((problem) => (
+              <Link className="radar-problem-card" href={`/radar/problems/${problem.id}`} key={problem.id}>
+                <div className="radar-problem-main">
+                  <div className="radar-problem-meta">
+                    {problem.category ? <span>{problem.category}</span> : null}
+                    <span>{problem.evidence_count}건의 공개 근거</span>
+                    {problem.published_at ? <span>{formatPublishedAt(problem.published_at)}</span> : null}
+                  </div>
+                  <h3>{problem.title}</h3>
+                  <p>{problem.summary}</p>
+                </div>
+                <span className="radar-problem-arrow" aria-hidden="true">→</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="radar-empty-state">
+            <strong>{q || category ? "조건에 맞는 공개 문제가 아직 없습니다." : "아직 공개된 문제가 없습니다."}</strong>
+            <p>
+              어노잉 레이더는 검증된 Problem만 공개합니다. 운영자가 근거를 확인하고 publication gate를 통과한 문제부터 이곳에 표시됩니다.
+            </p>
+            {(q || category) ? <Link href="/">전체 문제 보기</Link> : null}
+          </div>
+        )}
+      </section>
+
+      <footer className="radar-footer">
+        <p>어노잉 레이더는 인터넷 전체의 여론을 대표하지 않습니다. 관측하고 검증한 공개 근거의 범위 안에서 Problem을 보여드립니다.</p>
+      </footer>
     </main>
   );
 }
