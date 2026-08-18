@@ -1,8 +1,8 @@
 import Link from "next/link";
 
+import PersonalWorkspace from "./components/personal-workspace.js";
 import { listPublishedPublicProblems } from "../lib/radar/service.mjs";
 import { createServerSupabaseClient } from "../lib/supabase/server.js";
-import WorkspacePage from "./workspace/page.js";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function HomePage({ searchParams }) {
   const user = authData.user ?? null;
 
   if (process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" && user) {
-    return <WorkspacePage />;
+    return <PersonalWorkspace user={user} />;
   }
 
   const resultTitle = q
