@@ -11,7 +11,7 @@ export async function login(formData) {
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect("/login?error=invalid_credentials");
-  redirect("/workspace");
+  redirect(process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" ? "/" : "/workspace");
 }
 
 export async function logout() {
