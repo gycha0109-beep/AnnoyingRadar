@@ -25,12 +25,17 @@ export default async function HomePage({ searchParams }) {
   const q = String(firstValue(params?.q) ?? "").trim().slice(0, 160) || null;
   const category = String(firstValue(params?.category) ?? "").trim().slice(0, 120) || null;
 
-  const supabase = await createServerSupabaseClient();
-  const [{ data: authData }, problems] = await Promise.all([
-    supabase.auth.getUser(),
-    listPublishedPublicProblems(supabase, { q, category, limit: 30 }),
-  ]);
-  const user = authData.user ?? null;
+  let user = null;
+  let problems = [];
+  if (process.env.AR_RUNTIME_SMOKE !== "1") {
+    const supabase = await createServerSupabaseClient();
+    const [{ data: authData }, loadedProblems] = await Promise.all([
+      supabase.auth.getUser(),
+      listPublishedPublicProblems(supabase, { q, category, limit: 30 }),
+    ]);
+    user = authData.user ?? null;
+    problems = loadedProblems;
+  }
 
   if (process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" && user) {
     return <PersonalWorkspace user={user} />;

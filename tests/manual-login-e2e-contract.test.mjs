@@ -19,9 +19,9 @@ test("package exposes a pinned one-command live browser runner", () => {
 
 test("bootstrap loads project env before starting the live runner", () => {
   assert.match(bootstrap, /process\.loadEnvFile/);
-  assert.match(bootstrap, /\.env\.development\.local/);
-  assert.match(bootstrap, /\.env\.local/);
-  assert.match(bootstrap, /\.env\.development/);
+  assert.match(bootstrap, /`\.env\.\$\{nodeEnv\}\.local`/);
+  assert.match(bootstrap, /"\.env\.local"/);
+  assert.match(bootstrap, /`\.env\.\$\{nodeEnv\}`/);
   assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(bootstrap, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
@@ -39,7 +39,7 @@ test("bootstrap makes project env authoritative for managed live credentials", (
   assert.match(bootstrap, /preferredValues/);
   assert.match(bootstrap, /process\.env\[key\]\s*=\s*value/);
   assert.ok(
-    bootstrap.indexOf(".env.development.local") < bootstrap.indexOf('".env.local"'),
+    bootstrap.indexOf("`.env.${nodeEnv}.local`") < bootstrap.indexOf('".env.local"'),
     "higher-precedence project env file must be checked first",
   );
   assert.match(bootstrap, /stale shell secrets do/);

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import SourceSignalComplaintReview from "../../components/source-signal-complaint-review.js";
 import ThreadsSourceSearchForm from "../../components/threads-source-search-form.js";
 import {
-  listRecentSourceIngestionRuns,
-  listRecentSourceSignals,
-} from "../../../lib/sources/service.mjs";
+  getComplaintGoldStats,
+  listSourceSignalReviewQueue,
+} from "../../../lib/sources/complaint-service.mjs";
+import { listRecentSourceIngestionRuns } from "../../../lib/sources/service.mjs";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
 import { createServiceClient } from "../../../lib/supabase/service.js";
 
@@ -40,10 +42,15 @@ function formatTime(value) {
 
 export default async function CuratorSourcesPage() {
   const { user, role, serviceClient } = await loadCuratorContext();
-  const [runs, signals] = await Promise.all([
+  const [runs, reviewQueue, goldStats] = await Promise.all([
     listRecentSourceIngestionRuns(serviceClient, { limit: 20 }),
-    listRecentSourceSignals(serviceClient, { limit: 30 }),
+    listSourceSignalReviewQueue(serviceClient, { limit: 30 }),
+    getComplaintGoldStats(serviceClient),
   ]);
+  const modelConfigured = Boolean(
+    process.env.OPENAI_API_KEY
+    && (process.env.OPENAI_COMPLAINT_MODEL || process.env.OPENAI_EVIDENCE_MODEL),
+  );
 
   return (
     <main className="curator-shell source-lab-shell">
@@ -61,9 +68,9 @@ export default async function CuratorSourcesPage() {
 
       <header className="curator-hero">
         <div>
-          <p className="curator-kicker">Source Lab · Phase 15.4</p>
-          <h1>외부 Signal을 안전하게 수집합니다.</h1>
-          <p>Threads 공식 검색 API의 결과를 정규화하고, 같은 게시물은 하나의 Source Signal로 유지하면서 검색별 Observation을 별도로 기록합니다.</p>
+          <p className="curator-kicker">Source Lab · Phase 15.5</p>
+          <h1>외부 Signal에서 실제 불편만 선별합니다.</h1>
+          <p>수집된 Source Signal을 바로 Problem으로 만들지 않습니다. deterministic prefilter와 Complaint classifier를 거친 뒤, Gold Set으로 사람이 기준을 교정합니다.</p>
         </div>
       </header>
 
@@ -101,34 +108,47 @@ export default async function CuratorSourcesPage() {
           ) : <p className="source-empty">아직 수집 실행 기록이 없습니다.</p>}
         </div>
 
-        <div className="source-lab-panel">
+        <div className="source-lab-panel complaint-gold-summary">
           <div className="source-lab-heading">
             <div>
-              <p className="curator-kicker">Signals</p>
-              <h2>최근 Source Signals</h2>
+              <p className="curator-kicker">Gold Set v0.1</p>
+              <h2>Human benchmark</h2>
             </div>
-            <span>{signals.length}개</span>
+            <span>{goldStats.total} / 약 300</span>
           </div>
-          {signals.length > 0 ? (
-            <div className="source-result-list persisted">
-              {signals.map((signal) => (
-                <article key={signal.id}>
-                  <div className="source-result-meta">
-                    <span>@{signal.author_handle || "unknown"}</span>
-                    <span>{formatTime(signal.published_at)}</span>
-                  </div>
-                  <p>{signal.raw_text}</p>
-                  <div className="source-signal-footer">
-                    <small>{signal.adapter_version} · last seen {formatTime(signal.last_seen_at)}</small>
-                    {signal.canonical_url ? (
-                      <a href={signal.canonical_url} target="_blank" rel="noreferrer">원문 ↗</a>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : <p className="source-empty">저장된 외부 Signal이 아직 없습니다.</p>}
+          <p className="source-lab-copy">실제 Source Signal을 사람이 라벨링한 benchmark입니다. fake production seed를 넣지 않으며, 애매하면 uncertain으로 남깁니다.</p>
+          <div className="source-run-metrics">
+            <span>relevant <strong>{goldStats.yes}</strong></span>
+            <span>not relevant <strong>{goldStats.no}</strong></span>
+            <span>uncertain <strong>{goldStats.uncertain}</strong></span>
+          </div>
+          <p className="source-warning">Gold benchmark가 충분히 쌓이고 precision/recall을 검증하기 전에는 classifier pass를 Pain Evidence나 Public Problem으로 자동 승격하지 않습니다.</p>
         </div>
+      </section>
+
+      <section className="source-lab-panel complaint-review-panel" aria-labelledby="complaint-review-title">
+        <div className="source-lab-heading">
+          <div>
+            <p className="curator-kicker">Complaint Relevance Gate</p>
+            <h2 id="complaint-review-title">최근 Source Signal 검토</h2>
+          </div>
+          <span>{reviewQueue.length}개</span>
+        </div>
+        <p className="source-lab-copy">PASS는 complaint relevant + first-hand experience + concrete friction이 모두 yes일 때만 가능합니다. confidence는 참고 provenance일 뿐 threshold의 근거는 Gold benchmark입니다.</p>
+
+        {reviewQueue.length > 0 ? (
+          <div className="complaint-review-list">
+            {reviewQueue.map((signal) => (
+              <SourceSignalComplaintReview
+                key={signal.id}
+                signal={signal}
+                modelConfigured={modelConfigured}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="source-empty">저장된 Source Signal이 없습니다. Source Adapter로 실제 Signal이 들어오면 여기서 Gold label과 classifier 결과를 검토할 수 있습니다.</p>
+        )}
       </section>
     </main>
   );

@@ -34,6 +34,7 @@ const ideaSection = await readFile(
 );
 const ideasPage = await readFile(new URL("../app/ideas/page.js", import.meta.url), "utf8");
 const ideaService = await readFile(new URL("../lib/ideas/service.mjs", import.meta.url), "utf8");
+const ideaBoardService = await readFile(new URL("../lib/ideas/board-service.mjs", import.meta.url), "utf8");
 
 test("inactive Idea Candidates are read-only at the database boundary", () => {
   assert.match(migration, /old\.status in \('discarded', 'archived'\)/);
@@ -102,10 +103,13 @@ test("Idea detail UX covers content, provenance, evidence, and status history", 
   assert.doesNotMatch(ideaReview, /\.from\("ar_idea_candidates"\)/);
 });
 
-test("global Ideas page stays a lightweight owner-scoped list", () => {
-  assert.match(ideasPage, /loadIdeaOverview/);
-  assert.match(ideasPage, /Idea Candidate \{ideas\.length\}개/);
-  assert.match(ideasPage, /problem_card\?\.title/);
-  assert.doesNotMatch(ideasPage, /kanban|ranking|score/i);
+test("later Idea Board evolution preserves Phase 7 owner scoping and source Problem traceability", () => {
+  assert.match(ideasPage, /loadIdeaBoardOverview/);
+  assert.match(ideasPage, /<IdeaBoard/);
+  assert.match(ideaBoardService, /\.from\("ar_idea_candidates"\)/);
+  assert.match(ideaBoardService, /\.eq\("user_id", userId\)/);
+  assert.match(ideaBoardService, /problem_candidate_id/);
+  assert.match(ideaBoardService, /problem_card:/);
+  assert.doesNotMatch(ideaBoardService, /ranking|score/i);
   assert.match(ideaService, /\.eq\("user_id", userId\)/);
 });

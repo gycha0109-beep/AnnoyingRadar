@@ -200,16 +200,166 @@
   padding-right: 4px;
 }
 
+.complaint-review-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.complaint-review-list {
+  display: grid;
+  gap: 18px;
+}
+
+.complaint-review-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 16px;
+  padding: 18px;
+  background: #fcfcfd;
+}
+
+.complaint-signal-text {
+  margin: 0;
+  color: #101828;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.complaint-machine-panel,
+.complaint-gold-form {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid #eaecf0;
+  padding-top: 14px;
+}
+
+.complaint-machine-heading,
+.complaint-gold-heading,
+.complaint-gold-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.complaint-machine-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.complaint-machine-details span,
+.complaint-machine-details small {
+  border-radius: 9px;
+  background: #f2f4f7;
+  padding: 7px 9px;
+  color: #475467;
+  font-size: 12px;
+}
+
+.complaint-decision {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.complaint-decision-pass {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.complaint-decision-review {
+  background: #fffaeb;
+  color: #93370d;
+}
+
+.complaint-decision-reject {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.complaint-machine-panel button,
+.complaint-gold-form button {
+  justify-self: start;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #111827;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.complaint-machine-panel button:disabled,
+.complaint-gold-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.complaint-tristate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.complaint-gold-form label {
+  display: grid;
+  gap: 6px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.complaint-gold-form select,
+.complaint-gold-form textarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #fff;
+  color: #101828;
+  font: inherit;
+}
+
+.complaint-noise-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.complaint-noise-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.complaint-noise-grid input {
+  margin: 0;
+}
+
+.complaint-gold-heading small {
+  color: #667085;
+}
+
 @media (max-width: 900px) {
   .source-lab-grid,
-  .source-form-row {
+  .source-form-row,
+  .complaint-tristate-grid {
     grid-template-columns: 1fr;
   }
 
   .source-lab-heading,
   .source-run-title,
   .source-result-meta,
-  .source-signal-footer {
+  .source-signal-footer,
+  .complaint-machine-heading,
+  .complaint-gold-heading,
+  .complaint-gold-actions {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
