@@ -215,3 +215,16 @@ test("Source Lab exposes human review while Vercel automatic deployment remains 
   assert.match(component, /concrete_friction/);
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
+
+test("runtime smoke isolates external Supabase only under an explicit smoke flag", async () => {
+  const [home, smoke] = await Promise.all([
+    read("app/page.js"),
+    read("scripts/runtime-smoke.mjs"),
+  ]);
+  assert.match(home, /process\.env\.AR_RUNTIME_SMOKE !== "1"/);
+  assert.match(home, /createServerSupabaseClient\(\)/);
+  assert.match(home, /listPublishedPublicProblems/);
+  assert.match(smoke, /AR_RUNTIME_SMOKE: "1"/);
+  assert.match(smoke, /사람들이 요즘, 무엇을 불편해하고 있을까요/);
+  assert.match(smoke, /아직 공개된 문제가 없습니다/);
+});
