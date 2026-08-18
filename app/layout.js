@@ -5,6 +5,7 @@ import "./idea-board.css";
 import "./saved-problems.css";
 import "./research-projects.css";
 import "./radar.css";
+import "./curator.css";
 
 export const metadata = {
   title: "어노잉 레이더",
