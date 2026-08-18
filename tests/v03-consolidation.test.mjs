@@ -67,17 +67,23 @@ test("Saved Problems page exposes category archive without a new taxonomy entity
   assert.doesNotMatch(page, /category_id|categoryId/);
 });
 
-test("home and README describe the v0.3 product while keeping Raw Input primary", async () => {
+test("v0.3 research assets remain in Personal Workspace after Public Radar becomes primary", async () => {
   const home = await read("app/page.js");
+  const workspacePage = await read("app/workspace/page.js");
+  const workspace = await read("app/components/personal-workspace.js");
   const readme = await read("README.md");
   const phase14 = await read("docs/phase14-v03-consolidation.md");
 
-  assert.match(home, /v0\.3 · Personal Research Workspace/);
-  assert.match(home, /<RawInputDashboard \/>/);
-  assert.match(home, /Saved Problems/);
-  assert.match(home, /Problem Compare/);
-  assert.match(home, /Idea Board/);
-  assert.match(home, /Research Projects/);
+  assert.match(home, /Problem Discovery Radar/);
+  assert.match(home, /사람들이 요즘, 무엇을 불편해하고 있을까요/);
+  assert.match(home, /href="\/workspace"/);
+  assert.match(workspacePage, /PersonalWorkspace/);
+  assert.match(workspace, /Personal Research Workspace/);
+  assert.match(workspace, /<RawInputDashboard \/>/);
+  assert.match(workspace, /Saved Problems/);
+  assert.match(workspace, /Problem Compare/);
+  assert.match(workspace, /Idea Board/);
+  assert.match(workspace, /Research Projects/);
 
   for (const capability of [
     "Idea Board",
