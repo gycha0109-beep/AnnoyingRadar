@@ -14,6 +14,7 @@ create table if not exists public.ar_source_ingestion_runs (
   fetched_count integer not null default 0,
   inserted_count integer not null default 0,
   duplicate_count integer not null default 0,
+  skipped_count integer not null default 0,
   error_code text,
   error_message text,
   created_by_curator_user_id uuid references auth.users(id) on delete set null,
@@ -34,7 +35,12 @@ create table if not exists public.ar_source_ingestion_runs (
   constraint ar_source_ingestion_runs_status_check
     check (status in ('running', 'completed', 'failed')),
   constraint ar_source_ingestion_runs_counts_check
-    check (fetched_count >= 0 and inserted_count >= 0 and duplicate_count >= 0),
+    check (
+      fetched_count >= 0
+      and inserted_count >= 0
+      and duplicate_count >= 0
+      and skipped_count >= 0
+    ),
   constraint ar_source_ingestion_runs_window_check
     check (since_at is null or until_at is null or since_at < until_at)
 );
