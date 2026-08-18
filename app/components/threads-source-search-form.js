@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+function optionalLocalDateTimeToIso(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export default function ThreadsSourceSearchForm({ configured }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
@@ -19,8 +25,8 @@ export default function ThreadsSourceSearchForm({ configured }) {
       search_type: String(form.get("search_type") ?? "RECENT"),
       search_mode: String(form.get("search_mode") ?? "KEYWORD"),
       limit: Number(form.get("limit") ?? 25),
-      since: String(form.get("since") ?? "") || null,
-      until: String(form.get("until") ?? "") || null,
+      since: optionalLocalDateTimeToIso(String(form.get("since") ?? "")),
+      until: optionalLocalDateTimeToIso(String(form.get("until") ?? "")),
     };
 
     try {
