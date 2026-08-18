@@ -12,6 +12,16 @@ function sourceName(evidence) {
   return evidence.source_label || evidence.source_type || "공개 출처";
 }
 
+function safeSourceUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function PublicProblemDetailPage({ params }) {
   const { publicProblemId } = await params;
   if (!UUID_RE.test(publicProblemId ?? "")) notFound();
@@ -84,17 +94,20 @@ export default async function PublicProblemDetailPage({ params }) {
           </div>
 
           <div className="radar-evidence-list">
-            {evidence.map((item) => (
-              <figure className="radar-evidence-card" key={item.id}>
-                <blockquote>“{item.excerpt}”</blockquote>
-                <figcaption>
-                  <span>{sourceName(item)}</span>
-                  {item.source_url ? (
-                    <a href={item.source_url} target="_blank" rel="noreferrer">원문 보기 ↗</a>
-                  ) : null}
-                </figcaption>
-              </figure>
-            ))}
+            {evidence.map((item) => {
+              const sourceUrl = safeSourceUrl(item.source_url);
+              return (
+                <figure className="radar-evidence-card" key={item.id}>
+                  <blockquote>“{item.excerpt}”</blockquote>
+                  <figcaption>
+                    <span>{sourceName(item)}</span>
+                    {sourceUrl ? (
+                      <a href={sourceUrl} target="_blank" rel="noreferrer">원문 보기 ↗</a>
+                    ) : null}
+                  </figcaption>
+                </figure>
+              );
+            })}
           </div>
         </section>
 
