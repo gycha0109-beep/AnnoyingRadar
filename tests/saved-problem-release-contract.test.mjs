@@ -56,13 +56,16 @@ test("Saved Problem list remains owner scoped and defaults to active state", asy
   assert.match(service, /\.eq\("status", status\)/);
 });
 
-test("Phase 8 UI adds a global library without replacing the Phase 7 Idea surface", async () => {
+test("Saved Problem library remains available from Personal Workspace without replacing Public Radar", async () => {
   const home = await read("app/page.js");
+  const workspace = await read("app/components/personal-workspace.js");
   const problemPage = await read("app/problem-candidates/[candidateId]/page.js");
   const savedPanel = await read("app/problem-candidates/[candidateId]/saved-problem-panel.js");
   const ideas = await read("app/problem-candidates/[candidateId]/problem-card-ideas.js");
 
-  assert.match(home, /href="\/problems"/);
+  assert.match(home, /Problem Discovery Radar/);
+  assert.match(home, /href="\/workspace"/);
+  assert.match(workspace, /href="\/problems"/);
   assert.match(problemPage, /SavedProblemPanel/);
   assert.match(problemPage, /ProblemCardIdeas/);
   assert.match(savedPanel, /Problem Card 저장/);
