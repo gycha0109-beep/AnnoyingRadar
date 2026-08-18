@@ -36,6 +36,12 @@ create table if not exists public.ar_source_signal_classifications (
     check (length(trim(prefilter_version)) between 1 and 120),
   constraint ar_source_signal_classifications_prefilter_decision_check
     check (prefilter_decision in ('continue', 'review', 'reject')),
+  constraint ar_source_signal_classifications_prefilter_reason_check
+    check (
+      (prefilter_decision = 'continue' and cardinality(prefilter_reason_codes) = 0)
+      or
+      (prefilter_decision in ('review', 'reject') and cardinality(prefilter_reason_codes) >= 1)
+    ),
   constraint ar_source_signal_classifications_model_decision_check
     check (model_decision is null or model_decision in ('pass', 'review', 'reject')),
   constraint ar_source_signal_classifications_final_decision_check
@@ -48,6 +54,8 @@ create table if not exists public.ar_source_signal_classifications (
     check (concrete_friction in ('yes', 'no', 'uncertain')),
   constraint ar_source_signal_classifications_core_evidence_length
     check (core_evidence is null or length(core_evidence) between 1 and 2000),
+  constraint ar_source_signal_classifications_reason_check
+    check (cardinality(reason_codes) between 1 and 8),
   constraint ar_source_signal_classifications_confidence_check
     check (confidence is null or (confidence >= 0 and confidence <= 1)),
   constraint ar_source_signal_classifications_token_check
@@ -115,9 +123,24 @@ create table if not exists public.ar_source_signal_classifications (
     ),
   constraint ar_source_signal_classifications_provider_contract
     check (
-      (model_decision is null and provider is null and model_name is null and prompt_version is null)
+      (
+        model_decision is null
+        and provider is null
+        and model_name is null
+        and prompt_version is null
+        and provider_request_id is null
+        and input_tokens is null
+        and output_tokens is null
+        and confidence is null
+      )
       or
-      (model_decision is not null and provider is not null and model_name is not null and prompt_version is not null)
+      (
+        model_decision is not null
+        and provider is not null
+        and model_name is not null
+        and prompt_version is not null
+        and confidence is not null
+      )
     )
 );
 
@@ -136,9 +159,9 @@ create table if not exists public.ar_source_signal_gold_annotations (
   generic_negative_only boolean not null default false,
   core_evidence text,
   annotator_note text,
-  reviewed_by uuid
+  reviewed_by uuid not null
     references auth.users(id)
-    on delete set null,
+    on delete restrict,
   reviewed_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -217,6 +240,9 @@ revoke all on table public.ar_source_signal_gold_annotations from public, anon, 
 
 grant select, insert on table public.ar_source_signal_classifications to service_role;
 grant select, insert, update on table public.ar_source_signal_gold_annotations to service_role;
+
+revoke all on function public.ar_validate_source_signal_core_evidence() from public, anon, authenticated;
+grant execute on function public.ar_validate_source_signal_core_evidence() to service_role;
 
 drop trigger if exists ar_trg_source_signal_classification_core_evidence
   on public.ar_source_signal_classifications;
