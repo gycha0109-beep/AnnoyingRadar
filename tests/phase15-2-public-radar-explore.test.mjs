@@ -40,12 +40,18 @@ test("public Problem detail leads with evidence and source provenance", async ()
   assert.doesNotMatch(source, /createServiceClient|requireUser/);
 });
 
-test("login enters the personal workspace and logout returns to discovery", async () => {
-  const source = await read("app/login/actions.js");
+test("production login enters workspace while live E2E compatibility stays explicitly isolated", async () => {
+  const [actions, home, bootstrap] = await Promise.all([
+    read("app/login/actions.js"),
+    read("app/page.js"),
+    read("scripts/run-live-browser-e2e-bootstrap.mjs"),
+  ]);
 
-  assert.match(source, /redirect\("\/workspace"\)/);
-  assert.match(source, /signOut/);
-  assert.match(source, /redirect\("\/"\)/);
+  assert.match(actions, /AR_LIVE_E2E_WORKSPACE_HOME === "1" \? "\/" : "\/workspace"/);
+  assert.match(actions, /signOut/);
+  assert.match(home, /AR_LIVE_E2E_WORKSPACE_HOME === "1" && user/);
+  assert.match(bootstrap, /process\.env\.AR_LIVE_E2E_WORKSPACE_HOME = "1"/);
+  assert.doesNotMatch(bootstrap, /PROJECT_PREFERRED_ENV_KEYS[\s\S]*AR_LIVE_E2E_WORKSPACE_HOME/);
 });
 
 test("Radar presentation keeps internal workflow concepts out of the public home", async () => {
