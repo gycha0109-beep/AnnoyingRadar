@@ -38,3 +38,16 @@ test("Gold review queue can progress beyond the first page by prioritizing unlab
   assert.match(service, /Boolean\(left\.gold_annotation\)/);
   assert.match(service, /queue\.slice\(0, boundedLimit\)/);
 });
+
+test("service-role table grants are explicitly reduced to the complaint gate contract", async () => {
+  const hardening = await readFile(
+    new URL("../supabase/migrations/024_source_signal_complaint_gate_grant_hardening.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(hardening, /revoke all on table public\.ar_source_signal_classifications from service_role/);
+  assert.match(hardening, /grant select, insert on table public\.ar_source_signal_classifications to service_role/);
+  assert.match(hardening, /revoke all on table public\.ar_source_signal_gold_annotations from service_role/);
+  assert.match(hardening, /grant select, insert, update on table public\.ar_source_signal_gold_annotations to service_role/);
+  assert.doesNotMatch(hardening, /grant[^;]*(?:delete|truncate)/i);
+});
