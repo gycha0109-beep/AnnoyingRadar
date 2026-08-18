@@ -28,13 +28,14 @@ test("Phase 9 migration adds an independent project identity with typed N:M link
 
 test("Problem membership requires active Saved Problem while Idea membership stays explicit", async () => {
   const migration = await read(MIGRATION);
+  const ideaLinkFunction = extractSqlFunction(migration, "ar_link_research_project_idea");
 
   assert.match(migration, /Only an active Saved Problem can be newly linked to a Research Project/i);
   assert.match(migration, /requires a confirmed Problem Card/i);
   assert.match(migration, /requires a completed source analysis/i);
   assert.match(migration, /ar_link_research_project_problem/i);
-  assert.match(migration, /ar_link_research_project_idea/i);
-  assert.doesNotMatch(migration, /Idea Candidate.*Saved Problem/s);
+  assert.match(ideaLinkFunction, /ar_idea_candidates/i);
+  assert.doesNotMatch(ideaLinkFunction, /ar_saved_problem_cards/i);
 });
 
 test("Project archive is independent and unlink deletes association rows only", async () => {
@@ -109,16 +110,20 @@ test("Project APIs split metadata, lifecycle and typed link mutations", async ()
   assert.doesNotMatch(ideaRoute, /loadSavedProblemByCandidate/);
 });
 
-test("Phase 9 Project UI stays a grouping layer even when later phases evolve /ideas", async () => {
+test("Phase 9 Project UI remains a grouping layer after Public Radar becomes the product home", async () => {
   const home = await read("app/page.js");
+  const workspace = await read("app/components/personal-workspace.js");
   const projects = await read("app/projects/page.js");
   const projectDetail = await read("app/projects/[projectId]/project-detail.js");
   const problems = await read("app/problems/page.js");
   const problemPage = await read("app/problem-candidates/[candidateId]/page.js");
   const ideaPage = await read("app/idea-candidates/[ideaId]/page.js");
 
-  assert.match(home, /RawInputDashboard/);
-  assert.match(home, /href="\/projects"/);
+  assert.match(home, /Problem Discovery Radar/);
+  assert.match(home, /사람들이 요즘, 무엇을 불편해하고 있을까요/);
+  assert.match(home, /href="\/workspace"/);
+  assert.match(workspace, /RawInputDashboard/);
+  assert.match(workspace, /href="\/projects"/);
   assert.match(projects, /Research Projects/);
   assert.match(projectDetail, /연결된 Saved Problem/);
   assert.match(projectDetail, /연결된 Idea Candidate/);
@@ -128,6 +133,16 @@ test("Phase 9 Project UI stays a grouping layer even when later phases evolve /i
   assert.doesNotMatch(projectDetail, /Kanban|Sprint|Deadline|Progress %/i);
   assert.doesNotMatch(projectDetail, /project_idea_status|board_status/i);
 });
+
+function extractSqlFunction(source, functionName) {
+  const pattern = new RegExp(
+    `create or replace function public\\.${functionName}\\([\\s\\S]*?\\n\\$\\$;`,
+    "i",
+  );
+  const match = source.match(pattern);
+  assert.ok(match, `${functionName} SQL function must exist`);
+  return match[0];
+}
 
 async function read(relativePath) {
   return readFile(path.join(ROOT, relativePath), "utf8");
