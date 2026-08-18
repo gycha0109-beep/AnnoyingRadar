@@ -9,7 +9,11 @@ const nextBin = process.platform === "win32"
 
 let output = "";
 const server = spawn(nextBin, ["start", "-p", String(port)], {
-  env: { ...process.env, NODE_ENV: "production" },
+  env: {
+    ...process.env,
+    NODE_ENV: "production",
+    AR_RUNTIME_SMOKE: "1",
+  },
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -25,7 +29,9 @@ try {
 
   const home = await fetch(`${baseUrl}/`);
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /사람들이 요즘, 무엇을 불편해하고 있을까요\?/);
+  const homeHtml = await home.text();
+  assert.match(homeHtml, /사람들이 요즘, 무엇을 불편해하고 있을까요\?/);
+  assert.match(homeHtml, /아직 공개된 문제가 없습니다\./);
 
   const login = await fetch(`${baseUrl}/login`);
   assert.equal(login.status, 200);
