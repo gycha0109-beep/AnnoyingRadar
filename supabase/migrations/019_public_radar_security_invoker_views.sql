@@ -1,7 +1,13 @@
 -- Phase 15.1 security hardening: public read views execute with caller privileges.
--- Only public-safe base columns are granted; curator audit fields and internal source_key remain private.
+-- Only public-safe base columns are granted; curator audit fields and internal source keys remain private.
 
-create or replace view public.ar_public_problem_feed
+revoke all on table public.ar_public_problem_feed from public, anon, authenticated, service_role;
+revoke all on table public.ar_public_problem_evidence_feed from public, anon, authenticated, service_role;
+
+drop view if exists public.ar_public_problem_evidence_feed;
+drop view if exists public.ar_public_problem_feed;
+
+create view public.ar_public_problem_feed
 with (security_barrier = true, security_invoker = true)
 as
 select
@@ -34,7 +40,7 @@ group by
   p.updated_at,
   p.search_text;
 
-create or replace view public.ar_public_problem_evidence_feed
+create view public.ar_public_problem_evidence_feed
 with (security_barrier = true, security_invoker = true)
 as
 select
@@ -84,9 +90,6 @@ grant select (
   created_at,
   updated_at
 ) on public.ar_public_problem_evidence_snapshots to anon, authenticated;
-
-revoke all on table public.ar_public_problem_feed from public, anon, authenticated, service_role;
-revoke all on table public.ar_public_problem_evidence_feed from public, anon, authenticated, service_role;
 
 grant select on table public.ar_public_problem_feed to anon, authenticated, service_role;
 grant select on table public.ar_public_problem_evidence_feed to anon, authenticated, service_role;
