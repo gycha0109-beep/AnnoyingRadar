@@ -49,6 +49,7 @@ export default async function CuratorConsolePage({ searchParams }) {
           <p>{user.email ?? user.id} · {role}</p>
         </div>
         <div className="curator-nav-actions">
+          <Link href="/curator/sources">Source Lab</Link>
           <Link href="/">Public Radar</Link>
           <Link href="/workspace">Workspace</Link>
         </div>
