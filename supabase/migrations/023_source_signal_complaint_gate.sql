@@ -55,6 +55,53 @@ create table if not exists public.ar_source_signal_classifications (
       (input_tokens is null or input_tokens >= 0)
       and (output_tokens is null or output_tokens >= 0)
     ),
+  constraint ar_source_signal_classifications_prefilter_contract
+    check (
+      (
+        prefilter_decision = 'reject'
+        and model_decision is null
+        and final_decision = 'reject'
+      )
+      or (
+        prefilter_decision = 'review'
+        and model_decision is not null
+        and final_decision = 'review'
+      )
+      or (
+        prefilter_decision = 'continue'
+        and model_decision is not null
+        and final_decision = model_decision
+      )
+    ),
+  constraint ar_source_signal_classifications_model_dimension_contract
+    check (
+      model_decision is null
+      or (
+        model_decision = 'pass'
+        and complaint_relevant = 'yes'
+        and first_hand_experience = 'yes'
+        and concrete_friction = 'yes'
+      )
+      or (
+        model_decision = 'reject'
+        and (
+          complaint_relevant = 'no'
+          or first_hand_experience = 'no'
+          or concrete_friction = 'no'
+        )
+      )
+      or (
+        model_decision = 'review'
+        and complaint_relevant <> 'no'
+        and first_hand_experience <> 'no'
+        and concrete_friction <> 'no'
+        and (
+          complaint_relevant = 'uncertain'
+          or first_hand_experience = 'uncertain'
+          or concrete_friction = 'uncertain'
+        )
+      )
+    ),
   constraint ar_source_signal_classifications_pass_contract
     check (
       final_decision <> 'pass'
@@ -122,6 +169,37 @@ create table if not exists public.ar_source_signal_gold_annotations (
     unique (source_signal_id, gold_set_version)
 );
 
+create or replace function public.ar_validate_source_signal_core_evidence()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_raw_text text;
+begin
+  if new.core_evidence is null then
+    return new;
+  end if;
+
+  select raw_text
+    into v_raw_text
+  from public.ar_source_signals
+  where id = new.source_signal_id;
+
+  if v_raw_text is null then
+    raise exception 'Source Signal not found for core evidence validation'
+      using errcode = '23503';
+  end if;
+
+  if position(new.core_evidence in v_raw_text) = 0 then
+    raise exception 'core_evidence must be an exact contiguous Source Signal excerpt'
+      using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$$;
+
 create index if not exists ar_idx_source_signal_classifications_signal_created
   on public.ar_source_signal_classifications (source_signal_id, created_at desc);
 create index if not exists ar_idx_source_signal_classifications_decision_created
@@ -139,6 +217,20 @@ revoke all on table public.ar_source_signal_gold_annotations from public, anon, 
 
 grant select, insert on table public.ar_source_signal_classifications to service_role;
 grant select, insert, update on table public.ar_source_signal_gold_annotations to service_role;
+
+drop trigger if exists ar_trg_source_signal_classification_core_evidence
+  on public.ar_source_signal_classifications;
+create trigger ar_trg_source_signal_classification_core_evidence
+before insert or update of core_evidence, source_signal_id
+on public.ar_source_signal_classifications
+for each row execute function public.ar_validate_source_signal_core_evidence();
+
+drop trigger if exists ar_trg_source_signal_gold_core_evidence
+  on public.ar_source_signal_gold_annotations;
+create trigger ar_trg_source_signal_gold_core_evidence
+before insert or update of core_evidence, source_signal_id
+on public.ar_source_signal_gold_annotations
+for each row execute function public.ar_validate_source_signal_core_evidence();
 
 drop trigger if exists ar_trg_source_signal_gold_updated_at
   on public.ar_source_signal_gold_annotations;
