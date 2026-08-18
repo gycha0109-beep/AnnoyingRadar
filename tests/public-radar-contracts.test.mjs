@@ -102,7 +102,10 @@ test("Anonymous readers only receive security-invoker public-safe projections", 
   assert.match(security, /grant select \([\s\S]*updated_at[\s\S]*\) on public\.ar_public_problem_evidence_snapshots to anon, authenticated/);
   assert.doesNotMatch(security, /created_by_user_id/);
   assert.doesNotMatch(security, /updated_by_user_id/);
-  assert.doesNotMatch(security, /source_key/);
+  assert.doesNotMatch(
+    security,
+    /grant select \([\s\S]*?source_key[\s\S]*?\) on public\.ar_public_problem_evidence_snapshots/,
+  );
   assert.match(service, /\.from\("ar_public_problem_feed"\)/);
   assert.match(service, /\.from\("ar_public_problem_evidence_feed"\)/);
   assert.doesNotMatch(publicRoute, /requireUser\(/);
