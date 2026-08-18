@@ -11,11 +11,11 @@ export async function login(formData) {
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect("/login?error=invalid_credentials");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function logout() {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }
