@@ -112,11 +112,11 @@ export default function SourceSignalComplaintReview({ signal, modelConfigured })
             <small>{(classification.reason_codes ?? []).join(" · ") || "no reason"}</small>
           </div>
         ) : null}
-        <button type="button" onClick={classify} disabled={classifying || !modelConfigured}>
+        <button type="button" onClick={classify} disabled={classifying}>
           {classifying ? "분류 중…" : classification ? "다시 분류" : "Complaint 분류"}
         </button>
         {!modelConfigured ? (
-          <p className="source-warning">OPENAI_COMPLAINT_MODEL 또는 fallback model credential이 없어 live model 분류는 비활성화되어 있습니다.</p>
+          <p className="source-warning">OpenAI credential이 없습니다. deterministic hard-reject는 실행할 수 있지만 모델 판단이 필요한 Signal은 503으로 종료됩니다.</p>
         ) : null}
       </section>
 
