@@ -3,7 +3,7 @@ import Link from "next/link";
 import RawInputDashboard from "./raw-input-dashboard.js";
 import { logout } from "../login/actions.js";
 
-export default function PersonalWorkspace({ user }) {
+export default function PersonalWorkspace({ curatorRole = null, user }) {
   return (
     <main className="stack page-shell">
       <nav className="topbar">
@@ -13,6 +13,7 @@ export default function PersonalWorkspace({ user }) {
         </div>
         <div className="inline-actions">
           <Link className="button-link button-compact" href="/">Public Radar</Link>
+          {curatorRole ? <Link className="button-link button-compact" href="/curator">Curator</Link> : null}
           <Link className="button-link button-compact" href="/projects">Projects</Link>
           <Link className="button-link button-compact" href="/problems">Problem Cards</Link>
           <Link className="button-link button-compact" href="/ideas">Idea Board</Link>
