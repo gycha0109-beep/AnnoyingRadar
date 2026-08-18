@@ -13,6 +13,7 @@ import {
 
 const foundationMigrationPath = new URL("../supabase/migrations/017_public_radar_foundation.sql", import.meta.url);
 const projectionMigrationPath = new URL("../supabase/migrations/018_public_radar_read_projection.sql", import.meta.url);
+const securityMigrationPath = new URL("../supabase/migrations/019_public_radar_security_invoker_views.sql", import.meta.url);
 const publicServicePath = new URL("../lib/radar/service.mjs", import.meta.url);
 const publicListRoutePath = new URL("../app/api/radar/problems/route.js", import.meta.url);
 const adminRoutePath = new URL("../app/api/radar/admin/problems/route.js", import.meta.url);
@@ -34,10 +35,7 @@ test("Public Problem create contract trims content and keeps public metadata sma
 });
 
 test("Public Problem patch rejects lifecycle mutation", () => {
-  assert.throws(
-    () => normalizePublicProblemPatch({ status: "published" }),
-    /unsupported Public Problem field/,
-  );
+  assert.throws(() => normalizePublicProblemPatch({ status: "published" }), /unsupported Public Problem field/);
   assert.equal(normalizePublicProblemStatus("published"), "published");
   assert.throws(() => normalizePublicProblemStatus("merged"), /draft, published, or archived/);
 });
@@ -53,39 +51,29 @@ test("Public Evidence only accepts publishable bases", () => {
   assert.equal(valid.source_key, "threads:example-1");
 
   assert.throws(
-    () => normalizePublicEvidenceCreate({
-      excerpt: "private",
-      publication_basis: "private_research",
-      source_key: "private:1",
-    }),
+    () => normalizePublicEvidenceCreate({ excerpt: "private", publication_basis: "private_research", source_key: "private:1" }),
     /external_public or user_opt_in/,
   );
 });
 
 test("Public Evidence patch allows clearing optional provenance fields", () => {
-  const patch = normalizePublicEvidencePatch({
+  assert.deepEqual(normalizePublicEvidencePatch({ source_url: null, order_index: null }), {
     source_url: null,
     order_index: null,
   });
-  assert.deepEqual(patch, { source_url: null, order_index: null });
 });
 
 test("Public list query bounds anonymous discovery inputs", () => {
-  const params = new URLSearchParams("q=헬스장&category=운동&limit=25");
-  assert.deepEqual(normalizePublicProblemListQuery(params), {
+  assert.deepEqual(normalizePublicProblemListQuery(new URLSearchParams("q=헬스장&category=운동&limit=25")), {
     q: "헬스장",
     category: "운동",
     limit: 25,
   });
-  assert.throws(
-    () => normalizePublicProblemListQuery(new URLSearchParams("limit=500")),
-    /between 1 and 50/,
-  );
+  assert.throws(() => normalizePublicProblemListQuery(new URLSearchParams("limit=500")), /between 1 and 50/);
 });
 
 test("DB contract separates public Radar from private research tables", async () => {
   const migration = await readFile(foundationMigrationPath, "utf8");
-
   assert.match(migration, /create table if not exists public\.ar_radar_curators/);
   assert.match(migration, /create table if not exists public\.ar_public_problems/);
   assert.match(migration, /create table if not exists public\.ar_public_problem_evidence_snapshots/);
@@ -93,30 +81,28 @@ test("DB contract separates public Radar from private research tables", async ()
   assert.match(migration, /status in \('draft', 'published', 'archived'\)/);
   assert.match(migration, /requires at least 2 Evidence snapshots/);
   assert.match(migration, /requires at least 2 distinct source_key values/);
-
   assert.doesNotMatch(migration, /alter table public\.ar_raw_inputs/);
   assert.doesNotMatch(migration, /alter table public\.ar_pain_evidences/);
   assert.doesNotMatch(migration, /alter table public\.ar_problem_candidates/);
 });
 
-test("Anonymous readers only receive public-safe views, not base audit tables", async () => {
-  const [foundation, projection, service, publicRoute, adminRoute] = await Promise.all([
-    readFile(foundationMigrationPath, "utf8"),
+test("Anonymous readers only receive security-invoker public-safe projections", async () => {
+  const [projection, security, service, publicRoute, adminRoute] = await Promise.all([
     readFile(projectionMigrationPath, "utf8"),
+    readFile(securityMigrationPath, "utf8"),
     readFile(publicServicePath, "utf8"),
     readFile(publicListRoutePath, "utf8"),
     readFile(adminRoutePath, "utf8"),
   ]);
 
-  assert.match(foundation, /grant execute on function public\.ar_create_public_problem[\s\S]*to service_role/);
-  assert.match(projection, /revoke select on table public\.ar_public_problems from anon, authenticated/);
-  assert.match(projection, /revoke select on table public\.ar_public_problem_evidence_snapshots from anon, authenticated/);
   assert.match(projection, /create view public\.ar_public_problem_feed/);
-  assert.match(projection, /create view public\.ar_public_problem_evidence_feed/);
-  assert.match(projection, /grant select on table public\.ar_public_problem_feed to anon, authenticated, service_role/);
-  assert.match(projection, /grant select on table public\.ar_public_problem_evidence_feed to anon, authenticated, service_role/);
-  assert.doesNotMatch(projection, /created_by_user_id/);
-  assert.doesNotMatch(projection, /updated_by_user_id/);
+  assert.match(security, /security_invoker = true/);
+  assert.match(security, /revoke all on table public\.ar_public_problems from anon, authenticated/);
+  assert.match(security, /grant select \([\s\S]*search_text[\s\S]*\) on public\.ar_public_problems to anon, authenticated/);
+  assert.match(security, /grant select \([\s\S]*updated_at[\s\S]*\) on public\.ar_public_problem_evidence_snapshots to anon, authenticated/);
+  assert.doesNotMatch(security, /created_by_user_id/);
+  assert.doesNotMatch(security, /updated_by_user_id/);
+  assert.doesNotMatch(security, /source_key/);
   assert.match(service, /\.from\("ar_public_problem_feed"\)/);
   assert.match(service, /\.from\("ar_public_problem_evidence_feed"\)/);
   assert.doesNotMatch(publicRoute, /requireUser\(/);
