@@ -8,7 +8,7 @@ const ROOT = process.cwd();
 const MUTATION_ROUTES = [
   "app/api/raw-inputs/route.js",
   "app/api/raw-inputs/[rawInputId]/route.js",
-  "app/api/raw-inputs/[rawInputId]/evidence/extract/route.js",
+  "app/api/raw-inputs/[rawInputId]/extract/route.js",
   "app/api/raw-inputs/[rawInputId]/evidence/confirm/route.js",
   "app/api/raw-inputs/[rawInputId]/candidates/group/route.js",
   "app/api/raw-inputs/[rawInputId]/complete/route.js",
