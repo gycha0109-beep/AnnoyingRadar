@@ -36,6 +36,11 @@ if (!EXPLICIT_BASE_URL) {
   }
 }
 
+// Phase 15.2 moved the product home to Public Radar. Keep the legacy end-to-end
+// workspace entry only inside this explicit test process so production routing
+// remains anonymous-first while the existing browser workflow stays valid.
+process.env.AR_LIVE_E2E_WORKSPACE_HOME = "1";
+
 const child = spawn(process.execPath, [RUNNER_PATH], {
   cwd: PROJECT_ROOT,
   env: process.env,
