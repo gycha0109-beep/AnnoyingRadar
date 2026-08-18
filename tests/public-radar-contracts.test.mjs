@@ -11,7 +11,9 @@ import {
   normalizePublicProblemStatus,
 } from "../lib/radar/contracts.mjs";
 
-const migrationPath = new URL("../supabase/migrations/017_public_radar_foundation.sql", import.meta.url);
+const foundationMigrationPath = new URL("../supabase/migrations/017_public_radar_foundation.sql", import.meta.url);
+const projectionMigrationPath = new URL("../supabase/migrations/018_public_radar_read_projection.sql", import.meta.url);
+const publicServicePath = new URL("../lib/radar/service.mjs", import.meta.url);
 const publicListRoutePath = new URL("../app/api/radar/problems/route.js", import.meta.url);
 const adminRoutePath = new URL("../app/api/radar/admin/problems/route.js", import.meta.url);
 const designPath = new URL("../docs/phase15-public-radar-domain.md", import.meta.url);
@@ -82,7 +84,7 @@ test("Public list query bounds anonymous discovery inputs", () => {
 });
 
 test("DB contract separates public Radar from private research tables", async () => {
-  const migration = await readFile(migrationPath, "utf8");
+  const migration = await readFile(foundationMigrationPath, "utf8");
 
   assert.match(migration, /create table if not exists public\.ar_radar_curators/);
   assert.match(migration, /create table if not exists public\.ar_public_problems/);
@@ -97,16 +99,26 @@ test("DB contract separates public Radar from private research tables", async ()
   assert.doesNotMatch(migration, /alter table public\.ar_problem_candidates/);
 });
 
-test("Public read is anonymous while writes are curator gated", async () => {
-  const [migration, publicRoute, adminRoute] = await Promise.all([
-    readFile(migrationPath, "utf8"),
+test("Anonymous readers only receive public-safe views, not base audit tables", async () => {
+  const [foundation, projection, service, publicRoute, adminRoute] = await Promise.all([
+    readFile(foundationMigrationPath, "utf8"),
+    readFile(projectionMigrationPath, "utf8"),
+    readFile(publicServicePath, "utf8"),
     readFile(publicListRoutePath, "utf8"),
     readFile(adminRoutePath, "utf8"),
   ]);
 
-  assert.match(migration, /for select to anon, authenticated/);
-  assert.match(migration, /grant select on table public\.ar_public_problems to anon, authenticated, service_role/);
-  assert.match(migration, /grant execute on function public\.ar_create_public_problem[\s\S]*to service_role/);
+  assert.match(foundation, /grant execute on function public\.ar_create_public_problem[\s\S]*to service_role/);
+  assert.match(projection, /revoke select on table public\.ar_public_problems from anon, authenticated/);
+  assert.match(projection, /revoke select on table public\.ar_public_problem_evidence_snapshots from anon, authenticated/);
+  assert.match(projection, /create view public\.ar_public_problem_feed/);
+  assert.match(projection, /create view public\.ar_public_problem_evidence_feed/);
+  assert.match(projection, /grant select on table public\.ar_public_problem_feed to anon, authenticated, service_role/);
+  assert.match(projection, /grant select on table public\.ar_public_problem_evidence_feed to anon, authenticated, service_role/);
+  assert.doesNotMatch(projection, /created_by_user_id/);
+  assert.doesNotMatch(projection, /updated_by_user_id/);
+  assert.match(service, /\.from\("ar_public_problem_feed"\)/);
+  assert.match(service, /\.from\("ar_public_problem_evidence_feed"\)/);
   assert.doesNotMatch(publicRoute, /requireUser\(/);
   assert.doesNotMatch(publicRoute, /createServiceClient\(/);
   assert.match(adminRoute, /requireRadarCurator\(serviceClient\)/);
