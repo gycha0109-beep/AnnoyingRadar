@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { listPublishedPublicProblems } from "../lib/radar/service.mjs";
 import { createServerSupabaseClient } from "../lib/supabase/server.js";
+import WorkspacePage from "./workspace/page.js";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ export default async function HomePage({ searchParams }) {
     listPublishedPublicProblems(supabase, { q, category, limit: 30 }),
   ]);
   const user = authData.user ?? null;
+
+  if (process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" && user) {
+    return <WorkspacePage />;
+  }
 
   const resultTitle = q
     ? `“${q}” 관련 문제`
