@@ -19,13 +19,17 @@ test("product home is anonymous-first Public Radar discovery", async () => {
 });
 
 test("personal Raw Input workflow remains available behind authenticated workspace", async () => {
-  const source = await read("app/workspace/page.js");
+  const [route, workspace] = await Promise.all([
+    read("app/workspace/page.js"),
+    read("app/components/personal-workspace.js"),
+  ]);
 
-  assert.match(source, /RawInputDashboard/);
-  assert.match(source, /supabase\.auth\.getUser\(\)/);
-  assert.match(source, /if \(!user\) redirect\("\/login"\)/);
-  assert.match(source, /Personal Research Workspace/);
-  assert.match(source, /href="\/"[^>]*>Public Radar/);
+  assert.match(route, /supabase\.auth\.getUser\(\)/);
+  assert.match(route, /if \(!user\) redirect\("\/login"\)/);
+  assert.match(route, /<PersonalWorkspace user=\{user\} \/>/);
+  assert.match(workspace, /RawInputDashboard/);
+  assert.match(workspace, /Personal Research Workspace/);
+  assert.match(workspace, /href="\/"[^>]*>Public Radar/);
 });
 
 test("public Problem detail leads with evidence and source provenance", async () => {
@@ -51,7 +55,9 @@ test("production login enters workspace while live E2E compatibility stays expli
   assert.match(actions, /signOut/);
   assert.match(home, /AR_LIVE_E2E_WORKSPACE_HOME === "1" && user/);
   assert.match(bootstrap, /process\.env\.AR_LIVE_E2E_WORKSPACE_HOME = "1"/);
-  assert.doesNotMatch(bootstrap, /PROJECT_PREFERRED_ENV_KEYS[\s\S]*AR_LIVE_E2E_WORKSPACE_HOME/);
+
+  const preferredKeyBlock = bootstrap.match(/PROJECT_PREFERRED_ENV_KEYS = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
+  assert.equal(preferredKeyBlock.includes("AR_LIVE_E2E_WORKSPACE_HOME"), false);
 });
 
 test("Radar presentation keeps internal workflow concepts out of the public home", async () => {
