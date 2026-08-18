@@ -26,7 +26,7 @@ test("personal Raw Input workflow remains available behind authenticated workspa
 
   assert.match(route, /supabase\.auth\.getUser\(\)/);
   assert.match(route, /if \(!user\) redirect\("\/login"\)/);
-  assert.match(route, /<PersonalWorkspace user=\{user\} \/>/);
+  assert.match(route, /<PersonalWorkspace curatorRole=\{curator\?\.role \?\? null\} user=\{user\} \/>/);
   assert.match(workspace, /RawInputDashboard/);
   assert.match(workspace, /Personal Research Workspace/);
   assert.match(workspace, /href="\/"[^>]*>Public Radar/);
