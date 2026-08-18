@@ -25,11 +25,15 @@ try {
 
   const home = await fetch(`${baseUrl}/`);
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /로그인하고 시작/);
+  assert.match(await home.text(), /사람들이 요즘, 무엇을 불편해하고 있을까요\?/);
 
   const login = await fetch(`${baseUrl}/login`);
   assert.equal(login.status, 200);
   assert.match(await login.text(), /로그인/);
+
+  const workspace = await fetch(`${baseUrl}/workspace`, { redirect: "manual" });
+  assert.ok([307, 308].includes(workspace.status), `/workspace: ${workspace.status}`);
+  assert.equal(new URL(workspace.headers.get("location"), baseUrl).pathname, "/login");
 
   for (const protectedPath of [
     "/raw-inputs/11111111-1111-4111-8111-111111111111",
@@ -44,7 +48,7 @@ try {
   assert.equal(recent.status, 401);
   assert.equal((await recent.json()).error?.code, "login_required");
 
-  console.log("RuntimeSmoke: PASS (public pages, protected redirects, unauthenticated API)");
+  console.log("RuntimeSmoke: PASS (Public Radar, protected workspace, unauthenticated API)");
 } finally {
   server.kill("SIGTERM");
 }
