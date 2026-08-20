@@ -59,6 +59,13 @@
   color: #175cd3;
 }
 
+.source-adapter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
 .source-search-form {
   display: grid;
   gap: 16px;
@@ -347,6 +354,7 @@
 }
 
 @media (max-width: 900px) {
+  .source-adapter-grid,
   .source-lab-grid,
   .source-form-row,
   .complaint-tristate-grid {
