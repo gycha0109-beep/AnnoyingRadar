@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import NaverBlogSourceSearchForm from "../../components/naver-blog-source-search-form.js";
 import SourceSignalComplaintReview from "../../components/source-signal-complaint-review.js";
 import ThreadsSourceSearchForm from "../../components/threads-source-search-form.js";
 import {
@@ -51,6 +52,7 @@ export default async function CuratorSourcesPage() {
     process.env.OPENAI_API_KEY
     && (process.env.OPENAI_COMPLAINT_MODEL || process.env.OPENAI_EVIDENCE_MODEL),
   );
+  const naverConfigured = Boolean(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
 
   return (
     <main className="curator-shell source-lab-shell">
@@ -68,13 +70,16 @@ export default async function CuratorSourcesPage() {
 
       <header className="curator-hero">
         <div>
-          <p className="curator-kicker">Source Lab · Phase 15.5</p>
-          <h1>외부 Signal에서 실제 불편만 선별합니다.</h1>
-          <p>수집된 Source Signal을 바로 Problem으로 만들지 않습니다. deterministic prefilter와 Complaint classifier를 거친 뒤, Gold Set으로 사람이 기준을 교정합니다.</p>
+          <p className="curator-kicker">Source Lab · Phase 15.5B</p>
+          <h1>여러 공식 Source에서 실제 문제 신호를 확보합니다.</h1>
+          <p>수집원은 provenance를 보존한 채 Source Signal로만 적재합니다. 검색 결과나 snippet을 바로 Complaint, Pain Evidence, Public Problem으로 승격하지 않습니다.</p>
         </div>
       </header>
 
-      <ThreadsSourceSearchForm configured={Boolean(process.env.THREADS_ACCESS_TOKEN)} />
+      <section className="source-adapter-grid" aria-label="Source adapters">
+        <NaverBlogSourceSearchForm configured={naverConfigured} />
+        <ThreadsSourceSearchForm configured={Boolean(process.env.THREADS_ACCESS_TOKEN)} />
+      </section>
 
       <section className="source-lab-grid">
         <div className="source-lab-panel">
@@ -93,7 +98,7 @@ export default async function CuratorSourcesPage() {
                     <strong>{run.query_text}</strong>
                     <span className={`source-run-status source-run-status-${run.status}`}>{run.status}</span>
                   </div>
-                  <p>{run.search_type} · {run.search_mode} · limit {run.requested_limit}</p>
+                  <p>{run.source_platform} · {run.search_type} · {run.search_mode} · limit {run.requested_limit}</p>
                   <div className="source-run-metrics compact">
                     <span>fetched <strong>{run.fetched_count}</strong></span>
                     <span>new <strong>{run.inserted_count}</strong></span>
@@ -116,7 +121,7 @@ export default async function CuratorSourcesPage() {
             </div>
             <span>{goldStats.total} / 약 300</span>
           </div>
-          <p className="source-lab-copy">실제 Source Signal을 사람이 라벨링한 benchmark입니다. fake production seed를 넣지 않으며, 애매하면 uncertain으로 남깁니다.</p>
+          <p className="source-lab-copy">실제 Source Signal을 사람이 라벨링한 benchmark입니다. source별 표현 차이를 섞되, 화면에 보이지 않는 원문 정보는 추정하지 않습니다.</p>
           <div className="source-run-metrics">
             <span>relevant <strong>{goldStats.yes}</strong></span>
             <span>not relevant <strong>{goldStats.no}</strong></span>
