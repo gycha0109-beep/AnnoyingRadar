@@ -83,12 +83,17 @@ export default function SourceSignalComplaintReview({ signal, modelConfigured })
   return (
     <article className="complaint-review-card">
       <div className="source-result-meta">
-        <span>@{signal.author_handle || "unknown"}</span>
-        <span>{signal.source_platform}</span>
+        <span>{signal.author_handle || "source author unknown"}</span>
+        <span>{signal.source_platform} · {signal.content_scope || "full_content"}</span>
       </div>
       <p className="complaint-signal-text">{signal.raw_text}</p>
+      {signal.content_scope === "search_snippet" ? (
+        <p className="source-warning">
+          이 Signal은 검색 snippet입니다. Gold label과 core evidence는 위에 실제 표시된 문자열만 근거로 작성하고, 링크의 전체 원문 내용을 추정하지 않습니다.
+        </p>
+      ) : null}
       <div className="source-signal-footer">
-        <small>{signal.external_content_id}</small>
+        <small>{signal.acquisition_method || "official_api"} · {signal.external_content_id}</small>
         {signal.canonical_url ? (
           <a href={signal.canonical_url} target="_blank" rel="noreferrer">원문 ↗</a>
         ) : null}
@@ -152,7 +157,7 @@ export default function SourceSignalComplaintReview({ signal, modelConfigured })
           <label><input name="generic_negative_only" type="checkbox" defaultChecked={defaultGold.generic_negative_only} /> generic negative</label>
         </div>
         <label>
-          core evidence — 원문에서 그대로 복사
+          core evidence — 표시된 Source Signal에서 그대로 복사
           <textarea name="core_evidence" rows="2" defaultValue={defaultGold.core_evidence ?? ""} />
         </label>
         <label>
