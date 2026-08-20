@@ -25,7 +25,7 @@ test("Naver blog input maps provider sort into the generic Source Run contract",
     since: null,
     until: null,
     request_metadata: {
-      provider: "naver",
+      provider: "naver_api_hub",
       resource: "blog_search",
       sort: "date",
       start: 51,
@@ -39,14 +39,15 @@ test("Naver blog input maps provider sort into the generic Source Run contract",
   assert.throws(() => normalizeNaverBlogSearchInput({ q: "x", sort: "random" }), /date or sim/);
 });
 
-test("Naver Search API URL contains provider search dimensions but never credentials", () => {
+test("NAVER API HUB blog URL contains provider search dimensions but never credentials", () => {
   const url = buildNaverBlogSearchUrl({ q: "헬스장 환불", sort: "sim", limit: 30, start: 101 });
-  assert.equal(url.origin, "https://openapi.naver.com");
-  assert.equal(url.pathname, "/v1/search/blog.json");
+  assert.equal(url.origin, "https://naverapihub.apigw.ntruss.com");
+  assert.equal(url.pathname, "/search/v1/blog");
   assert.equal(url.searchParams.get("query"), "헬스장 환불");
   assert.equal(url.searchParams.get("display"), "30");
   assert.equal(url.searchParams.get("start"), "101");
   assert.equal(url.searchParams.get("sort"), "sim");
+  assert.equal(url.searchParams.get("format"), "json");
   assert.equal(url.searchParams.has("client_id"), false);
   assert.equal(url.searchParams.has("client_secret"), false);
 });
@@ -71,6 +72,7 @@ test("Naver search markup is normalized without pretending a snippet is full con
   assert.equal(left.content_scope, "search_snippet");
   assert.equal(left.acquisition_method, "official_api");
   assert.equal(left.adapter_version, NAVER_BLOG_ADAPTER_VERSION);
+  assert.equal(left.source_metadata.provider, "naver_api_hub");
   assert.equal(left.external_content_id, right.external_content_id);
   assert.match(left.external_content_id, /^[0-9a-f]{64}$/);
   assert.match(left.content_hash, /^[0-9a-f]{64}$/);
@@ -79,7 +81,7 @@ test("Naver search markup is normalized without pretending a snippet is full con
   assert.equal(left.published_at, "2026-08-19T15:00:00.000Z");
 });
 
-test("Naver adapter keeps credentials in headers and reports usable/skipped signals", async () => {
+test("NAVER API HUB adapter keeps credentials in current APIGW headers", async () => {
   let capturedUrl;
   let capturedOptions;
   const fetchImpl = async (url, options) => {
@@ -115,8 +117,11 @@ test("Naver adapter keeps credentials in headers and reports usable/skipped sign
     { clientId: "client-id", clientSecret: "client-secret", fetchImpl },
   );
 
-  assert.equal(capturedOptions.headers["X-Naver-Client-Id"], "client-id");
-  assert.equal(capturedOptions.headers["X-Naver-Client-Secret"], "client-secret");
+  assert.equal(capturedOptions.headers["X-NCP-APIGW-API-KEY-ID"], "client-id");
+  assert.equal(capturedOptions.headers["X-NCP-APIGW-API-KEY"], "client-secret");
+  assert.equal(capturedOptions.headers["X-Naver-Client-Id"], undefined);
+  assert.equal(capturedOptions.headers["X-Naver-Client-Secret"], undefined);
+  assert.equal(capturedUrl.origin, "https://naverapihub.apigw.ntruss.com");
   assert.equal(capturedUrl.searchParams.has("client-id"), false);
   assert.equal(capturedUrl.searchParams.has("client-secret"), false);
   assert.equal(result.fetched_count, 2);
@@ -135,6 +140,16 @@ test("missing Naver credentials fail closed before network access", async () => 
       && error.code === "naver_blog_not_configured"
       && error.status === 503,
   );
+});
+
+test("legacy NAVER Developers Center endpoint and auth headers cannot return", async () => {
+  const adapter = await read("lib/sources/naver-blog-adapter.mjs");
+  assert.doesNotMatch(adapter, /openapi\.naver\.com/);
+  assert.doesNotMatch(adapter, /X-Naver-Client-Id/);
+  assert.doesNotMatch(adapter, /X-Naver-Client-Secret/);
+  assert.match(adapter, /naverapihub\.apigw\.ntruss\.com/);
+  assert.match(adapter, /X-NCP-APIGW-API-KEY-ID/);
+  assert.match(adapter, /X-NCP-APIGW-API-KEY/);
 });
 
 test("Phase 15.5B migration preserves source boundaries while adding explicit provenance", async () => {

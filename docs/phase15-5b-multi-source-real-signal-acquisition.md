@@ -19,14 +19,26 @@ The Threads official adapter remains implemented, but live verification establis
 
 Therefore Threads remains a future reviewed source instead of the only acquisition dependency.
 
-## Primary source: Naver Blog Search API
+## Primary source: NAVER API HUB Blog Search
 
-Phase 15.5B adds the official Naver Search API blog endpoint as the first accessible Korean-language acquisition source.
+Phase 15.5B uses the official NAVER API HUB Search API blog endpoint as the first accessible Korean-language acquisition source for new applications.
 
-Server credentials:
+Current API contract:
+
+- method: `GET`
+- endpoint: `https://naverapihub.apigw.ntruss.com/search/v1/blog`
+- Client ID header: `X-NCP-APIGW-API-KEY-ID`
+- Client Secret header: `X-NCP-APIGW-API-KEY`
+- response format: JSON
+
+The previous NAVER Developers Center endpoint `https://openapi.naver.com/v1/search/blog.json` and `X-Naver-Client-Id` / `X-Naver-Client-Secret` headers are legacy integration details and are not used by the current adapter.
+
+Server credentials remain named:
 
 - `NAVER_CLIENT_ID`
 - `NAVER_CLIENT_SECRET`
+
+They must be credentials issued from NAVER API HUB, not legacy NAVER Developers Center credentials.
 
 Provider request dimensions:
 
@@ -34,6 +46,7 @@ Provider request dimensions:
 - `sort=date|sim`
 - display, bounded to 50 by Annoying Radar
 - start, bounded to the provider's first 1000 search positions
+- `format=json`
 
 Generic run mapping:
 
@@ -41,10 +54,11 @@ Generic run mapping:
 - `sim` -> `search_type=TOP`
 - `search_mode=KEYWORD`
 - provider-specific `sort`, `start`, and `display` are preserved in `request_metadata`.
+- provider provenance is recorded as `naver_api_hub`.
 
 ## Critical semantic boundary: search snippet is not full content
 
-Naver blog search returns a title, canonical result link, a summarized passage, blog name/link, and post date. Annoying Radar stores the visible title + passage as a Source Signal candidate with:
+NAVER API HUB blog search returns a title, canonical result link, a summarized passage, blog name/link, and post date. Annoying Radar stores the visible title + passage as a Source Signal candidate with:
 
 - `source_platform=naver_blog`
 - `acquisition_method=official_api`
@@ -61,7 +75,7 @@ Source identity is the pair:
 
 `(source_platform, external_content_id)`
 
-Naver blog search has no provider content ID in its search result schema, so `external_content_id` is the SHA-256 digest of the canonical result URL. Threads continues using its provider post ID.
+NAVER API HUB blog search has no provider content ID in its search result schema, so `external_content_id` is the SHA-256 digest of the canonical result URL. Threads continues using its provider post ID.
 
 `persistSourceSignals` dedupes on the full platform + external identity rather than assuming Threads.
 
@@ -88,16 +102,16 @@ No migration in this phase references:
 
 ## Source Lab
 
-`/curator/sources` remains curator-only and now exposes:
+`/curator/sources` remains curator-only and exposes:
 
-1. Naver Blog Search — primary acquisition path.
+1. NAVER API HUB Blog Search — primary acquisition path.
 2. Threads official adapter — retained as a review-dependent future source.
 3. recent ingestion runs with source platform provenance.
 4. the existing Complaint Relevance / Gold Set review queue.
 
 ## Live verification authority
 
-Run after Naver credentials are configured:
+Run after NAVER API HUB credentials are configured:
 
 ```bash
 npm run verify:naver:live
@@ -131,6 +145,7 @@ Phase 15.5B does not:
 - crawl Naver blog pages for full text;
 - treat search snippets as full original posts;
 - bypass Meta App Review;
+- use the legacy NAVER Developers Center Search contract for new credentials;
 - create fake production seeds;
 - auto-promote Source Signals into Pain Evidence or Problems;
 - enable Vercel automatic production deployment.
