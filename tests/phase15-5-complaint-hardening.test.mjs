@@ -28,14 +28,16 @@ test("Gold annotations require a human reviewer and classification provenance is
   assert.match(migration, /model_decision is not null[\s\S]*confidence is not null/);
 });
 
-test("Gold review queue can progress beyond the first page by prioritizing unlabeled signals", async () => {
+test("Gold review queue can progress across the real acquisition pool while prioritizing unlabeled signals", async () => {
   const service = await readFile(
     new URL("../lib/sources/complaint-service.mjs", import.meta.url),
     "utf8",
   );
 
-  assert.match(service, /GOLD_REVIEW_CANDIDATE_LIMIT = 500/);
+  assert.match(service, /GOLD_REVIEW_CANDIDATE_LIMIT = 1000/);
+  assert.match(service, /REVIEW_LOOKUP_CHUNK_SIZE = 200/);
   assert.match(service, /Boolean\(left\.gold_annotation\)/);
+  assert.match(service, /reviewOrderHash/);
   assert.match(service, /queue\.slice\(0, boundedLimit\)/);
 });
 
