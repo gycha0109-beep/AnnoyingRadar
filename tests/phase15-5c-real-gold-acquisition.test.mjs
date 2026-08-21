@@ -43,18 +43,25 @@ test("Gold benchmark contract is exactly 300 = 200 calibration + 100 locked hold
   assert.equal(GOLD_CALIBRATION_SIZE + GOLD_HOLDOUT_SIZE, GOLD_BENCHMARK_SIZE);
 });
 
-test("benchmark migration makes membership immutable to app roles and freezes Gold annotations", async () => {
-  const migration = await read("supabase/migrations/026_real_gold_acquisition_campaign.sql");
+test("benchmark migrations make membership append-only and freeze Gold annotations", async () => {
+  const [migration, hardening] = await Promise.all([
+    read("supabase/migrations/026_real_gold_acquisition_campaign.sql"),
+    read("supabase/migrations/027_real_gold_benchmark_grant_hardening.sql"),
+  ]);
   assert.match(migration, /create table if not exists public\.ar_source_signal_gold_benchmark_memberships/);
   assert.match(migration, /evaluation_partition in \('calibration', 'holdout'\)/);
   assert.match(migration, /unique \(benchmark_version, source_signal_id\)/);
   assert.match(migration, /unique \(benchmark_version, sample_rank\)/);
   assert.match(migration, /enable row level security/);
-  assert.match(migration, /revoke all on table public\.ar_source_signal_gold_benchmark_memberships\s+from public, anon, authenticated/);
+  assert.match(migration, /revoke all on table public\.ar_source_signal_gold_benchmark_memberships\s+from public, anon, authenticated, service_role/);
   assert.match(migration, /grant select, insert on table public\.ar_source_signal_gold_benchmark_memberships\s+to service_role/);
   assert.match(migration, /Frozen Gold benchmark annotations are immutable/);
   assert.match(migration, /if tg_op = 'DELETE' then\s+return old;\s+end if;\s+return new;/);
   assert.doesNotMatch(migration, /ar_raw_inputs|ar_pain_evidences|ar_public_problems/);
+
+  assert.match(hardening, /revoke all on table public\.ar_source_signal_gold_benchmark_memberships\s+from public, anon, authenticated, service_role/);
+  assert.match(hardening, /grant select, insert on table public\.ar_source_signal_gold_benchmark_memberships\s+to service_role/);
+  assert.doesNotMatch(hardening, /grant[^;]*(?:delete|update|truncate)/i);
 });
 
 test("campaign runner is resumable, provenance-preserving, and never turns a thin pool into PASS", async () => {
