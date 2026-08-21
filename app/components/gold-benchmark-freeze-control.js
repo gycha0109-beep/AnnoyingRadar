@@ -32,7 +32,7 @@ export default function GoldBenchmarkFreezeControl({ benchmark }) {
   const ready = benchmark.annotated >= benchmark.target;
 
   return (
-    <div className="gold-freeze-control">
+    <div className="complaint-gold-form gold-freeze-control">
       <div className="source-run-metrics">
         <span>annotated <strong>{benchmark.annotated}</strong> / {benchmark.target}</span>
         <span>calibration <strong>{benchmark.calibration}</strong> / {benchmark.calibration_target}</span>
