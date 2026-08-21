@@ -39,7 +39,7 @@ create index if not exists ar_idx_source_signal_gold_benchmark_partition
 alter table public.ar_source_signal_gold_benchmark_memberships enable row level security;
 
 revoke all on table public.ar_source_signal_gold_benchmark_memberships
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 grant select, insert on table public.ar_source_signal_gold_benchmark_memberships
   to service_role;
 
