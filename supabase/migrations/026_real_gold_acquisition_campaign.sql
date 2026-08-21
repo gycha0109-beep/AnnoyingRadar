@@ -65,7 +65,10 @@ begin
       using errcode = '23514';
   end if;
 
-  return old;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $$;
 
