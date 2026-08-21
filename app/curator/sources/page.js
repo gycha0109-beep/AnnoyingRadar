@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import GoldBenchmarkFreezeControl from "../../components/gold-benchmark-freeze-control.js";
 import NaverBlogSourceSearchForm from "../../components/naver-blog-source-search-form.js";
 import SourceSignalComplaintReview from "../../components/source-signal-complaint-review.js";
 import ThreadsSourceSearchForm from "../../components/threads-source-search-form.js";
@@ -8,6 +9,10 @@ import {
   getComplaintGoldStats,
   listSourceSignalReviewQueue,
 } from "../../../lib/sources/complaint-service.mjs";
+import {
+  getGoldBenchmarkStats,
+  getGoldCampaignProgress,
+} from "../../../lib/sources/gold-campaign.mjs";
 import { listRecentSourceIngestionRuns } from "../../../lib/sources/service.mjs";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
 import { createServiceClient } from "../../../lib/supabase/service.js";
@@ -43,10 +48,12 @@ function formatTime(value) {
 
 export default async function CuratorSourcesPage() {
   const { user, role, serviceClient } = await loadCuratorContext();
-  const [runs, reviewQueue, goldStats] = await Promise.all([
+  const [runs, reviewQueue, goldStats, campaignProgress, benchmarkStats] = await Promise.all([
     listRecentSourceIngestionRuns(serviceClient, { limit: 20 }),
     listSourceSignalReviewQueue(serviceClient, { limit: 30 }),
     getComplaintGoldStats(serviceClient),
+    getGoldCampaignProgress(serviceClient),
+    getGoldBenchmarkStats(serviceClient),
   ]);
   const modelConfigured = Boolean(
     process.env.OPENAI_API_KEY
@@ -70,11 +77,34 @@ export default async function CuratorSourcesPage() {
 
       <header className="curator-hero">
         <div>
-          <p className="curator-kicker">Source Lab · Phase 15.5B</p>
-          <h1>여러 공식 Source에서 실제 문제 신호를 확보합니다.</h1>
-          <p>수집원은 provenance를 보존한 채 Source Signal로만 적재합니다. 검색 결과나 snippet을 바로 Complaint, Pain Evidence, Public Problem으로 승격하지 않습니다.</p>
+          <p className="curator-kicker">Source Lab · Phase 15.5C</p>
+          <h1>실제 Source Signal pool과 Gold benchmark를 고정합니다.</h1>
+          <p>수집 캠페인은 complaint-heavy, domain friction, neutral, noise 표본을 함께 확보합니다. Source Signal은 Gold 검토 전후에도 Raw Input, Pain Evidence, Public Problem과 분리됩니다.</p>
         </div>
       </header>
+
+      <section className="source-lab-panel" aria-labelledby="gold-campaign-title">
+        <div className="source-lab-heading">
+          <div>
+            <p className="curator-kicker">Real Gold Acquisition Campaign</p>
+            <h2 id="gold-campaign-title">수집 캠페인 진행률</h2>
+          </div>
+          <span>{campaignProgress.completed_queries} / {campaignProgress.planned_queries} queries</span>
+        </div>
+        <p className="source-lab-copy">고정 query plan은 약 800개의 검색 결과 기회를 만들고, 실제 중복 제거 후 최소 600개의 review pool을 목표로 합니다. 완료된 query는 재실행 시 건너뛰어 캠페인을 안전하게 이어서 실행할 수 있습니다.</p>
+        <div className="source-run-metrics">
+          <span>unique pool <strong>{campaignProgress.unique_signal_pool}</strong></span>
+          <span>fetched <strong>{campaignProgress.fetched_total}</strong></span>
+          <span>new <strong>{campaignProgress.inserted_total}</strong></span>
+          <span>duplicate <strong>{campaignProgress.duplicate_total}</strong></span>
+          <span>failed <strong>{campaignProgress.failed_runs}</strong></span>
+        </div>
+        <p className={campaignProgress.unique_signal_pool >= 600 ? "source-configured" : "source-warning"}>
+          {campaignProgress.unique_signal_pool >= 600
+            ? "Gold labeling pool target reached."
+            : `Gold labeling 전 권장 pool까지 ${Math.max(0, 600 - campaignProgress.unique_signal_pool)}개가 더 필요합니다.`}
+        </p>
+      </section>
 
       <section className="source-adapter-grid" aria-label="Source adapters">
         <NaverBlogSourceSearchForm configured={naverConfigured} />
@@ -119,15 +149,16 @@ export default async function CuratorSourcesPage() {
               <p className="curator-kicker">Gold Set v0.1</p>
               <h2>Human benchmark</h2>
             </div>
-            <span>{goldStats.total} / 약 300</span>
+            <span>{goldStats.total} / 300</span>
           </div>
-          <p className="source-lab-copy">실제 Source Signal을 사람이 라벨링한 benchmark입니다. source별 표현 차이를 섞되, 화면에 보이지 않는 원문 정보는 추정하지 않습니다.</p>
+          <p className="source-lab-copy">실제 Source Signal을 사람이 라벨링한 benchmark입니다. 화면에 보이지 않는 원문 정보는 추정하지 않고, 300개가 준비되면 calibration 200 / locked holdout 100으로 한 번만 고정합니다.</p>
           <div className="source-run-metrics">
             <span>relevant <strong>{goldStats.yes}</strong></span>
             <span>not relevant <strong>{goldStats.no}</strong></span>
             <span>uncertain <strong>{goldStats.uncertain}</strong></span>
           </div>
-          <p className="source-warning">Gold benchmark가 충분히 쌓이고 precision/recall을 검증하기 전에는 classifier pass를 Pain Evidence나 Public Problem으로 자동 승격하지 않습니다.</p>
+          <GoldBenchmarkFreezeControl benchmark={benchmarkStats} />
+          <p className="source-warning">Holdout은 freeze 후 review queue에서 숨겨지고, benchmark에 포함된 Gold label은 DB trigger로 수정이 차단됩니다. classifier tuning은 calibration partition만 사용해야 합니다.</p>
         </div>
       </section>
 
@@ -135,7 +166,7 @@ export default async function CuratorSourcesPage() {
         <div className="source-lab-heading">
           <div>
             <p className="curator-kicker">Complaint Relevance Gate</p>
-            <h2 id="complaint-review-title">최근 Source Signal 검토</h2>
+            <h2 id="complaint-review-title">Source Signal Gold 검토</h2>
           </div>
           <span>{reviewQueue.length}개</span>
         </div>
@@ -152,7 +183,7 @@ export default async function CuratorSourcesPage() {
             ))}
           </div>
         ) : (
-          <p className="source-empty">저장된 Source Signal이 없습니다. Source Adapter로 실제 Signal이 들어오면 여기서 Gold label과 classifier 결과를 검토할 수 있습니다.</p>
+          <p className="source-empty">검토 가능한 Source Signal이 없습니다. 수집 캠페인을 실행하거나 benchmark freeze 상태를 확인하십시오.</p>
         )}
       </section>
     </main>
