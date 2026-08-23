@@ -201,7 +201,7 @@ test("classification and Gold mutation endpoints are curator-only and do not pro
   assert.doesNotMatch(service, /ar_pain_evidences|ar_public_problems/);
 });
 
-test("legacy complaint review remains historical while active Source Lab uses blind human evaluation", async () => {
+test("legacy complaint review remains historical while active Source Lab uses no-LLM admission plus blind human evaluation", async () => {
   const [page, legacyComponent, blindPage, blindCard, vercel] = await Promise.all([
     read("app/curator/sources/page.js"),
     read("app/components/source-signal-complaint-review.js"),
@@ -209,7 +209,8 @@ test("legacy complaint review remains historical while active Source Lab uses bl
     read("app/components/blind-evaluation-card.js"),
     read("vercel.json"),
   ]);
-  assert.match(page, /Phase 15\.5D/);
+  assert.match(page, /Phase 15\.5E/);
+  assert.match(page, /No-LLM Source Admission/);
   assert.match(page, /BlindEvaluationControl/);
   assert.doesNotMatch(page, /SourceSignalComplaintReview/);
   assert.match(legacyComponent, /complaint_relevant/);
