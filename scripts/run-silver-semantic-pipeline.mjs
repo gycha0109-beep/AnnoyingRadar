@@ -2,9 +2,11 @@ import { strict as assert } from "node:assert";
 
 import { createServiceClient } from "../lib/supabase/service.js";
 import { getEvaluationSampleIds, loadCampaignPool } from "../lib/sources/blind-evaluation.mjs";
+import { runDeterministicComplaintPrefilter } from "../lib/sources/complaint-contracts.mjs";
 import { COMPLAINT_SILVER_VERSION } from "../lib/sources/semantic-contracts.mjs";
 import { classifySourceSignalToSilver } from "../lib/sources/semantic-gate.mjs";
 
+const LOOKUP_CHUNK_SIZE = 150;
 const serviceClient = createServiceClient();
 const estimateOnly = process.argv.includes("--estimate-only");
 const pool = await loadCampaignPool(serviceClient);
@@ -25,6 +27,7 @@ console.log(`[silver-semantic] blind_evaluation_excluded=${evaluationIds.size}`)
 console.log(`[silver-semantic] eligible=${eligibleIds.length} completed=${completed.size} pending=${pending.length}`);
 
 if (estimateOnly) {
+  const estimate = await estimateExternalModelCalls(serviceClient, pending);
   console.log(JSON.stringify({
     status: "ESTIMATE_ONLY",
     campaign_pool: pool.signalIds.length,
@@ -32,7 +35,11 @@ if (estimateOnly) {
     eligible: eligibleIds.length,
     completed: completed.size,
     pending: pending.length,
-    external_model_calls: `between ${pending.length} and ${pending.length * 2}, depending on secondary-judge escalation`,
+    deterministic_hard_rejects: estimate.hardRejects,
+    model_eligible_pending: estimate.modelEligible,
+    external_model_calls_min: estimate.modelEligible,
+    external_model_calls_max: estimate.modelEligible * 2,
+    note: "Every non-hard-reject needs one primary judge call; only selectively escalated cases need a second call.",
   }, null, 2));
   process.exit(0);
 }
@@ -65,6 +72,22 @@ console.log(JSON.stringify({
   processed_this_run: processed,
   silver_total: afterCount ?? 0,
   failures,
-  invariant: "Blind human evaluation signals are excluded and DB-guarded while labeling is open",
+  invariant: "Blind human evaluation signals are excluded and every AI classification path is DB-guarded while labeling is open",
 }, null, 2));
 if (status !== "PASS") process.exitCode = 1;
+
+async function estimateExternalModelCalls(client, signalIds) {
+  if (signalIds.length === 0) return { hardRejects: 0, modelEligible: 0 };
+  const rows = [];
+  for (let index = 0; index < signalIds.length; index += LOOKUP_CHUNK_SIZE) {
+    const chunk = signalIds.slice(index, index + LOOKUP_CHUNK_SIZE);
+    const { data, error } = await client
+      .from("ar_source_signals")
+      .select("id, raw_text, is_quote_post")
+      .in("id", chunk);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+  }
+  const hardRejects = rows.filter((signal) => runDeterministicComplaintPrefilter(signal).decision === "reject").length;
+  return { hardRejects, modelEligible: rows.length - hardRejects };
+}
