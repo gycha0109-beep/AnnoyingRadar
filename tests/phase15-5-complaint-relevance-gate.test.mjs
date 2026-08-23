@@ -201,18 +201,23 @@ test("classification and Gold mutation endpoints are curator-only and do not pro
   assert.doesNotMatch(service, /ar_pain_evidences|ar_public_problems/);
 });
 
-test("Source Lab exposes human review while Vercel automatic deployment remains locked", async () => {
-  const [page, component, vercel] = await Promise.all([
+test("legacy complaint review remains historical while active Source Lab uses blind human evaluation", async () => {
+  const [page, legacyComponent, blindPage, blindCard, vercel] = await Promise.all([
     read("app/curator/sources/page.js"),
     read("app/components/source-signal-complaint-review.js"),
+    read("app/curator/sources/evaluation/page.js"),
+    read("app/components/blind-evaluation-card.js"),
     read("vercel.json"),
   ]);
-  assert.match(page, /Complaint Relevance Gate/);
-  assert.match(page, /Gold Set v0\.1/);
-  assert.match(page, /SourceSignalComplaintReview/);
-  assert.match(component, /complaint_relevant/);
-  assert.match(component, /first_hand_experience/);
-  assert.match(component, /concrete_friction/);
+  assert.match(page, /Phase 15\.5D/);
+  assert.match(page, /BlindEvaluationControl/);
+  assert.doesNotMatch(page, /SourceSignalComplaintReview/);
+  assert.match(legacyComponent, /complaint_relevant/);
+  assert.match(blindPage, /getNextBlindEvaluation/);
+  assert.match(blindCard, /problem claim/);
+  assert.match(blindCard, /experience actor/);
+  assert.match(blindCard, /friction specificity/);
+  assert.doesNotMatch(blindCard, /\/classify/);
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
 
