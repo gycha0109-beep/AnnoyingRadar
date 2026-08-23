@@ -16,18 +16,18 @@ function naverSignal(title, description = "") {
   };
 }
 
-test("NAVER source admission is title-first and snippet cannot promote incidental pain", () => {
+test("incidental complaint phrase in a daily post cannot become a candidate", () => {
   const dailyPost = naverSignal(
     "so what? we hot we young",
-    "피규어충동구매햇는데환불안됨 하..나 연금복권 다섯장 샀는데 다 낙첨이야",
+    "(피규어충동구매햇는데환불안됨) 하..나 연금복권 다섯장 샀는데 다 낙첨이야 너네가 내 로또니까 날 먹여살리도록",
   );
   const result = classifySourceAdmission(dailyPost);
-  assert.equal(result.decision, "review");
-  assert.equal(result.requires_full_context, true);
-  assert.ok(result.reason_codes.includes("title_not_complaint_central"));
+  assert.equal(result.decision, "reject");
+  assert.equal(result.requires_full_context, false);
+  assert.ok(result.reason_codes.includes("snippet_incidental_complaint_only"));
 });
 
-test("information/guide framing hard rejects even when snippet contains first-hand friction", () => {
+test("information/guide title hard rejects even when snippet contains first-hand friction", () => {
   const signal = naverSignal(
     "카카오톡 로그인 오류·계정 도용·결제 문제, 상황별 해결 경로 정리 직접 해봤어요",
     "저도 일시적인 오류 때문에 로그인 안 될 때가 있었어요.",
@@ -59,10 +59,10 @@ test("health how-to title is information, not complaint-central source", () => {
   assert.ok(result.reason_codes.includes("title_information_or_guide"));
 });
 
-test("neutral refund review stays context-review while explicit failure title becomes candidate", () => {
+test("refund review remains context-review while explicit refund failure title becomes candidate", () => {
   const ambiguous = classifySourceAdmission(naverSignal(
     "여기어때 오키나와 숙소 태풍 결항 환불 후기",
-    "무사히 환불 끝냈으니 내년 여행을 노려봐야겠다",
+    "출국편 결항 의심될 땐 플랜B를 마련하자. 무사히 환불 끝냈으니 내년 여행을 노려봐야겠다",
   ));
   assert.equal(ambiguous.decision, "review");
   assert.equal(ambiguous.requires_full_context, true);
@@ -75,10 +75,27 @@ test("neutral refund review stays context-review while explicit failure title be
   assert.ok(explicit.reason_codes.includes("title_explicit_complaint"));
 });
 
+test("snippet may demote but never promote a neutral NAVER title", () => {
+  const strongSnippet = classifySourceAdmission(naverSignal(
+    "벼락치기",
+    "저 헬스장 존나 비추. 직원 싸가지부터 별로였고 결국 환불받음",
+  ));
+  assert.equal(strongSnippet.decision, "review");
+  assert.equal(strongSnippet.requires_full_context, true);
+});
+
 test("provider title is authoritative over retrieval description", () => {
   const signal = naverSignal("고객센터 전화번호 총정리", "환불이 안 돼서 너무 화가 났다");
   assert.equal(extractSourceTitle(signal), "고객센터 전화번호 총정리");
   assert.equal(classifySourceAdmission(signal).decision, "reject");
+});
+
+test("Source Lab uses campaign development pool and excludes blind 120 from admission views", async () => {
+  const service = await read("lib/sources/service.mjs");
+  assert.match(service, /loadCampaignPool/);
+  assert.match(service, /getEvaluationSampleIds/);
+  assert.match(service, /filter\(\(id\) => !evaluationIds\.has\(id\)\)/);
+  assert.match(service, /blindExcluded: evaluationIds\.size/);
 });
 
 test("Source Lab makes no-LLM admission active and paid Silver requires explicit opt-in", async () => {
@@ -89,6 +106,7 @@ test("Source Lab makes no-LLM admission active and paid Silver requires explicit
   assert.match(page, /No-LLM Source Admission/);
   assert.match(page, /snippet 한 문장만으로 complaint candidate를 만들지 않습니다/);
   assert.match(page, /AI Silver는 active admission path가 아닙니다/);
+  assert.match(page, /Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다/);
   assert.doesNotMatch(page, /npm run classify:silver:live/);
   assert.match(runner, /ALLOW_PAID_SILVER_LLM/);
   assert.match(runner, /disabled by default/);
