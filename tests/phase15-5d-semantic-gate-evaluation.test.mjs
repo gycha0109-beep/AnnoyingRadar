@@ -70,7 +70,10 @@ test("blind evaluation contract is 120 = 60 representative + 60 challenge with f
 });
 
 test("DB contract separates AI Silver from blind human authority and blocks AI leakage while labeling", async () => {
-  const migration = await read("supabase/migrations/028_semantic_gate_blind_evaluation.sql");
+  const [migration, hardening] = await Promise.all([
+    read("supabase/migrations/028_semantic_gate_blind_evaluation.sql"),
+    read("supabase/migrations/029_blind_legacy_classifier_guard.sql"),
+  ]);
   assert.match(migration, /ar_source_signal_semantic_judgments/);
   assert.match(migration, /ar_source_signal_silver_annotations/);
   assert.match(migration, /annotation_authority = 'ai_silver'/);
@@ -80,6 +83,9 @@ test("DB contract separates AI Silver from blind human authority and blocks AI l
   assert.match(migration, /Evaluation sample contract must be 60 representative \+ 60 challenge \(15\/20\/10\/15\)/);
   assert.match(migration, /revoke all on table public\.ar_source_signal_semantic_judgments from public, anon, authenticated, service_role/);
   assert.match(migration, /grant select, insert on table public\.ar_source_signal_semantic_judgments to service_role/);
+  assert.match(hardening, /ar_trg_legacy_classification_blind_guard/);
+  assert.match(hardening, /on public\.ar_source_signal_classifications/);
+  assert.match(hardening, /ar_guard_blind_evaluation_from_ai\(\)/);
   assert.doesNotMatch(migration, /ar_raw_inputs|ar_pain_evidences|ar_public_problems/);
 });
 
@@ -94,12 +100,16 @@ test("semantic provider never asks the model to decide product gate status", asy
   assert.doesNotMatch(provider, /decision: \{ type: "string"/);
 });
 
-test("Silver runner refuses live labeling before the blind sample is fixed and supports estimate-only", async () => {
+test("Silver runner refuses live labeling before blind sampling and estimates only model-eligible calls", async () => {
   const runner = await read("scripts/run-silver-semantic-pipeline.mjs");
   assert.match(runner, /--estimate-only/);
   assert.match(runner, /assert\.equal\(evaluationIds\.size, 120/);
   assert.match(runner, /blind_evaluation_excluded/);
-  assert.match(runner, /between \$\{pending\.length\} and \$\{pending\.length \* 2\}/);
+  assert.match(runner, /runDeterministicComplaintPrefilter/);
+  assert.match(runner, /deterministic_hard_rejects/);
+  assert.match(runner, /external_model_calls_min: estimate\.modelEligible/);
+  assert.match(runner, /external_model_calls_max: estimate\.modelEligible \* 2/);
+  assert.match(runner, /LOOKUP_CHUNK_SIZE = 150/);
 });
 
 test("blind labeling UI is one-card, keyboard-first, and contains no classifier/Silver read", async () => {
