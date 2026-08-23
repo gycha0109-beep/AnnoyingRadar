@@ -62,7 +62,7 @@ export default async function CuratorSourcesPage() {
         <div>
           <p className="curator-kicker">Source Lab · Phase 15.5E</p>
           <h1>Source admission은 LLM 없이 title-first로 판단합니다.</h1>
-          <p>NAVER Search description은 검색어에 맞춰 잘린 retrieval artifact입니다. snippet 한 문장만으로 complaint candidate를 만들지 않습니다.</p>
+          <p>NAVER Search description은 검색어 주변을 잘라낸 retrieval artifact입니다. snippet 한 문장만으로 complaint candidate를 만들지 않습니다.</p>
         </div>
       </header>
 
@@ -88,13 +88,15 @@ export default async function CuratorSourcesPage() {
           <p className="curator-kicker">No-LLM Source Admission</p>
           <h2>Title-first admission</h2>
           <div className="source-run-metrics">
-            <span>total <strong>{admission.total}</strong></span>
+            <span>campaign <strong>{admission.campaign_pool}</strong></span>
+            <span>blind excluded <strong>{admission.blind_excluded}</strong></span>
+            <span>development <strong>{admission.eligible}</strong></span>
             <span>candidate <strong>{admission.candidate}</strong></span>
             <span>review <strong>{admission.review}</strong></span>
             <span>reject <strong>{admission.reject}</strong></span>
             <span>full-context <strong>{admission.full_context_required}</strong></span>
           </div>
-          <p className="source-lab-copy">정보/가이드·긍정 후기 제목은 조기 제외하고, 명시적 complaint 제목만 candidate로 올립니다. 제목이 불완전하거나 애매하면 원문 확인 queue로 보냅니다.</p>
+          <p className="source-lab-copy">정보/가이드·긍정 후기 제목은 조기 제외하고, 명시적 complaint 제목만 candidate로 올립니다. snippet은 애매한 결과를 노이즈로 내릴 수만 있고 candidate로 승격할 수 없습니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
           <Link href="/curator/sources/admission">Admission queue 보기</Link>
         </div>
 
@@ -109,7 +111,7 @@ export default async function CuratorSourcesPage() {
       <section className="source-lab-panel">
         <p className="curator-kicker">Historical / Experimental</p>
         <h2>AI Silver는 active admission path가 아닙니다.</h2>
-        <p className="source-lab-copy">Phase 15.5D semantic/Silver 코드는 재현성과 역사적 검증을 위해 남겨두지만, Source ingestion마다 외부 LLM을 호출하는 운영 경로로 사용하지 않습니다.</p>
+        <p className="source-lab-copy">Phase 15.5D semantic/Silver 코드는 재현성과 역사적 검증을 위해 남겨두지만, Source ingestion마다 외부 LLM을 호출하는 운영 경로로 사용하지 않습니다. 유료 Silver runner도 명시적 opt-in 없이는 실행되지 않습니다.</p>
       </section>
 
       <section className="source-adapter-grid" aria-label="Source adapters">
