@@ -9,6 +9,7 @@ import { classifySourceSignalToSilver } from "../lib/sources/semantic-gate.mjs";
 const LOOKUP_CHUNK_SIZE = 150;
 const serviceClient = createServiceClient();
 const estimateOnly = process.argv.includes("--estimate-only");
+const paidLlmOptIn = process.env.ALLOW_PAID_SILVER_LLM === "true";
 const pool = await loadCampaignPool(serviceClient);
 const evaluationIds = await getEvaluationSampleIds(serviceClient);
 const eligibleIds = pool.signalIds.filter((id) => !evaluationIds.has(id));
@@ -39,12 +40,19 @@ if (estimateOnly) {
     model_eligible_pending: estimate.modelEligible,
     external_model_calls_min: estimate.modelEligible,
     external_model_calls_max: estimate.modelEligible * 2,
-    note: "Every non-hard-reject needs one primary judge call; only selectively escalated cases need a second call.",
+    paid_live_opt_in_required: true,
+    note: "Historical/experimental Silver only. Active source admission is deterministic and no-LLM.",
   }, null, 2));
   process.exit(0);
 }
 
 assert.equal(evaluationIds.size, 120, "Blind evaluation set must be initialized before Silver labeling");
+assert.equal(
+  paidLlmOptIn,
+  true,
+  "Paid Silver LLM execution is disabled by default. Set ALLOW_PAID_SILVER_LLM=true only for an explicitly approved experiment.",
+);
+
 const failures = [];
 let processed = 0;
 for (const signalId of pending) {
@@ -83,7 +91,7 @@ async function estimateExternalModelCalls(client, signalIds) {
     const chunk = signalIds.slice(index, index + LOOKUP_CHUNK_SIZE);
     const { data, error } = await client
       .from("ar_source_signals")
-      .select("id, raw_text, is_quote_post")
+      .select("id, source_platform, raw_text, source_metadata, is_quote_post")
       .in("id", chunk);
     if (error) throw error;
     rows.push(...(data ?? []));

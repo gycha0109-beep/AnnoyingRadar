@@ -6,8 +6,7 @@ import NaverBlogSourceSearchForm from "../../components/naver-blog-source-search
 import ThreadsSourceSearchForm from "../../components/threads-source-search-form.js";
 import { getBlindEvaluationProgress } from "../../../lib/sources/blind-evaluation.mjs";
 import { getGoldCampaignProgress } from "../../../lib/sources/gold-campaign.mjs";
-import { getSilverStats } from "../../../lib/sources/semantic-gate.mjs";
-import { listRecentSourceIngestionRuns } from "../../../lib/sources/service.mjs";
+import { getSourceAdmissionStats, listRecentSourceIngestionRuns } from "../../../lib/sources/service.mjs";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
 import { createServiceClient } from "../../../lib/supabase/service.js";
 
@@ -37,11 +36,11 @@ function formatTime(value) {
 
 export default async function CuratorSourcesPage() {
   const { user, role, serviceClient } = await loadCuratorContext();
-  const [runs, campaignProgress, evaluation, silver] = await Promise.all([
+  const [runs, campaignProgress, evaluation, admission] = await Promise.all([
     listRecentSourceIngestionRuns(serviceClient, { limit: 20 }),
     getGoldCampaignProgress(serviceClient),
     getBlindEvaluationProgress(serviceClient),
-    getSilverStats(serviceClient),
+    getSourceAdmissionStats(serviceClient),
   ]);
   const naverConfigured = Boolean(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
 
@@ -61,9 +60,9 @@ export default async function CuratorSourcesPage() {
 
       <header className="curator-hero">
         <div>
-          <p className="curator-kicker">Source Lab · Phase 15.5D</p>
-          <h1>Semantic Gate와 blind human evaluation을 분리합니다.</h1>
-          <p>LLM은 semantic facts만 관찰하고 PASS/REVIEW/REJECT는 deterministic code가 결정합니다. AI Silver와 human evaluation은 서로 다른 authority입니다.</p>
+          <p className="curator-kicker">Source Lab · Phase 15.5E</p>
+          <h1>Source admission은 LLM 없이 title-first로 판단합니다.</h1>
+          <p>NAVER Search description은 검색어 주변을 잘라낸 retrieval artifact입니다. snippet 한 문장만으로 complaint candidate를 만들지 않습니다.</p>
         </div>
       </header>
 
@@ -86,24 +85,33 @@ export default async function CuratorSourcesPage() {
 
       <section className="source-lab-grid">
         <div className="source-lab-panel">
-          <p className="curator-kicker">Blind Human Evaluation</p>
-          <h2>Representative 60 + Challenge 60</h2>
-          <p className="source-lab-copy">샘플은 classifier/Silver 결과와 무관하게 acquisition provenance만으로 먼저 고정됩니다. labeling 상태에서는 DB trigger가 이 120개에 AI judgment/Silver INSERT를 거부합니다.</p>
-          <BlindEvaluationControl evaluation={evaluation} />
+          <p className="curator-kicker">No-LLM Source Admission</p>
+          <h2>Title-first admission</h2>
+          <div className="source-run-metrics">
+            <span>campaign <strong>{admission.campaign_pool}</strong></span>
+            <span>blind excluded <strong>{admission.blind_excluded}</strong></span>
+            <span>development <strong>{admission.eligible}</strong></span>
+            <span>candidate <strong>{admission.candidate}</strong></span>
+            <span>review <strong>{admission.review}</strong></span>
+            <span>reject <strong>{admission.reject}</strong></span>
+            <span>full-context <strong>{admission.full_context_required}</strong></span>
+          </div>
+          <p className="source-lab-copy">정보/가이드·긍정 후기 제목은 조기 제외하고, 명시적 complaint 제목만 candidate로 올립니다. snippet은 애매한 결과를 노이즈로 내릴 수만 있고 candidate로 승격할 수 없습니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
+          <Link href="/curator/sources/admission">Admission queue 보기</Link>
         </div>
 
         <div className="source-lab-panel">
-          <p className="curator-kicker">AI Silver</p>
-          <h2>Semantic development labels</h2>
-          <div className="source-run-metrics">
-            <span>total <strong>{silver.total}</strong></span>
-            <span>pass <strong>{silver.pass}</strong></span>
-            <span>review <strong>{silver.review}</strong></span>
-            <span>reject <strong>{silver.reject}</strong></span>
-            <span>low certainty <strong>{silver.low_certainty}</strong></span>
-          </div>
-          <p className="source-warning">Silver는 Gold가 아닙니다. Blind evaluation 120개를 먼저 고정한 뒤에만 <code>npm run classify:silver:live</code>를 실행합니다. 이 명령은 외부 LLM 비용을 발생시킬 수 있습니다.</p>
+          <p className="curator-kicker">Blind Human Evaluation</p>
+          <h2>Representative 60 + Challenge 60</h2>
+          <p className="source-lab-copy">Blind 120은 기존 authority를 유지합니다. labeling 상태에서는 DB trigger가 이 120개에 AI judgment/Silver INSERT를 거부합니다.</p>
+          <BlindEvaluationControl evaluation={evaluation} />
         </div>
+      </section>
+
+      <section className="source-lab-panel">
+        <p className="curator-kicker">Historical / Experimental</p>
+        <h2>AI Silver는 active admission path가 아닙니다.</h2>
+        <p className="source-lab-copy">Phase 15.5D semantic/Silver 코드는 재현성과 역사적 검증을 위해 남겨두지만, Source ingestion마다 외부 LLM을 호출하는 운영 경로로 사용하지 않습니다. 유료 Silver runner도 명시적 opt-in 없이는 실행되지 않습니다.</p>
       </section>
 
       <section className="source-adapter-grid" aria-label="Source adapters">
