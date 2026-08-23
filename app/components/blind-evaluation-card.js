@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PROBLEM = ["yes", "no", "uncertain"];
 const ACTOR = ["self", "other", "generic", "unknown", "not_applicable"];
@@ -18,7 +18,7 @@ export default function BlindEvaluationCard({ sample }) {
   const [error, setError] = useState(null);
   const formRef = useRef(null);
 
-  function applyPreset(name) {
+  const applyPreset = useCallback((name) => {
     if (name === "negative") {
       setProblem("no"); setActor("not_applicable"); setFriction("none"); setKind("unknown"); setEvidence("");
     } else if (name === "positive") {
@@ -26,7 +26,7 @@ export default function BlindEvaluationCard({ sample }) {
     } else {
       setProblem("uncertain"); setActor("unknown"); setFriction("unknown"); setKind("unknown"); setEvidence("");
     }
-  }
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -39,7 +39,7 @@ export default function BlindEvaluationCard({ sample }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [applyPreset]);
 
   function captureSelection() {
     const selected = String(window.getSelection()?.toString() ?? "").trim();
