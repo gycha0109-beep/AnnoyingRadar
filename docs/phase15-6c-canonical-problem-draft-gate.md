@@ -2,11 +2,11 @@
 
 ## Status
 
-Implementation ready for CI verification.
+**CLOSED — 2026-08-24**
 
-Phase 15.6C turns incident-aware repeated problem clusters into **curator-facing, non-persisted draft proposals**.
+Phase 15.6C turned incident-aware repeated problem clusters into exactly two curator-facing, non-persisted draft proposals. The contract was implemented and verified before Phase 15.6D persisted those two drafts.
 
-It does not create `ar_public_problems`, does not write Public Evidence Snapshots, and does not publish anything.
+It did not create `ar_public_problems`, did not write Public Evidence Snapshots, and did not publish anything.
 
 ---
 
@@ -79,9 +79,9 @@ automatic Product truth
 
 ---
 
-## 4. Current empirical draft queue
+## 4. Empirical draft queue
 
-Using the closed Phase 15.6A audit and the Phase 15.6B incident-aware cluster contract, exactly two mechanisms qualify.
+Using the closed Phase 15.6A audit and the Phase 15.6B incident-aware cluster contract, exactly two mechanisms qualified.
 
 ### A. Gym refund enforcement
 
@@ -119,7 +119,7 @@ Evidence shape:
 2 independent incidents
 ```
 
-These texts are draft proposals for curator review. They are not published claims.
+These texts were draft proposals for curator review, not published claims. Phase 15.6D subsequently persisted the same two drafts under the incident-aware persistence contract.
 
 ---
 
@@ -143,9 +143,9 @@ Contract tests verify:
 
 ---
 
-## 6. Preserved boundaries
+## 6. Closeout / preserved boundaries
 
-Phase 15.6C performs:
+Phase 15.6C itself performed:
 
 ```text
 DB writes           0
@@ -155,4 +155,11 @@ blind 120 reads     0
 production deploys  0
 ```
 
-The next persistence phase must separately define how incident identity, formation facts, and curator-approved draft provenance are stored before any `ar_public_problems` mutation is authorized.
+Subsequent authority is recorded separately:
+
+```text
+15.6D — Incident-aware Persistence: CLOSED
+15.6E — Curator Review / Publication Readiness: CLOSED
+```
+
+Phase 15.6C does not itself authorize publication.
