@@ -154,7 +154,7 @@ test("topic-only query-shaped title rejects instead of flooding REVIEW", () => {
 test("first-hand complaint snippet may request context but never promote to candidate", () => {
   const result = classifySourceAdmission(naverSignal(
     "벼락치기",
-    "저 헬스장 존나 비추. 직원 싸가지부터 별로였고 결국 환불받음",
+    "제가 이번에 헬스장 갔는데 진짜 비추. 직원 싸가지부터 별로였고 결국 환불받음",
   ));
   assert.equal(result.decision, "review");
   assert.equal(result.requires_full_context, true);
