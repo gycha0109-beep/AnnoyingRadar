@@ -108,3 +108,11 @@ test("curator audit remains blind-safe and browser-local rather than a productio
   assert.doesNotMatch(client, /fetch\s*\(/);
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
+
+test("same-pool human labels can be replayed across admission versions", async () => {
+  const client = await read("app/components/source-admission-independent-audit.js");
+  assert.match(client, /pool_fingerprint !== audit\.manifest\.pool_fingerprint/);
+  assert.doesNotMatch(client, /parsed\?\.manifest\?\.admission_version !== audit\.manifest\.admission_version/);
+  assert.match(client, /previousAdmission/);
+  assert.match(client, /현재 set에 없는 ID는 자동 제외했습니다/);
+});
