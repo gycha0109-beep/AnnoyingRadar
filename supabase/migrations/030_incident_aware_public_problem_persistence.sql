@@ -117,7 +117,7 @@ begin
     p_curator_user_id
   )
   on conflict (incident_key) do update
-    set label = coalesce(public.ar_source_incidents.label, excluded.label)
+    set label = coalesce(ar_source_incidents.label, excluded.label)
   returning * into v_incident;
 
   foreach v_source_id in array p_source_signal_ids loop
