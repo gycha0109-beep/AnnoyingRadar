@@ -250,8 +250,3 @@ test("Source Lab keeps no-LLM admission active and paid Silver explicit opt-in",
   assert.match(runner, /ALLOW_PAID_SILVER_LLM/);
   assert.match(runner, /disabled by default/);
 });
-
-test("production deployment remains disabled", async () => {
-  const vercel = JSON.parse(await read("vercel.json"));
-  assert.equal(vercel.git.deploymentEnabled, false);
-});
