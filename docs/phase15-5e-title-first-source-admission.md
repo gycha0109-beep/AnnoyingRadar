@@ -56,7 +56,7 @@ The failure had two distinct causes:
 
 ## v0.5 admission order
 
-`source-admission-v0.5` keeps the title-first contract but tightens source-intent authority:
+`source-admission-v0.5` kept the title-first contract but tightened source-intent authority:
 
 1. Provider title remains the primary source-intent signal.
 2. Information/legal/how-to/SEO/comparison/marketing framing outranks complaint vocabulary.
@@ -69,11 +69,38 @@ The failure had two distinct causes:
 9. Complaint-topic titles may still reach REVIEW when title framing or multiple strong snippet markers justify selective full-context inspection.
 10. Truncation alone remains insufficient for REVIEW.
 
-Decisions:
+## v0.5 post-merge revalidation: PARTIAL
 
-- `candidate`: explicit complaint/failure event plus title-level personal/narrative complaint framing.
-- `review`: title itself carries complaint relevance but source centrality remains genuinely ambiguous.
-- `reject`: information/legal/how-to/SEO/commercial/resale/positive framing, incidental retrieval noise, neutral title plus snippet-only complaint, generic topic-only framing, or no meaningful complaint source signal.
+The authoritative 669-signal development-pool revalidation produced:
+
+- candidate / review / reject = 2 / 5 / 662
+- full-context burden = 0.75%
+- regression = 6/6
+- candidate audit = 2/2 true, 0 false positives
+- REVIEW audit = 5/5 genuinely needs context
+- sampled REJECT = 48/50 correct, 0 possible false negatives, 2 clear false negatives
+
+This means candidate precision and review quality were acceptable, but two narrow title-level harms were being hard-rejected:
+
+- concrete repair-cost shock plus forced replacement: `수리비 87만원?... 어쩔수 없이 새로 구입한 Z폴드8 와이드`
+- long service-wait harm: `"재활 치료 6개월 기다리래요" 어린이 24만명, 하염없이 대기`
+
+## v0.6 narrow false-negative recovery
+
+`source-admission-v0.6` does not broaden the CANDIDATE contract.
+
+It only adds two title-level REVIEW recovery patterns after information/commercial/positive blockers and before the ordinary complaint-event logic:
+
+1. concrete repair cost or repair estimate + large explicit amount + forced replacement/purchase framing
+2. explicit long-duration service wait such as multi-month waiting or `하염없이 대기`
+
+Both patterns route to REVIEW with full-context required. They do **not** become CANDIDATE automatically.
+
+This preserves the v0.5 precision boundary:
+
+- candidate: explicit complaint/failure event plus title-level personal/narrative complaint framing
+- review: title itself carries credible harm but source centrality still requires full-context inspection
+- reject: information/legal/how-to/SEO/commercial/resale/positive framing, incidental retrieval noise, neutral title plus snippet-only complaint, generic topic-only framing, or no meaningful complaint source signal
 
 ## Examples locked by tests
 
@@ -88,25 +115,10 @@ Decisions:
 - opaque `벼락치기` with a strong gym complaint snippet → reject because snippet cannot establish source centrality.
 - `여기어때 오키나와 숙소 태풍 결항 환불 후기` → review.
 - `아고다 취소불가 숙소 취소 가능할까? ... 실제 후기` → review.
+- `수리비 87만원?... 어쩔수 없이 새로 구입한 Z폴드8 와이드` → review.
+- `"재활 치료 6개월 기다리래요" 어린이 24만명, 하염없이 대기` → review.
 - `로마 숙소 아고다 고객센터 환불 불가 썰` → candidate.
 - `카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터` → candidate.
-
-## Pre-merge v0.5 hosted dry-run
-
-Before merging v0.5, the same hosted campaign development pool was re-evaluated with the v0.5 rule ordering using read-only SQL that mirrored the deterministic contract:
-
-- development pool = 669
-- candidate = 2
-- review = 8 before the final neutral-title / resale / scam-warning tightening
-- reject = 659 before that final tightening
-
-The eight REVIEW titles were then inspected directly. Three clearly non-complaint source types remained:
-
-- opaque daily-post title with a complaint-heavy snippet
-- ticket resale listing with incidental refund friction
-- scam-warning/countermeasure information article
-
-v0.5 was tightened again before merge so those patterns reject at title/source-intent level. The authoritative acceptance result remains the post-merge 669-signal revalidation, not this pre-merge estimate.
 
 ## Runtime authority
 
@@ -120,7 +132,7 @@ The existing 120-sample blind human evaluation remains untouched. Active admissi
 
 ## Verification rule
 
-v0.5 is not considered successful merely because contract tests or the pre-merge SQL mirror pass. The same 669-signal development-pool revalidation must be repeated after merge. Candidate precision, REVIEW quality, REVIEW burden, sampled REJECT false negatives, and all six regression cases remain the acceptance evidence.
+v0.6 is not considered successful merely because contract tests pass. The same 669-signal development-pool revalidation must be repeated after merge. Candidate precision, REVIEW quality, REVIEW burden, sampled REJECT false negatives, and all six regression cases remain the acceptance evidence.
 
 ## Production deployment
 
