@@ -120,11 +120,11 @@ test("first-hand refund dispute follow-up remains candidate even when the title 
   assert.equal(classifySourceAdmission(signal).decision, "candidate");
 });
 
-test("defect-driven purchase and refund review is recovered from product-promotion rejection", () => {
+test("defect-driven purchase and refund review is recovered from a truncated provider snippet", () => {
   const signal = naverSignal(
     "더블알엘(RRL) 뉴스보이 자켓 구매 및 환불후기 | 뽑기 실패..",
-    "오늘은 정말 기대했던 뉴스보이 레더 자켓 구매 후기이자 아쉽게도 제품하자(?)로 인해 환불한 후기입니다.",
-    "구매자",
+    "오늘은 정말 기대했던 더블알엘(RRL) 뉴스보이 레더 자켓 구매 후기이자, 아쉽게도 제품하자(?)로 인해... 그중 더블알엘의 뉴스보이 자켓이 대세이죠.",
+    "mood archive",
   );
   assert.equal(classifySourceRecovery(signal).recovery, "defect_driven_refund");
   const result = classifySourceAdmission(signal);
