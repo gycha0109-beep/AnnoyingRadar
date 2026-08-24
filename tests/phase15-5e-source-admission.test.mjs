@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { runDeterministicComplaintPrefilter } from "../lib/sources/complaint-contracts.mjs";
-import { classifySourceAdmission, extractSourceTitle } from "../lib/sources/source-admission.mjs";
+import { classifySourceAdmission, extractSourceTitle, SOURCE_ADMISSION_VERSION } from "../lib/sources/source-admission.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -15,6 +15,10 @@ function naverSignal(title, description = "") {
     is_quote_post: null,
   };
 }
+
+test("Phase 15.5E calibrated admission version is v0.3", () => {
+  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.3");
+});
 
 test("incidental complaint phrase in a daily post cannot become a candidate", () => {
   const dailyPost = naverSignal(
@@ -50,6 +54,15 @@ test("positive service/product review framing is not a complaint source", () => 
   )).decision, "reject");
 });
 
+test("truncated commercial title is rejected before generic truncation review", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "하수구청소 맡길 일이 생겨서 간 안산 동네방네, 하수구막힘 처리 ....",
+    "처음엔 대충 배수구막힘 정도겠지 싶었는데 점점 냄새가 진해지고 변기까지 답답한 느낌",
+  ));
+  assert.equal(result.decision, "reject");
+  assert.ok(result.reason_codes.includes("title_commercial_or_seo"));
+});
+
 test("health how-to title is information, not complaint-central source", () => {
   const result = classifySourceAdmission(naverSignal(
     "가래 감기 걸렸을 때 어떻게 해야 할까 싶을 때",
@@ -75,7 +88,26 @@ test("refund review remains context-review while explicit refund failure title b
   assert.ok(explicit.reason_codes.includes("title_explicit_complaint"));
 });
 
-test("snippet may demote but never promote a neutral NAVER title", () => {
+test("generic fraud, harm, loss, and account-lock topics never auto-promote", () => {
+  for (const title of [
+    "중고거래 사기 피해",
+    "택배 분실 대응 사례",
+    "카카오톡 계정 도용 문제",
+    "중고거래 계좌 정지 이의신청",
+  ]) {
+    assert.notEqual(classifySourceAdmission(naverSignal(title, "관련 사례를 살펴봅니다.")).decision, "candidate");
+  }
+});
+
+test("topic-only query-shaped title rejects instead of flooding REVIEW", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "배달 최소주문금액",
+    "배달 주문을 할 때 최소주문금액 관련 내용을 정리했습니다.",
+  ));
+  assert.equal(result.decision, "reject");
+});
+
+test("snippet may route an opaque title to review but never candidate", () => {
   const strongSnippet = classifySourceAdmission(naverSignal(
     "벼락치기",
     "저 헬스장 존나 비추. 직원 싸가지부터 별로였고 결국 환불받음",
