@@ -24,3 +24,15 @@ jobs:
           node-version: 22
       - name: Fetch one public full-context item
         run: node scripts/run-phase15-5f-fetch-one.mjs
+
+  semantic-closeout:
+    if: github.head_ref == 'agent/phase15-5f-live-run'
+    needs: fetch-full-context
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify exact quotes and deterministic mapping
+        run: node scripts/run-phase15-5f-manual-semantic-closeout.mjs
