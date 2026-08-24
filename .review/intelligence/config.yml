@@ -1,0 +1,28 @@
+schema_version: "1.0"
+graph:
+  max_file_size_bytes: 1000000
+components:
+  - id: web
+    name: AnnoyingRadar Web
+    paths: ["app/**"]
+  - id: application-core
+    name: Application Core
+    paths: ["lib/**"]
+  - id: database
+    name: Supabase Database
+    paths: ["supabase/**"]
+  - id: automation
+    name: Project Automation
+    paths: ["scripts/**"]
+  - id: tests
+    name: Tests
+    paths: ["tests/**"]
+  - id: documentation
+    name: Documentation
+    paths: ["docs/**"]
+  - id: pie-config
+    name: PIE Project Configuration
+    paths: [".review/**"]
+  - id: github-workflows
+    name: GitHub Workflows
+    paths: [".github/workflows/**"]

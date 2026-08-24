@@ -1,0 +1,50 @@
+name: PIE Prospective Shadow
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  profile-preflight:
+    name: PIE profile preflight
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Check project-local PIE configuration
+        id: check
+        shell: bash
+        run: |
+          if [[ -f .review/project.yml && -f .review/intelligence/config.yml ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "PIE shadow skipped: this PR head predates project-local PIE onboarding."
+          fi
+
+  pie:
+    needs: profile-preflight
+    if: needs.profile-preflight.outputs.ready == 'true'
+    uses: gycha0109-beep/Project_Intelligence_Engine/.github/workflows/prospective-pr.yml@ebb9bb9760cef772fa4694d5cf4552f2b7b71ce9
+    with:
+      repository: ${{ github.repository }}
+      pull_request_number: ${{ github.event.pull_request.number }}
+      event_head_sha: ${{ github.event.pull_request.head.sha }}
+      pie_revision: ebb9bb9760cef772fa4694d5cf4552f2b7b71ce9
+      profile: .review/project.yml
+      config: .review/intelligence/config.yml
