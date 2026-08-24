@@ -33,6 +33,14 @@ export async function PATCH(request, { params }) {
       throw new ApiError(400, "invalid_public_problem_status", error.message);
     }
 
+    if (status === "published" && body.publication_confirmed !== true) {
+      throw new ApiError(
+        400,
+        "publication_confirmation_required",
+        "Explicit curator publication confirmation is required",
+      );
+    }
+
     const { error } = await serviceClient.rpc("ar_set_public_problem_status", {
       p_problem_id: publicProblemId,
       p_curator_user_id: userId,
