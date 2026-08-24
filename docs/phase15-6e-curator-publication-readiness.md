@@ -2,11 +2,11 @@
 
 ## Status
 
-IMPLEMENTED — pending CI and merge
+CLOSED
 
 ## Purpose
 
-Phase 15.6D made Incident identity part of persisted Public Evidence and hardened the database publication gate. The existing curator console still displayed the older Source-only readiness rule and could show `Publish 가능` when only `2 distinct source_key` values existed.
+Phase 15.6D made Incident identity part of persisted Public Evidence and hardened the database publication gate. The previous curator console still displayed the older Source-only readiness rule and could show `Publish 가능` when only `2 distinct source_key` values existed.
 
 Phase 15.6E aligns the curator-facing read model and explicit publication action with the incident-aware database truth.
 
@@ -110,23 +110,59 @@ database publication assertion
 
 No one boundary substitutes for another.
 
-## Current live state
+## Verification / closeout
 
-Phase 15.6E implementation does not change the persisted two drafts:
+Implementation PR:
 
 ```text
-Canonical Problem drafts: 2
-Published Problems:        0
-Public feed rows:          0
+PR #59
+merge SHA: 9db88fbfafd794df906dfc97d194b0c9cdf06084
+CI: SUCCESS
+PIE Prospective Shadow: SUCCESS
 ```
 
-No publication action is executed as part of implementation or verification.
+Post-merge live database verification was read-only and confirmed:
+
+```text
+Canonical Public Problems: 2
+Draft Problems:            2
+Published Problems:        0
+Public Evidence snapshots: 5
+Source Incidents:           4
+Source→Incident links:      5
+Public feed rows:           0
+```
+
+No publication action was executed during implementation, CI, merge, or live verification.
+
+## CD policy transition
+
+The earlier repository-level Vercel Git deployment pause is no longer part of the project authority.
+
+The closeout removes:
+
+```text
+vercel.json -> git.deploymentEnabled = false
+```
+
+and removes the regression test that required Git auto-deployments to remain disabled.
+
+After the closeout merge, repository configuration no longer suppresses Vercel Git-triggered deployment. Whether an actual deployment occurs is governed by the connected Vercel project's Git integration and branch/deployment settings.
+
+This CD policy change does not alter Public Radar publication authority. A deployed curator UI still cannot publish a Problem without:
+
+```text
+incident-aware structural readiness
++ explicit curator publication confirmation
++ database publication assertion
+```
 
 ## Boundaries
 
-- automatic publication: forbidden;
+- automatic Public Problem publication: forbidden;
 - blind 120: untouched;
 - full source bodies: not loaded into curator detail or persisted;
-- no new DB migration is required;
-- no production deployment is required;
-- no claim that structural publishability is editorial approval.
+- no new DB migration required;
+- live closeout verification was read-only;
+- no claim that structural publishability is editorial approval;
+- repository-level Vercel Git deployment pause removed as a separate delivery-policy change.
