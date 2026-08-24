@@ -1,0 +1,126 @@
+{
+  "version": "phase15-6a-formation-audit-v0.1",
+  "authority": "empirical_audit_snapshot_not_runtime_truth",
+  "candidate_count": 17,
+  "items": [
+    {
+      "source_signal_id": "a6841585-fab9-4562-8224-db7d31511dd2",
+      "title": "[독산동 헬스장 환불] ①⑨ 강제집행(압류) 진행",
+      "formation_state": "eligible",
+      "incident_key": "gym_chlovely_case",
+      "problem_signature": "gym_refund_enforcement"
+    },
+    {
+      "source_signal_id": "988b812c-0a45-4b82-9b92-095e67bffaf4",
+      "title": "[독산동 헬스장 환불] ②ⓞ 금천구청 민원 신고·접수 4부",
+      "formation_state": "eligible",
+      "incident_key": "gym_chlovely_case",
+      "problem_signature": "gym_refund_enforcement"
+    },
+    {
+      "source_signal_id": "8d36f7e3-4181-4356-946e-38a0294783dd",
+      "title": "재활 치료 6개월 기다리래요 — 어린이 24만명, 하염없이 대기",
+      "formation_state": "provenance_review",
+      "incident_key": "rehab_report_case",
+      "problem_signature": "pediatric_rehab_capacity"
+    },
+    {
+      "source_signal_id": "408ade70-6242-43ca-8478-aab9e8c19b06",
+      "title": "광주정신병원 가기 전 아무도 안 알려주는 충격 진실",
+      "formation_state": "reject",
+      "incident_key": null,
+      "problem_signature": null
+    },
+    {
+      "source_signal_id": "4654fbca-95e6-426b-8ebf-6807db69c3fa",
+      "title": "김포공항 국내선 평일 수속 소요시간, 이스타 예약조회 안됨",
+      "formation_state": "eligible",
+      "incident_key": "eastar_agoda_lookup_case",
+      "problem_signature": "third_party_booking_lookup_gap"
+    },
+    {
+      "source_signal_id": "bb353d4f-8e53-4733-830a-7367a268484e",
+      "title": "더블알엘(RRL) 뉴스보이 자켓 구매 및 환불후기 | 뽑기 실패",
+      "formation_state": "eligible",
+      "incident_key": "rrl_defect_case",
+      "problem_signature": "product_defect_return"
+    },
+    {
+      "source_signal_id": "f3fe48d8-35fc-4a5b-843e-0c247301546a",
+      "title": "로마 숙소 아고다 고객센터 환불 불가 썰",
+      "formation_state": "reject",
+      "incident_key": null,
+      "problem_signature": null
+    },
+    {
+      "source_signal_id": "da59976e-8d5b-40d3-98cb-07d069a6ce58",
+      "title": "시리야 노래 틀어줘 정훈희의 안개",
+      "formation_state": "reject",
+      "incident_key": null,
+      "problem_signature": null
+    },
+    {
+      "source_signal_id": "0a0f394e-e2d7-45c6-a701-68e418aeb278",
+      "title": "어찌하여 또 영국인 것이냐.",
+      "formation_state": "reject",
+      "incident_key": null,
+      "problem_signature": null
+    },
+    {
+      "source_signal_id": "5e4d7f0a-ddad-46ea-a0d0-5f1d338c1296",
+      "title": "유튜브나 인스타그램에서 이런 불법광고에 절대 속지 마세요!",
+      "formation_state": "eligible",
+      "incident_key": "korean_air_scam_ad_case",
+      "problem_signature": "brand_impersonation_ad_data_harvest"
+    },
+    {
+      "source_signal_id": "f9ff3e18-954f-40a8-8c7e-ef58cbcdff96",
+      "title": "카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터",
+      "formation_state": "eligible",
+      "incident_key": "kakao_pet_taxi_case",
+      "problem_signature": "scheduled_pet_taxi_supplier_cancellation"
+    },
+    {
+      "source_signal_id": "137ffbf8-bf00-4221-9752-6e5131ada34b",
+      "title": "택시 호출 앱 때문에 한국 노인들이 택시를 못 타는 현실",
+      "formation_state": "provenance_review",
+      "incident_key": "elderly_taxi_report_case",
+      "problem_signature": "elderly_taxi_digital_exclusion"
+    },
+    {
+      "source_signal_id": "c2507345-08a1-4dc8-bd93-9dc16a87724f",
+      "title": "아고다 취소불가 숙소 취소 가능할까? 예약 일주일 지난 실제 후기",
+      "formation_state": "eligible",
+      "incident_key": "agoda_exception_case",
+      "problem_signature": "lodging_exception_refund_coordination"
+    },
+    {
+      "source_signal_id": "cd5938ce-0795-4579-a1e0-3ccd84353abf",
+      "title": "@toronto / 억까 끝에 만난 거대함",
+      "formation_state": "eligible",
+      "incident_key": "toronto_disruption_case",
+      "problem_signature": "flight_disruption_downstream_loss"
+    },
+    {
+      "source_signal_id": "defa940f-b51c-4e8c-a134-f9522ee810be",
+      "title": "여기어때 오키나와 숙소 태풍 결항 환불 후기",
+      "formation_state": "eligible",
+      "incident_key": "yeogieottae_exception_case",
+      "problem_signature": "lodging_exception_refund_coordination"
+    },
+    {
+      "source_signal_id": "f96d57a4-6986-4294-9185-98474fe1a788",
+      "title": "수리비 87만원?... 어쩔수 없이 새로 구입한 Z폴드8 와이드",
+      "formation_state": "eligible",
+      "incident_key": "zfold_repair_case",
+      "problem_signature": "repair_economic_total_loss"
+    },
+    {
+      "source_signal_id": "b12f82f8-04fb-458e-a8e6-db5728121ae2",
+      "title": "공익을 위해 남기는 헬스장 이용권 환불 및 지연 대처 후기",
+      "formation_state": "eligible",
+      "incident_key": "gym_lalaland_case",
+      "problem_signature": "gym_refund_enforcement"
+    }
+  ]
+}
