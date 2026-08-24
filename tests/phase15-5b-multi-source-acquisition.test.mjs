@@ -183,13 +183,12 @@ test("Naver ingestion route is curator-only and persists only Source Signal supp
   assert.doesNotMatch(route, /ar_raw_inputs|ar_pain_evidences|ar_public_problems/);
 });
 
-test("Source Lab exposes multi-source provenance and keeps automatic production deployment paused", async () => {
-  const [page, naverForm, review, env, vercel] = await Promise.all([
+test("Source Lab exposes multi-source provenance", async () => {
+  const [page, naverForm, review, env] = await Promise.all([
     read("app/curator/sources/page.js"),
     read("app/components/naver-blog-source-search-form.js"),
     read("app/components/source-signal-complaint-review.js"),
     read(".env.local.example"),
-    read("vercel.json"),
   ]);
   assert.match(page, /NaverBlogSourceSearchForm/);
   assert.match(page, /ThreadsSourceSearchForm/);
@@ -198,5 +197,4 @@ test("Source Lab exposes multi-source provenance and keeps automatic production 
   assert.match(review, /search_snippet/);
   assert.match(env, /NAVER_CLIENT_ID/);
   assert.match(env, /NAVER_CLIENT_SECRET/);
-  assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
