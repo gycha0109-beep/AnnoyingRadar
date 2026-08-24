@@ -16,8 +16,8 @@ function naverSignal(title, description = "") {
   };
 }
 
-test("Phase 15.5E calibrated admission version is v0.6", () => {
-  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.6");
+test("Phase 15.5E calibrated admission version is v0.7", () => {
+  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.7");
 });
 
 test("incidental complaint phrase in a daily post cannot become a candidate or review", () => {
@@ -208,14 +208,24 @@ test("concrete repair-cost shock with forced replacement is recovered to review,
   assert.ok(result.reason_codes.includes("title_concrete_cost_loss_requires_context"));
 });
 
-test("long service-wait harm title is recovered to review, not candidate", () => {
+test("long service-wait harm title is complaint-central candidate", () => {
   const result = classifySourceAdmission(naverSignal(
     '"재활 치료 6개월 기다리래요" 어린이 24만명, 하염없이 대기',
     "치료 대기 명단에 이름을 올리는 일이 반복된다고 한다.",
   ));
+  assert.equal(result.decision, "candidate");
+  assert.equal(result.requires_full_context, false);
+  assert.ok(result.reason_codes.includes("title_long_wait_harm_complaint_central"));
+});
+
+test("systemic service-access exclusion is recovered to review, not auto-candidate", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "택시 호출 앱 때문에 한국 노인들이 택시를 못 타는 현실",
+    "스마트폰과 앱 사용에 익숙하지 않은 고령층에게 택시 호출 시스템이 디지털 장벽이 되고 있습니다.",
+  ));
   assert.equal(result.decision, "review");
   assert.equal(result.requires_full_context, true);
-  assert.ok(result.reason_codes.includes("title_long_wait_harm_requires_context"));
+  assert.ok(result.reason_codes.includes("title_systemic_service_access_harm_requires_context"));
 });
 
 test("provider title is authoritative over retrieval description", () => {
