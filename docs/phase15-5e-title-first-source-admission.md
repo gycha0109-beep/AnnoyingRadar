@@ -22,37 +22,54 @@ The first title-first implementation was not selective enough on the 669-signal 
 - sampled REVIEW: 57/60 should have been rejected
 - regression #12 was incorrectly routed to REVIEW because title truncation outranked commercial framing
 
-`source-admission-v0.3` is the calibration response to that failure.
+## v0.3 revalidation failure
 
-## v0.3 admission order
+v0.3 fixed REVIEW flooding but still failed candidate precision:
+
+- candidate / review / reject = 10 / 8 / 651
+- full-context burden = 1.20%
+- candidate false positives = 9/10 (90%)
+- sampled REJECT: 48/50 correct, one possible false negative, one clear false negative
+- sampled REVIEW: 5/8 genuinely needed context, 1/8 should reject, 2/8 should candidate
+
+Direct inspection of all 10 v0.3 candidates showed that nine were legal/how-to/SEO/comparison/marketing content. The one clear complaint-central candidate was `로마 숙소 아고다 고객센터 환불 불가 썰`.
+
+`source-admission-v0.4` is the calibration response.
+
+## v0.4 admission order
 
 1. Use provider title as the source-level primary signal.
-2. Hard reject clear information/guide framing.
-3. Hard reject commercial/SEO and positive-review framing unless it is mixed with an explicit complaint event; mixed cases go to REVIEW.
-4. Admit only explicit failure/complaint-event grammar as `candidate`.
-5. Generic topic nouns such as `사기`, `피해`, `분실`, `도용`, `정지` never create a candidate by themselves.
-6. Apply snippet only as negative evidence or as a reason to preserve an opaque title for REVIEW; snippet can never produce CANDIDATE.
-7. Truncation alone is insufficient for REVIEW. A truncated title must still carry complaint/experience evidence.
-8. Query-shaped topic-only titles reject by default unless experience framing or multiple independent complaint markers justify context review.
+2. Information/legal/how-to/SEO/comparison/marketing framing outranks complaint vocabulary.
+3. A title-level explicit failure event is necessary but no longer sufficient for CANDIDATE.
+4. CANDIDATE additionally requires personal/narrative framing such as `썰`, `비추천`, direct first-person framing, being personally subjected to the event, or similarly direct experience language.
+5. Explicit complaint titles without enough personal framing go to REVIEW, not CANDIDATE.
+6. Mixed information/commercial titles with explicit personal experience are preserved for REVIEW rather than hard-rejected.
+7. `비추천` is negative evidence and must never be matched by the positive `추천` rule.
+8. A first-hand complaint-looking snippet may preserve a source for REVIEW, but snippet can never produce CANDIDATE.
+9. Generic topic nouns such as `사기`, `피해`, `분실`, `도용`, `정지` never create CANDIDATE by themselves.
+10. Truncation alone remains insufficient for REVIEW.
 
 Decisions:
 
-- `candidate`: title itself carries a narrow explicit complaint/failure event.
-- `review`: mixed framing, complaint-oriented experience framing, or an opaque title with multiple strong complaint markers requires selective source-context inspection.
-- `reject`: information/guide/SEO/positive framing, incidental retrieval noise, generic topic-only framing, or no meaningful complaint signal.
+- `candidate`: explicit complaint/failure event plus title-level personal/narrative complaint framing.
+- `review`: explicit complaint without enough personal framing, mixed information/commercial + actual experience, or first-hand/strong complaint context that requires source inspection.
+- `reject`: information/legal/how-to/SEO/positive framing without credible personal complaint context, incidental retrieval noise, generic topic-only framing, or no meaningful complaint signal.
 
 ## Examples locked by tests
 
 - `카카오톡 로그인 오류·계정 도용·결제 문제, 상황별 해결 경로 정리 직접 해봤어요` → reject.
 - `so what? we hot we young` with one incidental parenthetical `환불안됨` phrase → reject.
-- truncated `하수구청소 맡길 일이 생겨서 간 ... 처리 ....` → reject as commercial/SEO framing before truncation review.
+- truncated `하수구청소 맡길 일이 생겨서 간 ... 처리 ....` → reject.
 - `용산 피프틴커피 배달 후기 ... 부담 없는 최소주문금액!` → reject.
 - `가래 감기 걸렸을 때 어떻게 해야 할까 싶을 때` → reject.
-- `여기어때 오키나와 숙소 태풍 결항 환불 후기` → review; full context may contain a real complaint narrative.
-- `아고다 ... 고객센터 환불 불가 썰` → candidate.
-- `중고거래 사기 피해` / `택배 분실 대응 사례` / `계정 도용 문제` → never candidate from generic nouns alone.
-- neutral `배달 최소주문금액` with informational snippet → reject rather than consume REVIEW capacity.
-- opaque `벼락치기` with multiple strong complaint markers in snippet → review, never candidate.
+- `여기어때 오키나와 숙소 태풍 결항 환불 후기` → review.
+- `로마 숙소 아고다 고객센터 환불 불가 썰` → candidate.
+- `카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터` → candidate; `비추천` is not positive `추천`.
+- `"단순변심 환불 불가"는 무효입니다 — 온라인쇼핑 청약철회권` → reject.
+- `바이비트 출금 오류 때문에 속상하신가요?` → reject.
+- `숙소 예약 취소수수료 아끼는 법｜무료취소·환불불가 요금제 비교` → reject.
+- `김포공항 ... 이스타 예약조회 안됨 ...` → review, never auto-candidate.
+- `아고다 취소불가 숙소 취소 가능할까? ... 실제 후기` → review because information framing and actual experience are mixed.
 
 ## Runtime authority
 
@@ -66,7 +83,7 @@ The existing 120-sample blind human evaluation remains untouched. Active admissi
 
 ## Verification rule
 
-v0.3 is not considered successful merely because contract tests pass. The same 669-signal development-pool revalidation must be repeated after merge and candidate precision, REVIEW burden, and sampled false negatives must be checked again.
+v0.4 is not considered successful merely because contract tests pass. The same 669-signal development-pool revalidation must be repeated after merge. Candidate precision, REVIEW quality, REVIEW burden, and sampled REJECT false negatives remain the acceptance evidence.
 
 ## Production deployment
 
