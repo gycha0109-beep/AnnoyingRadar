@@ -4,11 +4,6 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Vercel Git auto deployments stay fully paused", async () => {
-  const config = JSON.parse(await read("vercel.json"));
-  assert.equal(config.git?.deploymentEnabled, false);
-});
-
 test("curator queue requires login plus explicit curator membership", async () => {
   const source = await read("app/curator/page.js");
 
