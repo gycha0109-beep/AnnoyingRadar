@@ -64,13 +64,13 @@ test("later discovery of clearly stated baggage option is rejected as condition-
   assert.equal(result.decision, "reject");
 });
 
-test("external airline delay remains eligible and is not confused with self-caused mistakes", () => {
+test("external airline delay remains review and is not confused with self-caused mistakes", () => {
   const signal = naverSignal(
     "@toronto / 억까 끝에 만난 거대함",
     "이미 토론토에서 탈 버스 다 예매해 뒀는데 취소 환불 절대 안 됨. 심지어 30분 뒤에 또 지연... 끝없는 지연의 굴레에 갇혔습니다. 하루 종일 항공사 붙잡고 전화만 하기.",
   );
   assert.equal(classifySourceCausality(signal).causality, "external_or_unresolved");
-  assert.equal(classifySourceAdmission(signal).decision, "candidate");
+  assert.equal(classifySourceAdmission(signal).decision, "review");
 });
 
 test("repair-cost pain is not rejected merely because the original device damage was accidental", () => {
