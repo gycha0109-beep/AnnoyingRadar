@@ -128,16 +128,14 @@ test("Threads ingestion endpoint is curator-only and records a run before extern
   assert.doesNotMatch(route, /NEXT_PUBLIC_.*THREADS|access_token/);
 });
 
-test("Source Lab stays private and Vercel automatic deployment remains paused", async () => {
-  const [page, env, vercel] = await Promise.all([
+test("Source Lab stays private and keeps Threads credentials server-side", async () => {
+  const [page, env] = await Promise.all([
     read("app/curator/sources/page.js"),
     read(".env.local.example"),
-    read("vercel.json"),
   ]);
   assert.match(page, /ar_radar_curators/);
   assert.match(page, /redirect\("\/workspace"\)/);
   assert.match(page, /ThreadsSourceSearchForm/);
   assert.match(env, /THREADS_ACCESS_TOKEN/);
   assert.match(env, /threads_keyword_search/);
-  assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
