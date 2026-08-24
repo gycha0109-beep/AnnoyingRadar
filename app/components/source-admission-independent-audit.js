@@ -34,13 +34,13 @@ const LOCAL_CHANGE_EVENT = "annoying-radar-source-audit-local-change";
 export default function SourceAdmissionIndependentAudit({ audit }) {
   const storageKey = `annoying-radar:${audit.manifest.audit_version}:${audit.manifest.admission_version}:${audit.manifest.pool_fingerprint}`;
   const allItems = useMemo(() => GROUPS.flatMap((group) => audit[group.key]), [audit]);
-  const validIds = useMemo(() => new Set(allItems.map((item) => item.id)), [allItems]);
+  const validItemSets = useMemo(() => new Map(allItems.map((item) => [item.id, item.set])), [allItems]);
   const rawSnapshot = useSyncExternalStore(
     subscribeToAuditStorage,
     () => window.localStorage.getItem(storageKey) ?? "",
     () => "",
   );
-  const labels = useMemo(() => labelsFromSnapshot(rawSnapshot, validIds), [rawSnapshot, validIds]);
+  const labels = useMemo(() => labelsFromSnapshot(rawSnapshot, validItemSets), [rawSnapshot, validItemSets]);
   const [activeGroupId, setActiveGroupId] = useState("boundary");
   const [cursorByGroup, setCursorByGroup] = useState({ boundary: 0, reject_risk: 0, reject_random: 0 });
   const [message, setMessage] = useState("브라우저에만 저장됩니다. production DB에는 쓰지 않습니다.");
@@ -59,13 +59,14 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
   }));
 
   const totals = countDecisions(labels);
-  const completedCount = Object.keys(labels).filter((id) => validIds.has(id)).length;
+  const completedCount = Object.keys(labels).filter((id) => validItemSets.has(id)).length;
   const allCompleted = allItems.length > 0 && completedCount === allItems.length;
 
   function persist(nextLabels) {
     const payload = {
       audit_version: audit.manifest.audit_version,
       admission_version: audit.manifest.admission_version,
+      admission_policy_revision: audit.manifest.admission_policy_revision ?? null,
       pool_fingerprint: audit.manifest.pool_fingerprint,
       updated_at: new Date().toISOString(),
       labels: nextLabels,
@@ -153,13 +154,20 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
         return;
       }
 
-      const restored = sanitizeLabels(parsed?.labels, validIds);
+      const sourceLabels = parsed?.labels && typeof parsed.labels === "object" && !Array.isArray(parsed.labels)
+        ? parsed.labels
+        : {};
+      const restored = sanitizeLabels(sourceLabels, validItemSets);
+      const skipped = Math.max(0, Object.keys(sourceLabels).length - Object.keys(restored).length);
       persist(restored);
       const previousAdmission = parsed?.manifest?.admission_version;
       const versionNote = previousAdmission && previousAdmission !== audit.manifest.admission_version
         ? ` (${previousAdmission} → ${audit.manifest.admission_version} 재사용)`
         : "";
-      setMessage(`${Object.keys(restored).length}개 기존 인간 판정을 불러왔습니다${versionNote}. 현재 set에 없는 ID는 자동 제외했습니다.`);
+      const skippedNote = skipped > 0
+        ? ` ${skipped}개는 현재 audit set이 달라져 재판정 대상으로 남겼습니다.`
+        : "";
+      setMessage(`${Object.keys(restored).length}개 기존 인간 판정을 불러왔습니다${versionNote}.${skippedNote}`);
     } catch {
       setMessage("JSON 파일을 읽지 못했습니다.");
     }
@@ -178,6 +186,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       <section className="source-audit-summary" aria-label="Independent audit manifest">
         <div className="source-run-metrics">
           <span>admission <strong>{audit.manifest.admission_version}</strong></span>
+          {audit.manifest.admission_policy_revision ? <span>policy <strong>{audit.manifest.admission_policy_revision}</strong></span> : null}
           <span>development <strong>{audit.manifest.eligible}</strong></span>
           <span>candidate <strong>{audit.manifest.candidate_count}</strong></span>
           <span>boundary <strong>{audit.manifest.boundary_count}</strong></span>
@@ -287,24 +296,26 @@ function subscribeToAuditStorage(callback) {
   };
 }
 
-function labelsFromSnapshot(rawSnapshot, validIds) {
+function labelsFromSnapshot(rawSnapshot, validItemSets) {
   if (!rawSnapshot) return {};
   try {
-    return sanitizeLabels(JSON.parse(rawSnapshot)?.labels, validIds);
+    return sanitizeLabels(JSON.parse(rawSnapshot)?.labels, validItemSets);
   } catch {
     return {};
   }
 }
 
-function sanitizeLabels(value, validIds) {
+function sanitizeLabels(value, validItemSets) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const cleaned = {};
   for (const [id, label] of Object.entries(value)) {
-    if (!validIds.has(id)) continue;
+    const currentSet = validItemSets.get(id);
+    if (!currentSet) continue;
+    if (label?.set !== currentSet) continue;
     if (!HUMAN_DECISIONS.some((option) => option.value === label?.decision)) continue;
     cleaned[id] = {
       decision: label.decision,
-      set: typeof label.set === "string" ? label.set : null,
+      set: currentSet,
       reviewed_at: typeof label.reviewed_at === "string" ? label.reviewed_at : null,
     };
   }
