@@ -42,6 +42,7 @@ test("curator editor covers the complete publication workflow", async () => {
     "Publish",
     "Archive",
     "Published 상태는 편집 잠금입니다.",
+    "Incident Lineage",
   ]) {
     assert.equal(source.includes(required), true, required);
   }
@@ -52,15 +53,29 @@ test("curator editor covers the complete publication workflow", async () => {
   assert.doesNotMatch(source, /createServiceClient|service_role|SUPABASE_SERVICE_ROLE_KEY/);
 });
 
-test("client-side publication readiness mirrors the database publication gate", async () => {
+test("client publication UI consumes server-side incident-aware readiness", async () => {
   const source = await read("app/components/curator-problem-editor.js");
 
-  assert.match(source, /evidence\.length >= 2/);
-  assert.match(source, /distinctSources >= 2/);
-  assert.match(source, /\["external_public", "user_opt_in"\]\.includes/);
-  assert.match(source, /Boolean\(problem\.title\?\.trim\(\)\)/);
-  assert.match(source, /Boolean\(problem\.summary\?\.trim\(\)\)/);
-  assert.match(source, /disabled=\{!publishReady \|\| Boolean\(busy\)\}/);
+  assert.match(source, /publication_readiness: publicationReadiness/);
+  assert.match(source, /publicationReadiness\?\.structurally_publishable/);
+  assert.match(source, /distinct_incident_count/);
+  assert.match(source, /incident_lineage_valid/);
+  assert.match(source, /source_key 수는 Incident 수를 대체하지 않습니다/);
+  assert.match(source, /구조적 Gate 통과는 편집 승인이나 자동 게시를 의미하지 않습니다/);
+  assert.doesNotMatch(source, /evidence\.length >= 2/);
+  assert.doesNotMatch(source, /distinctSources >= 2/);
+});
+
+test("Publish requires structural readiness plus explicit curator confirmation", async () => {
+  const source = await read("app/components/curator-problem-editor.js");
+  const statusRoute = await read("app/api/radar/admin/problems/[publicProblemId]/status/route.js");
+
+  assert.match(source, /publicationConfirmed/);
+  assert.match(source, /disabled=\{!publishReady \|\| !publicationConfirmed \|\| Boolean\(busy\)\}/);
+  assert.match(source, /body\.publication_confirmed = publicationConfirmed/);
+  assert.match(source, /Incident lineage와 공개 Evidence를 직접 검토했으며 이 Problem을 공개할 의사가 있습니다/);
+  assert.match(statusRoute, /body\.publication_confirmed !== true/);
+  assert.match(statusRoute, /publication_confirmation_required/);
 });
 
 test("published Problems are treated as immutable until archive", async () => {
