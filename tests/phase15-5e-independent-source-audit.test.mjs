@@ -69,6 +69,7 @@ test("audit manifest separates boundary, adversarial reject risk, and determinis
   assert.equal(audit.manifest.boundary_count, 1);
   assert.equal(audit.manifest.reject_risk_count, 2);
   assert.equal(audit.manifest.reject_random_count, 100);
+  assert.equal(audit.manifest.admission_policy_revision, "source-admission-v0.8-pain-ownership-v0.1");
   assert.equal(audit.boundary_set.length, 1);
   assert.deepEqual(new Set(audit.reject_risk_set.map((item) => item.id)), new Set(["risk-access", "risk-cost"]));
   assert.equal(audit.reject_random_set.length, 100);
@@ -109,10 +110,12 @@ test("curator audit remains blind-safe and browser-local rather than a productio
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
 
-test("same-pool human labels can be replayed across admission versions", async () => {
+test("same-pool human labels can be replayed across admission versions only when their audit set is unchanged", async () => {
   const client = await read("app/components/source-admission-independent-audit.js");
   assert.match(client, /pool_fingerprint !== audit\.manifest\.pool_fingerprint/);
   assert.doesNotMatch(client, /parsed\?\.manifest\?\.admission_version !== audit\.manifest\.admission_version/);
   assert.match(client, /previousAdmission/);
-  assert.match(client, /현재 set에 없는 ID는 자동 제외했습니다/);
+  assert.match(client, /validItemSets/);
+  assert.match(client, /label\?\.set !== currentSet/);
+  assert.match(client, /현재 audit set이 달라져 재판정 대상으로 남겼습니다/);
 });
