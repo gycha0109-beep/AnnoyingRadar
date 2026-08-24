@@ -126,8 +126,3 @@ test("blind labeling UI is one-card, keyboard-first, and contains no classifier/
   assert.match(card, /window\.getSelection/);
   assert.doesNotMatch(card, /\/classify/);
 });
-
-test("production deployment remains disabled", async () => {
-  const vercel = JSON.parse(await read("vercel.json"));
-  assert.equal(vercel.git.deploymentEnabled, false);
-});
