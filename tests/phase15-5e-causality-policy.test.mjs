@@ -6,25 +6,29 @@ import { runDeterministicComplaintPrefilter } from "../lib/sources/complaint-con
 import {
   classifySourceAdmission,
   classifySourceCausality,
+  classifySourceRecovery,
   SOURCE_ADMISSION_POLICY_REVISION,
   SOURCE_CAUSALITY_VERSION,
+  SOURCE_RECOVERY_VERSION,
 } from "../lib/sources/source-admission-policy.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-function naverSignal(title, description = "") {
+function naverSignal(title, description = "", author_handle = "") {
   return {
     source_platform: "naver_blog",
     raw_text: [title, description].filter(Boolean).join("\n\n"),
+    author_handle,
     source_metadata: { provider_title: title, provider_description: description },
   };
 }
 
-test("causality policy is explicitly versioned on top of v0.8", () => {
+test("causality and recovery policy are explicitly versioned on top of v0.8", () => {
   assert.equal(SOURCE_CAUSALITY_VERSION, "source-causality-v0.1");
+  assert.equal(SOURCE_RECOVERY_VERSION, "source-recovery-v0.1");
   assert.equal(
     SOURCE_ADMISSION_POLICY_REVISION,
-    "source-admission-v0.8-pain-ownership-v0.1-causality-v0.1",
+    "source-admission-v0.8-pain-ownership-v0.1-causality-v0.1-recovery-v0.1",
   );
 });
 
@@ -93,6 +97,59 @@ test("incidental parenthetical complaint is rejected instead of consuming full-c
   const prefilter = runDeterministicComplaintPrefilter(signal);
   assert.equal(prefilter.decision, "reject");
   assert.ok(prefilter.reason_codes.includes("source_snippet_incidental_complaint_only"));
+});
+
+test("first-hand refund dispute escalation is recovered as a candidate", () => {
+  const signal = naverSignal(
+    "[독산동 헬스장 환불] ①⑨ 강제집행(압류) 진행",
+    "헬스장 입구 도착 역시나 직원 아무도 없고 법원에서 나왔다하니 인포 알바생은 엄청 당황했다. 집행관이 설명했다.",
+    "매일 새롭다옹",
+  );
+  assert.equal(classifySourceRecovery(signal).recovery, "first_hand_dispute_escalation");
+  const result = classifySourceAdmission(signal);
+  assert.equal(result.decision, "candidate");
+  assert.deepEqual(result.reason_codes, ["title_first_hand_dispute_escalation"]);
+});
+
+test("first-hand refund dispute follow-up remains candidate even when the title is a numbered series", () => {
+  const signal = naverSignal(
+    "[독산동 헬스장 환불] ②ⓞ 금천구청 민원 신고·접수 4부",
+    "오전엔 강제집행 오후엔 민원신고 그대로 내용 적어서 보냈다. 내가 현장 방문했고 관리자 없었다. 반복적인 적발과 과태료 부과에도 운영방식이 개선되지 않았다.",
+    "매일 새롭다옹",
+  );
+  assert.equal(classifySourceAdmission(signal).decision, "candidate");
+});
+
+test("defect-driven purchase and refund review is recovered from a truncated provider snippet", () => {
+  const signal = naverSignal(
+    "더블알엘(RRL) 뉴스보이 자켓 구매 및 환불후기 | 뽑기 실패..",
+    "오늘은 정말 기대했던 더블알엘(RRL) 뉴스보이 레더 자켓 구매 후기이자, 아쉽게도 제품하자(?)로 인해... 그중 더블알엘의 뉴스보이 자켓이 대세이죠.",
+    "mood archive",
+  );
+  assert.equal(classifySourceRecovery(signal).recovery, "defect_driven_refund");
+  const result = classifySourceAdmission(signal);
+  assert.equal(result.decision, "candidate");
+  assert.deepEqual(result.reason_codes, ["title_first_hand_defect_refund"]);
+});
+
+test("generic refund enforcement guide is not promoted without lived dispute evidence", () => {
+  const signal = naverSignal(
+    "헬스장 환불 강제집행 방법 총정리",
+    "환불이 되지 않을 때 강제집행을 신청하는 방법과 준비 서류를 정리합니다.",
+    "생활정보",
+  );
+  assert.notEqual(classifySourceRecovery(signal).recovery, "first_hand_dispute_escalation");
+  assert.notEqual(classifySourceAdmission(signal).decision, "candidate");
+});
+
+test("borrowed professional lead-gen cases cannot be rescued by dispute wording", () => {
+  const signal = naverSignal(
+    "헬스장 환불 강제집행 피해 사례와 대응",
+    "피해자는 환불을 받지 못해 강제집행과 민원 신고를 진행했습니다. 비슷한 피해가 있다면 법률상담을 받으세요.",
+    "법무법인 나란",
+  );
+  assert.equal(classifySourceRecovery(signal).recovery, null);
+  assert.equal(classifySourceAdmission(signal).decision, "reject");
 });
 
 test("production service routes stats and queue through the policy overlay", async () => {

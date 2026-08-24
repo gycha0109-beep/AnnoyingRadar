@@ -74,7 +74,7 @@ test("audit manifest separates boundary, adversarial reject risk, and determinis
   assert.equal(audit.manifest.audit_state_version, "source-admission-audit-state-v0.1");
   assert.equal(
     audit.manifest.admission_policy_revision,
-    "source-admission-v0.8-pain-ownership-v0.1-causality-v0.1",
+    "source-admission-v0.8-pain-ownership-v0.1-causality-v0.1-recovery-v0.1",
   );
   assert.equal(audit.boundary_set.length, 1);
   assert.deepEqual(new Set(audit.reject_risk_set.map((item) => item.id)), new Set(["risk-access", "risk-cost"]));
