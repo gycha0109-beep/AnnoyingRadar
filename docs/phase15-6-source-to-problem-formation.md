@@ -2,11 +2,28 @@
 
 ## Status
 
-Phase 15.6A empirical formation audit: **CLOSED — 2026-08-24**
+```text
+15.6A — Empirical formation audit:             CLOSED — 2026-08-24
+15.6B — Incident-aware clustering contract:    CLOSED — 2026-08-24
+15.6C — Canonical Problem Draft Gate:           CLOSED — 2026-08-24
+15.6D — Incident-aware Persistence:             CLOSED — 2026-08-24
+15.6E — Curator Review / Publication Readiness: CLOSED — 2026-08-24
+```
 
-Phase 15.6B incident-aware clustering contract: **IMPLEMENTED**
+Phase 15.6 established and then persisted the precision boundary between an admitted Source and a repeatable Canonical Public Problem draft.
 
-This phase does not create or publish `ar_public_problems`. It establishes the precision boundary between an admitted Source and a repeatable Public Problem.
+Current live result:
+
+```text
+2 Canonical Public Problem drafts
+5 Public Evidence snapshots
+4 independent Source Incidents
+5 Source→Incident links
+0 Published Problems
+0 Public feed rows
+```
+
+A/B/C were read-only/non-persisting formation stages. Phase 15.6D explicitly authorized persistence of the two qualified drafts and their incident-bound evidence. Phase 15.6E aligned curator review with the incident-aware publication gate. **No Phase 15.6 stage automatically published a Public Problem.**
 
 ---
 
@@ -294,15 +311,15 @@ same underlying incident
 
 and still have different Source keys.
 
-Therefore, for a claim that a problem is repeated, the operational gate becomes:
+Therefore, for a claim that a problem is repeated, the operational gate is:
 
 ```text
-at least 2 distinct incident_key values
+at least 2 distinct incident identities
 ```
 
-`source_key` remains provenance identity. `incident_key` represents underlying case identity.
+`source_key` remains provenance identity. Persisted `incident_id` represents underlying case identity.
 
-This phase does not add a DB column yet. Until an incident model is persisted, repeat eligibility is computed only after explicit incident identity has been supplied/confirmed.
+Phase 15.6D implemented this correction in the live schema and hardened publication so every external Public Evidence snapshot must carry a valid Source Signal ↔ Incident binding.
 
 ---
 
@@ -319,13 +336,15 @@ related problem mechanism
 
 but AI does not own incident identity.
 
-The runtime helper accepts an already supplied `incident_key` and deliberately does not invent one.
+Formation helpers accept already supplied incident identity and deliberately do not invent it. Phase 15.6D persists curator-authoritative Incident identities.
 
 This prevents semantic clustering from silently turning several posts about one dispute into several independent cases.
 
 ---
 
-## 8. Implemented contract
+## 8. Implemented contracts
+
+### 15.6A/B — formation and clustering
 
 `lib/sources/source-problem-formation.mjs` provides:
 
@@ -345,13 +364,51 @@ Properties:
 - original grounded external/structural friction → `eligible`;
 - repeated cluster count uses distinct incident keys, never raw source count.
 
-No network call, DB mutation, or automatic publication authority is introduced by this module.
+### 15.6C — canonical draft gate
+
+`lib/sources/canonical-problem-draft.mjs` admits only incident-aware repeated clusters to curator draft review. Exactly two empirical clusters qualified. Singleton evidence remained blocked from repeated canonical claims.
+
+### 15.6D — incident-aware persistence
+
+Live persistence now separates:
+
+```text
+Source Signal
+→ Source Incident
+→ Public Evidence Snapshot
+→ Canonical Public Problem draft
+```
+
+Current persisted result:
+
+```text
+2 draft Problems
+5 Evidence snapshots
+4 Incidents
+5 Source→Incident links
+```
+
+Publication requires both distinct source provenance and at least two distinct Incidents.
+
+### 15.6E — curator publication readiness
+
+The curator read model and UI now expose Incident lineage and server-computed structural readiness. Actual publication requires:
+
+```text
+incident-aware structural readiness
++ explicit curator publication confirmation
++ database publication assertion
+```
+
+Structural readiness is not editorial approval and never auto-publishes.
 
 ---
 
-## 9. Phase boundary after 15.6A/B
+## 9. Phase closeout boundary
 
-Current state:
+Phase 15.6 is **CLOSED through 15.6E**.
+
+Authoritative state:
 
 ```text
 669 development Source Signals
@@ -366,17 +423,47 @@ Current state:
 6 eligible singleton mechanisms
 2 provenance-review mechanisms
 4 formation rejects
+        ↓ Canonical Draft Gate
+2 canonical draft proposals
+        ↓ Incident-aware Persistence
+2 persisted draft Problems / 5 Evidence / 4 Incidents
+        ↓ Curator Readiness
+2 structurally publishable drafts
+0 published Problems
 ```
 
-The next authorized implementation step is **Phase 15.6C — Canonical Problem Draft Gate**.
+### What is not authorized by Phase 15.6
 
-It may use only incident-aware repeated clusters as automatic draft candidates.
+Phase 15.6 does **not** authorize an assistant, background job, model, CI workflow, merge, or deployment to turn either draft into `published` automatically.
 
-It must not:
+The following remain prohibited without a separately defined and explicitly invoked publication step:
 
-- publish automatically;
-- convert singleton evidence into a repeated claim;
-- treat source count as incident count;
-- expose derivative provenance as canonical evidence;
-- mutate the blind 120 evaluation set;
-- write Public Problems until the draft/persistence contract is explicitly defined.
+- automatic Public Problem publication;
+- treating singleton evidence as repeated evidence;
+- treating source count as incident count;
+- exposing derivative provenance as canonical evidence;
+- mutating the blind 120 evaluation set;
+- treating a successful CD deployment as publication approval.
+
+### Delivery policy
+
+The repository-level Vercel Git deployment pause was removed after 15.6E closeout. Main pushes/merges are no longer suppressed by `vercel.json`.
+
+Delivery and editorial publication remain independent authorities:
+
+```text
+Git/Vercel CD
+≠
+Public Problem publication
+```
+
+### Next boundary
+
+There is **no automatically authorized Phase 15.6F** in this document.
+
+A next phase that actually publishes one or both current drafts must first define the controlled publication/E2E scope and requires explicit curator publication intent. Until then the authoritative public state remains:
+
+```text
+Published Problems: 0
+Public feed rows:    0
+```
