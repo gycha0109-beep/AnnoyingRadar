@@ -16,8 +16,8 @@ function naverSignal(title, description = "") {
   };
 }
 
-test("Phase 15.5E calibrated admission version is v0.3", () => {
-  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.3");
+test("Phase 15.5E calibrated admission version is v0.4", () => {
+  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.4");
 });
 
 test("incidental complaint phrase in a daily post cannot become a candidate", () => {
@@ -72,7 +72,7 @@ test("health how-to title is information, not complaint-central source", () => {
   assert.ok(result.reason_codes.includes("title_information_or_guide"));
 });
 
-test("refund review remains context-review while explicit refund failure title becomes candidate", () => {
+test("refund review remains context-review while personal refund-failure story is candidate", () => {
   const ambiguous = classifySourceAdmission(naverSignal(
     "여기어때 오키나와 숙소 태풍 결항 환불 후기",
     "출국편 결항 의심될 땐 플랜B를 마련하자. 무사히 환불 끝냈으니 내년 여행을 노려봐야겠다",
@@ -85,7 +85,51 @@ test("refund review remains context-review while explicit refund failure title b
     "호텔 측 답변은 환불 불가였습니다.",
   ));
   assert.equal(explicit.decision, "candidate");
-  assert.ok(explicit.reason_codes.includes("title_explicit_complaint"));
+  assert.ok(explicit.reason_codes.includes("title_explicit_personal_complaint"));
+});
+
+test("negative recommendation is not mistaken for positive recommendation", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터",
+    "이번에 진짜 기사님이 일방적으로 취소했고 이런 적 처음임",
+  ));
+  assert.equal(result.decision, "candidate");
+  assert.ok(result.reason_codes.includes("title_explicit_personal_complaint"));
+});
+
+test("legal and SEO complaint-shaped titles do not become candidates", () => {
+  const falseCandidateTitles = [
+    '"단순변심 환불 불가"는 무효입니다 — 온라인쇼핑 청약철회권',
+    "고유가 피해지원금, 8월 31일 자정 지나면 사라집니다 (환불 안 됨)",
+    "바이비트 출금 오류 때문에 속상하신가요?",
+    "숙소 예약 취소수수료 아끼는 법｜무료취소·환불불가 요금제 비교",
+    "유튜브 프리미엄 무료 체험 6개월 안 됨 원인, 결제 오류, 해지 환불 ....",
+    "인터넷으로 산 물건 단순변심 환불 가능할까? “환불 불가”라고 써....",
+    '중고거래 "환불 안 됨" 특약, 법적 효력 있을까? (feat. 사기죄 고소)',
+    "헬스장 폐업, 남은 회원권 환불 못 받았다면? 형사고소·민사소송 총....",
+    "헬스장·필라테스 환불 거부·먹튀 대처법! 위약금 10% 기준과 카드사....",
+  ];
+  for (const title of falseCandidateTitles) {
+    assert.equal(classifySourceAdmission(naverSignal(title, "관련 기준과 절차를 정리합니다.")).decision, "reject", title);
+  }
+});
+
+test("explicit complaint without personal title framing requires context instead of auto-candidate", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "김포공항 국내선 평일 수속 소요시간, 이스타 예약조회 안됨, 영어....",
+    "출발 당일 셀프체크인을 하려는데 아고다에서 예약한 이스타항공 예약조회가 아예 안되더라고요",
+  ));
+  assert.equal(result.decision, "review");
+  assert.ok(result.reason_codes.includes("title_explicit_complaint_requires_context"));
+});
+
+test("information-shaped title with explicit first-hand experience is preserved for review", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "아고다 취소불가 숙소 취소 가능할까? 예약 일주일 지난 실제 후기",
+    "나는 출장 일정 변경 때문에 직접 취소를 요청했는데 환불 불가 상품이었다",
+  ));
+  assert.equal(result.decision, "review");
+  assert.ok(result.reason_codes.includes("title_mixed_information_and_experience"));
 });
 
 test("generic fraud, harm, loss, and account-lock topics never auto-promote", () => {
@@ -107,13 +151,14 @@ test("topic-only query-shaped title rejects instead of flooding REVIEW", () => {
   assert.equal(result.decision, "reject");
 });
 
-test("snippet may route an opaque title to review but never candidate", () => {
-  const strongSnippet = classifySourceAdmission(naverSignal(
+test("first-hand complaint snippet may request context but never promote to candidate", () => {
+  const result = classifySourceAdmission(naverSignal(
     "벼락치기",
-    "저 헬스장 존나 비추. 직원 싸가지부터 별로였고 결국 환불받음",
+    "제가 이번에 헬스장 갔는데 진짜 비추. 직원 싸가지부터 별로였고 결국 환불받음",
   ));
-  assert.equal(strongSnippet.decision, "review");
-  assert.equal(strongSnippet.requires_full_context, true);
+  assert.equal(result.decision, "review");
+  assert.equal(result.requires_full_context, true);
+  assert.ok(result.reason_codes.includes("snippet_first_hand_complaint_requires_context"));
 });
 
 test("provider title is authoritative over retrieval description", () => {
