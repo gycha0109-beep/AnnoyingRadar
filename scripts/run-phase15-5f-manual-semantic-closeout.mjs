@@ -24,7 +24,7 @@ const observations = new Map([
     friction_specificity: "concrete",
     pain_centrality: "incidental",
     content_kind: "organic",
-    evidence_quote: "근데 주문이 계속 취소되는 거임,,,,",
+    evidence_quote: "근데 주문이 계속 취소되는 거임,,,","+"
   }],
   ["defa940f-b51c-4e8c-a134-f9522ee810be", {
     problem_claim: "yes",
