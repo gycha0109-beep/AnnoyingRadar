@@ -35,12 +35,19 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
   const storageKey = `annoying-radar:${audit.manifest.audit_version}:${audit.manifest.admission_version}:${audit.manifest.pool_fingerprint}`;
   const allItems = useMemo(() => GROUPS.flatMap((group) => audit[group.key]), [audit]);
   const validItemSets = useMemo(() => new Map(allItems.map((item) => [item.id, item.set])), [allItems]);
+  const validItemStates = useMemo(() => new Map(allItems.map((item) => [item.id, {
+    fingerprint: item.admission_state_fingerprint ?? null,
+    legacyReplaySafe: item.legacy_replay_safe !== false,
+  }])), [allItems]);
   const rawSnapshot = useSyncExternalStore(
     subscribeToAuditStorage,
     () => window.localStorage.getItem(storageKey) ?? "",
     () => "",
   );
-  const labels = useMemo(() => labelsFromSnapshot(rawSnapshot, validItemSets), [rawSnapshot, validItemSets]);
+  const labels = useMemo(
+    () => labelsFromSnapshot(rawSnapshot, validItemSets, validItemStates),
+    [rawSnapshot, validItemSets, validItemStates],
+  );
   const [activeGroupId, setActiveGroupId] = useState("boundary");
   const [cursorByGroup, setCursorByGroup] = useState({ boundary: 0, reject_risk: 0, reject_random: 0 });
   const [message, setMessage] = useState("브라우저에만 저장됩니다. production DB에는 쓰지 않습니다.");
@@ -67,6 +74,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       audit_version: audit.manifest.audit_version,
       admission_version: audit.manifest.admission_version,
       admission_policy_revision: audit.manifest.admission_policy_revision ?? null,
+      audit_state_version: audit.manifest.audit_state_version ?? null,
       pool_fingerprint: audit.manifest.pool_fingerprint,
       updated_at: new Date().toISOString(),
       labels: nextLabels,
@@ -82,6 +90,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       [currentItem.id]: {
         decision,
         set: currentItem.set,
+        state_fingerprint: currentItem.admission_state_fingerprint ?? null,
         reviewed_at: new Date().toISOString(),
       },
     };
@@ -126,6 +135,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       source_signal_id: item.id,
       human_decision: labels[item.id]?.decision ?? "",
       reviewed_at: labels[item.id]?.reviewed_at ?? "",
+      admission_state_fingerprint: item.admission_state_fingerprint ?? "",
       title: item.title,
       snippet: item.snippet,
       canonical_url: item.canonical_url ?? "",
@@ -157,7 +167,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       const sourceLabels = parsed?.labels && typeof parsed.labels === "object" && !Array.isArray(parsed.labels)
         ? parsed.labels
         : {};
-      const restored = sanitizeLabels(sourceLabels, validItemSets);
+      const restored = sanitizeLabels(sourceLabels, validItemSets, validItemStates);
       const skipped = Math.max(0, Object.keys(sourceLabels).length - Object.keys(restored).length);
       persist(restored);
       const previousAdmission = parsed?.manifest?.admission_version;
@@ -165,7 +175,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
         ? ` (${previousAdmission} → ${audit.manifest.admission_version} 재사용)`
         : "";
       const skippedNote = skipped > 0
-        ? ` ${skipped}개는 현재 audit set이 달라져 재판정 대상으로 남겼습니다.`
+        ? ` ${skipped}개는 현재 audit set이 달라져 재판정 대상으로 남겼습니다. 정책 state가 바뀐 항목도 포함됩니다.`
         : "";
       setMessage(`${Object.keys(restored).length}개 기존 인간 판정을 불러왔습니다${versionNote}.${skippedNote}`);
     } catch {
@@ -296,26 +306,34 @@ function subscribeToAuditStorage(callback) {
   };
 }
 
-function labelsFromSnapshot(rawSnapshot, validItemSets) {
+function labelsFromSnapshot(rawSnapshot, validItemSets, validItemStates) {
   if (!rawSnapshot) return {};
   try {
-    return sanitizeLabels(JSON.parse(rawSnapshot)?.labels, validItemSets);
+    return sanitizeLabels(JSON.parse(rawSnapshot)?.labels, validItemSets, validItemStates);
   } catch {
     return {};
   }
 }
 
-function sanitizeLabels(value, validItemSets) {
+function sanitizeLabels(value, validItemSets, validItemStates) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const cleaned = {};
   for (const [id, label] of Object.entries(value)) {
     const currentSet = validItemSets.get(id);
     if (!currentSet) continue;
     if (label?.set !== currentSet) continue;
+    const currentState = validItemStates.get(id);
+    if (!currentState) continue;
+    if (label?.state_fingerprint) {
+      if (label.state_fingerprint !== currentState.fingerprint) continue;
+    } else if (!currentState.legacyReplaySafe) {
+      continue;
+    }
     if (!HUMAN_DECISIONS.some((option) => option.value === label?.decision)) continue;
     cleaned[id] = {
       decision: label.decision,
       set: currentSet,
+      state_fingerprint: currentState.fingerprint,
       reviewed_at: typeof label.reviewed_at === "string" ? label.reviewed_at : null,
     };
   }
@@ -361,6 +379,7 @@ function toCsv(rows) {
     source_signal_id: "",
     human_decision: "",
     reviewed_at: "",
+    admission_state_fingerprint: "",
     title: "",
     snippet: "",
     canonical_url: "",
