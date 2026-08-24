@@ -34,42 +34,79 @@ v0.3 fixed REVIEW flooding but still failed candidate precision:
 
 Direct inspection of all 10 v0.3 candidates showed that nine were legal/how-to/SEO/comparison/marketing content. The one clear complaint-central candidate was `로마 숙소 아고다 고객센터 환불 불가 썰`.
 
-`source-admission-v0.4` is the calibration response.
+## v0.4 revalidation failure
 
-## v0.4 admission order
+v0.4 improved candidate precision and kept REVIEW burden low, but still failed the same development-pool gate:
 
-1. Use provider title as the source-level primary signal.
+- candidate / review / reject = 3 / 12 / 654
+- full-context burden = 1.79%
+- candidate audit = 2 true / 1 false positive
+- sampled REJECT = 49/50 correct, 1 possible false negative, 0 clear false negatives
+- REVIEW audit = 6/12 need context, 5/12 should reject, 1/12 should candidate
+- regression = 5/6 because #10 was routed to REVIEW
+
+Hosted-data inspection identified the remaining false CANDIDATE as:
+
+`네이버쇼핑 판매자 신고 방법 (환불 거부당했을 때 순서대로 대응하....`
+
+The failure had two distinct causes:
+
+1. `거부당했을 때` matched broad `당했` narrative grammar even though it was conditional guide language.
+2. the real #10 snippet contained a later first-person phrase after the parenthetical complaint fragment, so first-hand preservation ran before incidental-parenthetical demotion and incorrectly produced REVIEW.
+
+## v0.5 admission order
+
+`source-admission-v0.5` keeps the title-first contract but tightens source-intent authority:
+
+1. Provider title remains the primary source-intent signal.
 2. Information/legal/how-to/SEO/comparison/marketing framing outranks complaint vocabulary.
-3. A title-level explicit failure event is necessary but no longer sufficient for CANDIDATE.
-4. CANDIDATE additionally requires personal/narrative framing such as `썰`, `비추천`, direct first-person framing, being personally subjected to the event, or similarly direct experience language.
-5. Explicit complaint titles without enough personal framing go to REVIEW, not CANDIDATE.
-6. Mixed information/commercial titles with explicit personal experience are preserved for REVIEW rather than hard-rejected.
-7. `비추천` is negative evidence and must never be matched by the positive `추천` rule.
-8. A first-hand complaint-looking snippet may preserve a source for REVIEW, but snippet can never produce CANDIDATE.
-9. Generic topic nouns such as `사기`, `피해`, `분실`, `도용`, `정지` never create CANDIDATE by themselves.
+3. `신고 방법`, `순서대로 대응`, scam-warning/countermeasure phrasing, and resale/transfer titles are treated as non-complaint source framing.
+4. Conditional grammar such as `거부당했을 때` is not personal narrative evidence.
+5. CANDIDATE still requires an explicit failure event plus title-level personal/narrative complaint framing.
+6. Incidental parenthetical snippet demotion runs before any other snippet-based preservation.
+7. A retrieval snippet may demote a source but cannot establish source complaint centrality by itself.
+8. Opaque/neutral titles no longer reach REVIEW merely because their NAVER description contains a strong first-hand complaint fragment.
+9. Complaint-topic titles may still reach REVIEW when title framing or multiple strong snippet markers justify selective full-context inspection.
 10. Truncation alone remains insufficient for REVIEW.
 
 Decisions:
 
 - `candidate`: explicit complaint/failure event plus title-level personal/narrative complaint framing.
-- `review`: explicit complaint without enough personal framing, mixed information/commercial + actual experience, or first-hand/strong complaint context that requires source inspection.
-- `reject`: information/legal/how-to/SEO/positive framing without credible personal complaint context, incidental retrieval noise, generic topic-only framing, or no meaningful complaint signal.
+- `review`: title itself carries complaint relevance but source centrality remains genuinely ambiguous.
+- `reject`: information/legal/how-to/SEO/commercial/resale/positive framing, incidental retrieval noise, neutral title plus snippet-only complaint, generic topic-only framing, or no meaningful complaint source signal.
 
 ## Examples locked by tests
 
 - `카카오톡 로그인 오류·계정 도용·결제 문제, 상황별 해결 경로 정리 직접 해봤어요` → reject.
-- `so what? we hot we young` with one incidental parenthetical `환불안됨` phrase → reject.
+- `so what? we hot we young` with `(피규어충동구매햇는데환불안됨)` plus unrelated later first-person text → reject.
 - truncated `하수구청소 맡길 일이 생겨서 간 ... 처리 ....` → reject.
 - `용산 피프틴커피 배달 후기 ... 부담 없는 최소주문금액!` → reject.
 - `가래 감기 걸렸을 때 어떻게 해야 할까 싶을 때` → reject.
+- `네이버쇼핑 판매자 신고 방법 (환불 거부당했을 때 순서대로 대응하....` → reject.
+- `이비스턴 사기 쇼핑몰 사칭 구매대행 피해 주의해야 할 수법과 대응....` → reject.
+- `임영웅 고양 콘서트 티켓 원가양도합니다` with an incidental refund complaint in snippet → reject.
+- opaque `벼락치기` with a strong gym complaint snippet → reject because snippet cannot establish source centrality.
 - `여기어때 오키나와 숙소 태풍 결항 환불 후기` → review.
+- `아고다 취소불가 숙소 취소 가능할까? ... 실제 후기` → review.
 - `로마 숙소 아고다 고객센터 환불 불가 썰` → candidate.
-- `카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터` → candidate; `비추천` is not positive `추천`.
-- `"단순변심 환불 불가"는 무효입니다 — 온라인쇼핑 청약철회권` → reject.
-- `바이비트 출금 오류 때문에 속상하신가요?` → reject.
-- `숙소 예약 취소수수료 아끼는 법｜무료취소·환불불가 요금제 비교` → reject.
-- `김포공항 ... 이스타 예약조회 안됨 ...` → review, never auto-candidate.
-- `아고다 취소불가 숙소 취소 가능할까? ... 실제 후기` → review because information framing and actual experience are mixed.
+- `카카오 T 펫택시 비추천 | 기사 일방적 취소 | 고객센터` → candidate.
+
+## Pre-merge v0.5 hosted dry-run
+
+Before merging v0.5, the same hosted campaign development pool was re-evaluated with the v0.5 rule ordering using read-only SQL that mirrored the deterministic contract:
+
+- development pool = 669
+- candidate = 2
+- review = 8 before the final neutral-title / resale / scam-warning tightening
+- reject = 659 before that final tightening
+
+The eight REVIEW titles were then inspected directly. Three clearly non-complaint source types remained:
+
+- opaque daily-post title with a complaint-heavy snippet
+- ticket resale listing with incidental refund friction
+- scam-warning/countermeasure information article
+
+v0.5 was tightened again before merge so those patterns reject at title/source-intent level. The authoritative acceptance result remains the post-merge 669-signal revalidation, not this pre-merge estimate.
 
 ## Runtime authority
 
@@ -83,7 +120,7 @@ The existing 120-sample blind human evaluation remains untouched. Active admissi
 
 ## Verification rule
 
-v0.4 is not considered successful merely because contract tests pass. The same 669-signal development-pool revalidation must be repeated after merge. Candidate precision, REVIEW quality, REVIEW burden, and sampled REJECT false negatives remain the acceptance evidence.
+v0.5 is not considered successful merely because contract tests or the pre-merge SQL mirror pass. The same 669-signal development-pool revalidation must be repeated after merge. Candidate precision, REVIEW quality, REVIEW burden, sampled REJECT false negatives, and all six regression cases remain the acceptance evidence.
 
 ## Production deployment
 

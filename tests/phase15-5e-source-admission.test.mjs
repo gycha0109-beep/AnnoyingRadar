@@ -16,14 +16,14 @@ function naverSignal(title, description = "") {
   };
 }
 
-test("Phase 15.5E calibrated admission version is v0.4", () => {
-  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.4");
+test("Phase 15.5E calibrated admission version is v0.5", () => {
+  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.5");
 });
 
-test("incidental complaint phrase in a daily post cannot become a candidate", () => {
+test("incidental complaint phrase in a daily post cannot become a candidate or review", () => {
   const dailyPost = naverSignal(
     "so what? we hot we young",
-    "(피규어충동구매햇는데환불안됨) 하..나 연금복권 다섯장 샀는데 다 낙첨이야 너네가 내 로또니까 날 먹여살리도록",
+    "(피규어충동구매햇는데환불안됨) 하..나 연금복권 다섯장 샀는데 다 낙첨이야 너네가 내 로또니까 날 먹여살리도록(간절) 내가 자른 빵 뭐게 아 ㅋ 너무 어렵나 비주얼은 거지 같지만 정말 맛있습니다",
   );
   const result = classifySourceAdmission(dailyPost);
   assert.equal(result.decision, "reject");
@@ -40,6 +40,16 @@ test("information/guide title hard rejects even when snippet contains first-hand
   const prefilter = runDeterministicComplaintPrefilter(signal);
   assert.equal(prefilter.decision, "reject");
   assert.ok(prefilter.reason_codes.includes("source_title_information_or_guide"));
+});
+
+test("conditional guide grammar is not mistaken for a personal complaint narrative", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "네이버쇼핑 판매자 신고 방법 (환불 거부당했을 때 순서대로 대응하....",
+    "✔ 네이버쇼핑에서 환불을 거부당했다면 먼저 Npay 결제내역에서 반품을 신청하고 분쟁조정센터에 접수할 수 있습니다.",
+  ));
+  assert.equal(result.decision, "reject");
+  assert.equal(result.requires_full_context, false);
+  assert.ok(result.reason_codes.includes("title_information_or_guide"));
 });
 
 test("positive service/product review framing is not a complaint source", () => {
@@ -151,14 +161,41 @@ test("topic-only query-shaped title rejects instead of flooding REVIEW", () => {
   assert.equal(result.decision, "reject");
 });
 
-test("first-hand complaint snippet may request context but never promote to candidate", () => {
+test("opaque title cannot be promoted by a complaint-heavy retrieval snippet", () => {
   const result = classifySourceAdmission(naverSignal(
     "벼락치기",
-    "제가 이번에 헬스장 갔는데 진짜 비추. 직원 싸가지부터 별로였고 결국 환불받음",
+    "안녕하십니까 운동을 진짜 왕 열심히했어 한동안 저 헬스장 존나 비추. 직원싸가지부터 별로였고 환불받음",
   ));
-  assert.equal(result.decision, "review");
-  assert.equal(result.requires_full_context, true);
-  assert.ok(result.reason_codes.includes("snippet_first_hand_complaint_requires_context"));
+  assert.equal(result.decision, "reject");
+  assert.equal(result.requires_full_context, false);
+  assert.ok(result.reason_codes.includes("title_no_complaint_signal"));
+});
+
+test("resale listing title outranks an incidental ticket refund complaint", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "임영웅 고양 콘서트 티켓 원가양도합니다",
+    "엄마가 해달래서 티켓팅 했는데 연석 실패했고 취소하려고 보니 티켓수수료는 환불안됨",
+  ));
+  assert.equal(result.decision, "reject");
+  assert.ok(result.reason_codes.includes("title_commercial_or_seo"));
+});
+
+test("fraud warning and countermeasure article is information rather than complaint source", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "이비스턴 사기 쇼핑몰 사칭 구매대행 피해 주의해야 할 수법과 대응....",
+    "계좌이체 요구 후 환불 불가를 통보하는 경우가 많아 피해 수법을 정리합니다.",
+  ));
+  assert.equal(result.decision, "reject");
+  assert.ok(result.reason_codes.includes("title_information_or_guide"));
+});
+
+test("informational checklist snippet demotes before generic review preservation", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "예약했는데 당일 숙소 이용 불가? 세종 스테이조이 환불 ....",
+    "✔ 예약 확정 문자 보관 ✔ 결제 내역 캡처 ✔ 취소·환불 규정 확인 ✔ 숙소 주소와 연락처 확인",
+  ));
+  assert.equal(result.decision, "reject");
+  assert.ok(result.reason_codes.includes("snippet_information_only"));
 });
 
 test("provider title is authoritative over retrieval description", () => {
