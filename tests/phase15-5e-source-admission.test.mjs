@@ -16,8 +16,8 @@ function naverSignal(title, description = "") {
   };
 }
 
-test("Phase 15.5E calibrated admission version is v0.5", () => {
-  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.5");
+test("Phase 15.5E calibrated admission version is v0.6", () => {
+  assert.equal(SOURCE_ADMISSION_VERSION, "source-admission-v0.6");
 });
 
 test("incidental complaint phrase in a daily post cannot become a candidate or review", () => {
@@ -196,6 +196,26 @@ test("informational checklist snippet demotes before generic review preservation
   ));
   assert.equal(result.decision, "reject");
   assert.ok(result.reason_codes.includes("snippet_information_only"));
+});
+
+test("concrete repair-cost shock with forced replacement is recovered to review, not candidate", () => {
+  const result = classifySourceAdmission(naverSignal(
+    "수리비 87만원?... 어쩔수 없이 새로 구입한 Z폴드8 와이드",
+    "2년간 사용한 내 핸드폰이 낙상사고로 파손되어 서비스센터에서 수리 견적을 받았습니다.",
+  ));
+  assert.equal(result.decision, "review");
+  assert.equal(result.requires_full_context, true);
+  assert.ok(result.reason_codes.includes("title_concrete_cost_loss_requires_context"));
+});
+
+test("long service-wait harm title is recovered to review, not candidate", () => {
+  const result = classifySourceAdmission(naverSignal(
+    '"재활 치료 6개월 기다리래요" 어린이 24만명, 하염없이 대기',
+    "치료 대기 명단에 이름을 올리는 일이 반복된다고 한다.",
+  ));
+  assert.equal(result.decision, "review");
+  assert.equal(result.requires_full_context, true);
+  assert.ok(result.reason_codes.includes("title_long_wait_harm_requires_context"));
 });
 
 test("provider title is authoritative over retrieval description", () => {
