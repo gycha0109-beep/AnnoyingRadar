@@ -6,6 +6,7 @@ import {
   buildSourceAdmissionIndependentAudit,
   findIndependentAuditRisk,
   SOURCE_ADMISSION_AUDIT_RANDOM_SIZE,
+  SOURCE_ADMISSION_AUDIT_STATE_VERSION,
   SOURCE_ADMISSION_AUDIT_VERSION,
 } from "../lib/sources/source-admission-audit.mjs";
 
@@ -23,6 +24,7 @@ function naverSignal(id, title, description = "") {
 
 test("independent audit contract is versioned and uses a fixed random control size", () => {
   assert.equal(SOURCE_ADMISSION_AUDIT_VERSION, "source-admission-independent-audit-v0.1");
+  assert.equal(SOURCE_ADMISSION_AUDIT_STATE_VERSION, "source-admission-audit-state-v0.1");
   assert.equal(SOURCE_ADMISSION_AUDIT_RANDOM_SIZE, 100);
 });
 
@@ -55,7 +57,7 @@ test("ordinary neutral titles are not swept solely for containing generic domain
   assert.deepEqual(result.reason_codes, []);
 });
 
-test("audit manifest separates boundary, adversarial reject risk, and deterministic random control under v0.8", () => {
+test("audit manifest separates boundary, adversarial reject risk, and deterministic random control under the active policy", () => {
   const signals = [
     naverSignal("candidate", "로마 숙소 아고다 고객센터 환불 불가 썰", "호텔 측 답변은 환불 불가였습니다."),
     naverSignal("boundary", "여기어때 오키나와 숙소 태풍 결항 환불 후기", "무사히 환불 끝냈으니 내년 여행을 노려봐야겠다"),
@@ -69,13 +71,33 @@ test("audit manifest separates boundary, adversarial reject risk, and determinis
   assert.equal(audit.manifest.boundary_count, 1);
   assert.equal(audit.manifest.reject_risk_count, 2);
   assert.equal(audit.manifest.reject_random_count, 100);
-  assert.equal(audit.manifest.admission_policy_revision, "source-admission-v0.8-pain-ownership-v0.1");
+  assert.equal(audit.manifest.audit_state_version, "source-admission-audit-state-v0.1");
+  assert.equal(
+    audit.manifest.admission_policy_revision,
+    "source-admission-v0.8-pain-ownership-v0.1-causality-v0.1",
+  );
   assert.equal(audit.boundary_set.length, 1);
   assert.deepEqual(new Set(audit.reject_risk_set.map((item) => item.id)), new Set(["risk-access", "risk-cost"]));
   assert.equal(audit.reject_random_set.length, 100);
   assert.equal(audit.reject_random_set.some((item) => item.id === "risk-access" || item.id === "risk-cost"), false);
   assert.equal(Object.hasOwn(audit.boundary_set[0], "admission"), false);
   assert.equal(Object.hasOwn(audit.boundary_set[0], "reason_codes"), false);
+  assert.match(audit.boundary_set[0].admission_state_fingerprint, /^[0-9a-f]{16}$/);
+});
+
+test("policy-sensitive rejects are marked unsafe for legacy label replay", () => {
+  const audit = buildSourceAdmissionIndependentAudit([
+    naverSignal(
+      "self-caused",
+      "덕질과 효도를 한 번에 교토&고베 4)",
+      "점심 특선 메뉴는 예약 필수인데 뭘 잘못해가지고 자리만 예약되고 점심 특선은 예약이 안됨ㅋ",
+    ),
+    ...Array.from({ length: 105 }, (_, index) => naverSignal(`plain-${index}`, `평범한 일상 기록 ${index}`)),
+  ]);
+  const item = [...audit.reject_risk_set, ...audit.reject_random_set].find((row) => row.id === "self-caused");
+  assert.ok(item);
+  assert.equal(item.legacy_replay_safe, false);
+  assert.match(item.admission_state_fingerprint, /^[0-9a-f]{16}$/);
 });
 
 test("random control and pool fingerprint are stable regardless of input order", () => {
@@ -110,12 +132,15 @@ test("curator audit remains blind-safe and browser-local rather than a productio
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
 
-test("same-pool human labels can be replayed across admission versions only when their audit set is unchanged", async () => {
+test("same-pool human labels replay only when set and admission state remain compatible", async () => {
   const client = await read("app/components/source-admission-independent-audit.js");
   assert.match(client, /pool_fingerprint !== audit\.manifest\.pool_fingerprint/);
   assert.doesNotMatch(client, /parsed\?\.manifest\?\.admission_version !== audit\.manifest\.admission_version/);
   assert.match(client, /previousAdmission/);
   assert.match(client, /validItemSets/);
+  assert.match(client, /validItemStates/);
   assert.match(client, /label\?\.set !== currentSet/);
-  assert.match(client, /현재 audit set이 달라져 재판정 대상으로 남겼습니다/);
+  assert.match(client, /label\.state_fingerprint !== currentState\.fingerprint/);
+  assert.match(client, /legacyReplaySafe/);
+  assert.match(client, /정책 state가 바뀐 항목도 포함됩니다/);
 });
