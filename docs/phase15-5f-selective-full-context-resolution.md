@@ -62,7 +62,7 @@ Phase 15.5F does **not**:
 - re-run 13 CANDIDATEs through an LLM;
 - change Source Admission v0.8 regexes;
 - replay browser audit clicks as runtime truth;
-- interpret a fetch failure as REJECT;
+- interpret a fetch or model failure as REJECT;
 - write a full copied source post to the production database;
 - add a DB migration;
 - read the blind 120 evaluation signals.
@@ -98,12 +98,11 @@ Supported Naver body containers:
 Fetch behavior is fail-closed with respect to admission:
 
 ```text
-HTTP/network/parse failure
-→ full_context.status = unavailable
+HTTP/network/parse/adapter failure
 → final decision remains REVIEW
 ```
 
-No failure path manufactures a REJECT.
+No fetch failure path manufactures a REJECT.
 
 ## Semantic observation
 
@@ -121,6 +120,8 @@ evidence_quote
 
 The model is explicitly instructed not to output CANDIDATE / REVIEW / REJECT.
 
+Provider configuration errors, timeouts, transport errors, malformed output, and unsupported uncertainty also preserve REVIEW rather than manufacturing a label.
+
 ### Deterministic final mapping
 
 CANDIDATE requires all of:
@@ -131,7 +132,7 @@ experience_actor = self
 friction_cause = external_service_or_product
 friction_specificity = concrete
 pain_centrality = central
-content_kind ∈ {organic, informational}
+content_kind = organic
 ```
 
 Explicit REJECT cases include:
@@ -139,11 +140,13 @@ Explicit REJECT cases include:
 ```text
 problem_claim = no
 friction_cause = self_caused
-content_kind ∈ {advertisement, news, repost}
+content_kind ∈ {advertisement, informational, news, repost}
 pain_centrality = incidental
 friction_specificity = none
 experience_actor ∈ {other, generic}
 ```
+
+`informational` means a guide/how-to whose main purpose is instruction. This remains REJECT even when it contains some personal wording, preserving the Phase 15.5E rule that general refund/legal/information guides are not recovered as source candidates.
 
 Uncertain or mixed semantics remain REVIEW rather than being force-fit.
 
