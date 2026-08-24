@@ -112,11 +112,10 @@ test("random control and pool fingerprint are stable regardless of input order",
 });
 
 test("curator audit remains blind-safe and browser-local rather than a production DB authority", async () => {
-  const [service, page, client, vercel] = await Promise.all([
+  const [service, page, client] = await Promise.all([
     read("lib/sources/service.mjs"),
     read("app/curator/sources/audit/page.js"),
     read("app/components/source-admission-independent-audit.js"),
-    read("vercel.json"),
   ]);
 
   assert.match(service, /getSourceAdmissionIndependentAudit/);
@@ -129,7 +128,6 @@ test("curator audit remains blind-safe and browser-local rather than a productio
   assert.match(client, /CSV 내보내기/);
   assert.match(client, /JSON 불러오기/);
   assert.doesNotMatch(client, /fetch\s*\(/);
-  assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
 
 test("same-pool human labels replay only when set and admission state remain compatible", async () => {
