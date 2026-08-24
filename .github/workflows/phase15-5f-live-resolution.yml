@@ -1,0 +1,24 @@
+name: Phase 15.5F Live Resolution
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    if: github.head_ref == 'agent/phase15-5f-live-run'
+    runs-on: ubuntu-latest
+    env:
+      ALLOW_PAID_SOURCE_FULL_CONTEXT: "true"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_SOURCE_FULL_CONTEXT_MODEL: gpt-5.6-luna
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run selective live resolution
+        run: node scripts/run-phase15-5f-live-fixture.mjs
