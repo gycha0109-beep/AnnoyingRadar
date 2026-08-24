@@ -33,10 +33,7 @@ const LOCAL_CHANGE_EVENT = "annoying-radar-source-audit-local-change";
 
 export default function SourceAdmissionIndependentAudit({ audit }) {
   const storageKey = `annoying-radar:${audit.manifest.audit_version}:${audit.manifest.admission_version}:${audit.manifest.pool_fingerprint}`;
-  const allItems = useMemo(
-    () => GROUPS.flatMap((group) => audit[group.key]),
-    [audit],
-  );
+  const allItems = useMemo(() => GROUPS.flatMap((group) => audit[group.key]), [audit]);
   const validIds = useMemo(() => new Set(allItems.map((item) => item.id)), [allItems]);
   const rawSnapshot = useSyncExternalStore(
     subscribeToAuditStorage,
@@ -62,7 +59,8 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
   }));
 
   const totals = countDecisions(labels);
-  const allCompleted = allItems.length > 0 && Object.keys(labels).filter((id) => validIds.has(id)).length === allItems.length;
+  const completedCount = Object.keys(labels).filter((id) => validIds.has(id)).length;
+  const allCompleted = allItems.length > 0 && completedCount === allItems.length;
 
   function persist(nextLabels) {
     const payload = {
@@ -149,15 +147,19 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       const parsed = JSON.parse(await file.text());
       if (
         parsed?.manifest?.audit_version !== audit.manifest.audit_version
-        || parsed?.manifest?.admission_version !== audit.manifest.admission_version
         || parsed?.manifest?.pool_fingerprint !== audit.manifest.pool_fingerprint
       ) {
-        setMessage("현재 audit manifest와 다른 JSON이라 불러오지 않았습니다.");
+        setMessage("현재 audit protocol/pool과 다른 JSON이라 불러오지 않았습니다.");
         return;
       }
+
       const restored = sanitizeLabels(parsed?.labels, validIds);
       persist(restored);
-      setMessage(`${Object.keys(restored).length}개 판정을 불러왔습니다.`);
+      const previousAdmission = parsed?.manifest?.admission_version;
+      const versionNote = previousAdmission && previousAdmission !== audit.manifest.admission_version
+        ? ` (${previousAdmission} → ${audit.manifest.admission_version} 재사용)`
+        : "";
+      setMessage(`${Object.keys(restored).length}개 기존 인간 판정을 불러왔습니다${versionNote}. 현재 set에 없는 ID는 자동 제외했습니다.`);
     } catch {
       setMessage("JSON 파일을 읽지 못했습니다.");
     }
@@ -256,7 +258,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
             <p className="curator-kicker">Human Audit Result</p>
             <h2>{allCompleted ? "모든 audit item 판정 완료" : "진행 중"}</h2>
           </div>
-          <span>{Object.keys(labels).filter((id) => validIds.has(id)).length} / {allItems.length}</span>
+          <span>{completedCount} / {allItems.length}</span>
         </div>
         <div className="source-run-metrics">
           <span>Candidate <strong>{totals.candidate}</strong></span>

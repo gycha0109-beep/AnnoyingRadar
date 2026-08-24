@@ -55,10 +55,10 @@ test("ordinary neutral titles are not swept solely for containing generic domain
   assert.deepEqual(result.reason_codes, []);
 });
 
-test("audit manifest separates boundary, adversarial reject risk, and deterministic random control", () => {
+test("audit manifest separates boundary, adversarial reject risk, and deterministic random control under v0.8", () => {
   const signals = [
     naverSignal("candidate", "로마 숙소 아고다 고객센터 환불 불가 썰", "호텔 측 답변은 환불 불가였습니다."),
-    naverSignal("boundary", "김포공항 국내선 평일 수속 소요시간, 이스타 예약조회 안됨, 영어....", "예약조회가 안 되더라고요"),
+    naverSignal("boundary", "여기어때 오키나와 숙소 태풍 결항 환불 후기", "무사히 환불 끝냈으니 내년 여행을 노려봐야겠다"),
     naverSignal("risk-access", "키오스크 때문에 부모님은 주문을 못 하고 그냥 돌아왔습니다"),
     naverSignal("risk-cost", "수리 견적 250000원이라 결국 교체했습니다"),
     ...Array.from({ length: 110 }, (_, index) => naverSignal(`plain-${index}`, `평범한 일상 기록 ${index}`, "오늘 있었던 일을 적었습니다.")),
@@ -107,4 +107,12 @@ test("curator audit remains blind-safe and browser-local rather than a productio
   assert.match(client, /JSON 불러오기/);
   assert.doesNotMatch(client, /fetch\s*\(/);
   assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
+});
+
+test("same-pool human labels can be replayed across admission versions", async () => {
+  const client = await read("app/components/source-admission-independent-audit.js");
+  assert.match(client, /pool_fingerprint !== audit\.manifest\.pool_fingerprint/);
+  assert.doesNotMatch(client, /parsed\?\.manifest\?\.admission_version !== audit\.manifest\.admission_version/);
+  assert.match(client, /previousAdmission/);
+  assert.match(client, /현재 set에 없는 ID는 자동 제외했습니다/);
 });

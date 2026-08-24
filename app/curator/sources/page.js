@@ -61,8 +61,8 @@ export default async function CuratorSourcesPage() {
       <header className="curator-hero">
         <div>
           <p className="curator-kicker">Source Lab · Phase 15.5E</p>
-          <h1>Source admission은 LLM 없이 title-first로 판단합니다.</h1>
-          <p>NAVER Search description은 검색어 주변을 잘라낸 retrieval artifact입니다. snippet 한 문장만으로 complaint candidate를 만들지 않습니다.</p>
+          <h1>Source admission은 LLM 없이 source intent와 pain role을 먼저 봅니다.</h1>
+          <p>NAVER Search description은 retrieval artifact입니다. v0.8은 광고·SEO의 공감성 Pain → Pitch를 REJECT하고, snippet 승격은 구체적인 실제 피해 사건처럼 강한 경우에만 제한적으로 허용합니다.</p>
         </div>
       </header>
 
@@ -86,7 +86,7 @@ export default async function CuratorSourcesPage() {
       <section className="source-lab-grid">
         <div className="source-lab-panel">
           <p className="curator-kicker">No-LLM Source Admission</p>
-          <h2>Title-first admission</h2>
+          <h2>Source-intent admission</h2>
           <div className="source-run-metrics">
             <span>campaign <strong>{admission.campaign_pool}</strong></span>
             <span>blind excluded <strong>{admission.blind_excluded}</strong></span>
@@ -96,7 +96,7 @@ export default async function CuratorSourcesPage() {
             <span>reject <strong>{admission.reject}</strong></span>
             <span>full-context <strong>{admission.full_context_required}</strong></span>
           </div>
-          <p className="source-lab-copy">정보/가이드·긍정 후기 제목은 조기 제외하고, 명시적 complaint 제목만 candidate로 올립니다. snippet은 애매한 결과를 노이즈로 내릴 수만 있고 candidate로 승격할 수 없습니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
+          <p className="source-lab-copy">정보/가이드·긍정 리뷰·제품 홍보는 조기 제외합니다. 실제 complaint가 글의 주제인지, 광고/SEO의 공감성 hook인지 분리하고, 경고·systemic harm·구체적 lived event는 별도 경계로 처리합니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
           <div className="inline-actions">
             <Link className="button-link button-compact" href="/curator/sources/admission">Admission queue 보기</Link>
             <Link className="button-link button-compact" href="/curator/sources/audit">Independent audit 열기</Link>
