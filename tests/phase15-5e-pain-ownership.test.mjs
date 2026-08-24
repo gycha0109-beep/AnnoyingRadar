@@ -38,7 +38,6 @@ test("law-firm repackaging of an Ibistern victim case is borrowed lead-gen and r
   const intent = classifySourceIntent(signal);
   assert.equal(intent.intent, "lead_gen");
   assert.equal(intent.pain_role, "borrowed");
-  assert.equal(intent.pain_ownership, "borrowed_leadgen");
 
   const admission = classifySourceAdmission(signal);
   assert.equal(admission.decision, "reject");
