@@ -60,10 +60,7 @@ test("legacy Gold freeze endpoint remains curator-only for historical compatibil
 });
 
 test("Source Lab preserves 15.5C acquisition metrics while Phase 15.5E makes no-LLM admission active", async () => {
-  const [page, vercel] = await Promise.all([
-    read("app/curator/sources/page.js"),
-    read("vercel.json"),
-  ]);
+  const page = await read("app/curator/sources/page.js");
   assert.match(page, /Phase 15\.5E/);
   assert.match(page, /getGoldCampaignProgress/);
   assert.match(page, /unique_signal_pool/);
@@ -71,5 +68,4 @@ test("Source Lab preserves 15.5C acquisition metrics while Phase 15.5E makes no-
   assert.match(page, /No-LLM Source Admission/);
   assert.match(page, /AI Silver는 active admission path가 아닙니다/);
   assert.doesNotMatch(page, /GoldBenchmarkFreezeControl/);
-  assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });

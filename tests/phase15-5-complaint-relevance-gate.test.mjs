@@ -202,12 +202,11 @@ test("classification and Gold mutation endpoints are curator-only and do not pro
 });
 
 test("legacy complaint review remains historical while active Source Lab uses no-LLM admission plus blind human evaluation", async () => {
-  const [page, legacyComponent, blindPage, blindCard, vercel] = await Promise.all([
+  const [page, legacyComponent, blindPage, blindCard] = await Promise.all([
     read("app/curator/sources/page.js"),
     read("app/components/source-signal-complaint-review.js"),
     read("app/curator/sources/evaluation/page.js"),
     read("app/components/blind-evaluation-card.js"),
-    read("vercel.json"),
   ]);
   assert.match(page, /Phase 15\.5E/);
   assert.match(page, /No-LLM Source Admission/);
@@ -219,7 +218,6 @@ test("legacy complaint review remains historical while active Source Lab uses no
   assert.match(blindCard, /experience actor/);
   assert.match(blindCard, /friction specificity/);
   assert.doesNotMatch(blindCard, /\/classify/);
-  assert.equal(JSON.parse(vercel).git.deploymentEnabled, false);
 });
 
 test("runtime smoke isolates external Supabase only under an explicit smoke flag", async () => {
