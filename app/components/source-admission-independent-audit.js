@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 const HUMAN_DECISIONS = Object.freeze([
   { value: "candidate", label: "A · Candidate", help: "제목/문맥만으로 complaint-central이라고 판단" },
@@ -29,6 +29,8 @@ const GROUPS = Object.freeze([
   },
 ]);
 
+const LOCAL_CHANGE_EVENT = "annoying-radar-source-audit-local-change";
+
 export default function SourceAdmissionIndependentAudit({ audit }) {
   const storageKey = `annoying-radar:${audit.manifest.audit_version}:${audit.manifest.admission_version}:${audit.manifest.pool_fingerprint}`;
   const allItems = useMemo(
@@ -36,23 +38,16 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
     [audit],
   );
   const validIds = useMemo(() => new Set(allItems.map((item) => item.id)), [allItems]);
-  const [labels, setLabels] = useState({});
+  const rawSnapshot = useSyncExternalStore(
+    subscribeToAuditStorage,
+    () => window.localStorage.getItem(storageKey) ?? "",
+    () => "",
+  );
+  const labels = useMemo(() => labelsFromSnapshot(rawSnapshot, validIds), [rawSnapshot, validIds]);
   const [activeGroupId, setActiveGroupId] = useState("boundary");
   const [cursorByGroup, setCursorByGroup] = useState({ boundary: 0, reject_risk: 0, reject_random: 0 });
   const [message, setMessage] = useState("브라우저에만 저장됩니다. production DB에는 쓰지 않습니다.");
   const importRef = useRef(null);
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      const restored = sanitizeLabels(parsed?.labels, validIds);
-      setLabels(restored);
-    } catch {
-      setMessage("기존 브라우저 저장값을 읽지 못했습니다. 새 audit로 시작합니다.");
-    }
-  }, [storageKey, validIds]);
 
   const activeGroup = GROUPS.find((group) => group.id === activeGroupId) ?? GROUPS[0];
   const activeItems = audit[activeGroup.key];
@@ -78,7 +73,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       labels: nextLabels,
     };
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
-    setLabels(nextLabels);
+    window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT));
   }
 
   function labelCurrent(decision) {
@@ -171,7 +166,7 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
   function clearAudit() {
     if (!window.confirm("이 브라우저의 현재 audit 판정을 전부 지우시겠습니까?")) return;
     window.localStorage.removeItem(storageKey);
-    setLabels({});
+    window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT));
     setCursorByGroup({ boundary: 0, reject_risk: 0, reject_random: 0 });
     setMessage("현재 브라우저 audit 저장값을 삭제했습니다.");
   }
@@ -279,6 +274,24 @@ export default function SourceAdmissionIndependentAudit({ audit }) {
       </section>
     </div>
   );
+}
+
+function subscribeToAuditStorage(callback) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(LOCAL_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(LOCAL_CHANGE_EVENT, callback);
+  };
+}
+
+function labelsFromSnapshot(rawSnapshot, validIds) {
+  if (!rawSnapshot) return {};
+  try {
+    return sanitizeLabels(JSON.parse(rawSnapshot)?.labels, validIds);
+  } catch {
+    return {};
+  }
 }
 
 function sanitizeLabels(value, validIds) {
