@@ -1,0 +1,31 @@
+name: Phase 15.6A Context Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/run-phase15-6a-context-audit.mjs"
+      - ".github/workflows/phase15-6a-context-audit.yml"
+      - "lib/sources/source-full-context-fetch.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch 17 admitted source contexts
+        run: node scripts/run-phase15-6a-context-audit.mjs
+      - name: Upload transient context artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase15-6a-context
+          path: .artifacts/phase15-6a-context.json
+          if-no-files-found: error
+          retention-days: 1
