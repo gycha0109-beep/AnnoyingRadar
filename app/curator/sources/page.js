@@ -97,7 +97,10 @@ export default async function CuratorSourcesPage() {
             <span>full-context <strong>{admission.full_context_required}</strong></span>
           </div>
           <p className="source-lab-copy">정보/가이드·긍정 후기 제목은 조기 제외하고, 명시적 complaint 제목만 candidate로 올립니다. snippet은 애매한 결과를 노이즈로 내릴 수만 있고 candidate로 승격할 수 없습니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
-          <Link href="/curator/sources/admission">Admission queue 보기</Link>
+          <div className="inline-actions">
+            <Link className="button-link button-compact" href="/curator/sources/admission">Admission queue 보기</Link>
+            <Link className="button-link button-compact" href="/curator/sources/audit">Independent audit 열기</Link>
+          </div>
         </div>
 
         <div className="source-lab-panel">
