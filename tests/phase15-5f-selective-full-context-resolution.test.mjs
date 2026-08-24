@@ -214,8 +214,8 @@ test("Phase 15.5F stays a separate lane: no DB migration/write and no back-impor
     read("lib/sources/source-admission-policy.mjs"),
   ]);
 
-  assert.doesNotMatch(resolver, /\.from\s*\(|\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(/);
-  assert.doesNotMatch(fetcher, /\.from\s*\(|\.insert\s*\(|\.update\s*\(|\.upsert\s*\(|\.delete\s*\(/);
+  assert.doesNotMatch(resolver, /createServiceClient|supabase|\.(?:insert|upsert|delete)\s*\(/i);
+  assert.doesNotMatch(fetcher, /createServiceClient|supabase|\.(?:insert|upsert|delete)\s*\(/i);
   assert.doesNotMatch(policy, /source-full-context/);
   assert.match(resolver, /admission\.decision !== "review" \|\| !admission\.requires_full_context/);
 });
