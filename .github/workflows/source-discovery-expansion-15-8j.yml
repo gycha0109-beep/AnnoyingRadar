@@ -2,9 +2,6 @@ name: Source Discovery Expansion 15.8J
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-discovery-expansion-15-8j
 
 permissions:
   contents: read
