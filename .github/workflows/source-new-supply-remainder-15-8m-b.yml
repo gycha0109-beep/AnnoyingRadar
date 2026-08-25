@@ -1,0 +1,73 @@
+name: Source New-Supply Remainder 15.8M-B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-8m-b-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-new-supply-remainder-15-8m-b
+  cancel-in-progress: false
+
+jobs:
+  remainder-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          require_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              missing=1
+            fi
+          }
+          require_secret NEXT_PUBLIC_SUPABASE_URL "$NEXT_PUBLIC_SUPABASE_URL"
+          if [ -z "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}" ]; then
+            echo "Missing required GitHub Actions Supabase service credential" >&2
+            missing=1
+          fi
+          require_secret OPENAI_API_KEY "$OPENAI_API_KEY"
+          test "$missing" -eq 0
+      - name: Resolve exact unsampled 15.8J Review remainder
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SOURCE_FULL_CONTEXT_MODEL: ${{ secrets.OPENAI_SOURCE_FULL_CONTEXT_MODEL || 'gpt-5-mini-2025-08-07' }}
+          ALLOW_PAID_SOURCE_FULL_CONTEXT: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-new-supply-review-remainder-resolution.mjs --live 2>&1 | tee source-new-supply-remainder-15-8m-b.log
+      - name: Upload aggregate 15.8M-B diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-new-supply-remainder-15-8m-b
+          path: source-new-supply-remainder-15-8m-b.log
+          if-no-files-found: ignore
