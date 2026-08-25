@@ -73,10 +73,11 @@ test("15.8O artifact deliberately contains reread context but no completed curat
   assert.match(script, /database_writes: 0/);
 });
 
-test("15.8O workflow is one-day, no-model, authoritative-main, and temporarily triggerable only from live branch", async () => {
+test("15.8O closeout workflow is one-day, no-model, authoritative-main, and manual-only", async () => {
   const workflow = await read(".github/workflows/source-incident-curator-packet-15-8o.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8o-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8o-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /retention-days: 1/);
