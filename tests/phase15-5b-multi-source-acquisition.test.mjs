@@ -172,13 +172,13 @@ test("generic persistence dedupes by platform plus external identity, not Thread
   assert.match(service, /onConflict: "source_platform,external_content_id"/);
 });
 
-test("Naver ingestion route is curator-only and persists only Source Signal supply data", async () => {
+test("Naver ingestion route is curator-only and persists only prefiltered Source Signal supply data", async () => {
   const route = await read("app/api/radar/admin/sources/naver/blog/search/route.js");
   assert.match(route, /requireRadarCurator/);
   assert.match(route, /normalizeNaverBlogSearchInput/);
   assert.match(route, /sourcePlatform: "naver_blog"/);
   assert.ok(route.indexOf("createSourceIngestionRun") < route.indexOf("searchNaverBlogPosts(input)"));
-  assert.match(route, /persistSourceSignals/);
+  assert.match(route, /persistDiscoveredSourceSignals/);
   assert.match(route, /failSourceIngestionRun/);
   assert.doesNotMatch(route, /ar_raw_inputs|ar_pain_evidences|ar_public_problems/);
 });

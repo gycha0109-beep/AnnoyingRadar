@@ -6,7 +6,7 @@ import { requireRadarCurator } from "../../../../../../../../lib/radar/curator.j
 import {
   createSourceIngestionRun,
   failSourceIngestionRun,
-  persistSourceSignals,
+  persistDiscoveredSourceSignals,
 } from "../../../../../../../../lib/sources/service.mjs";
 import {
   normalizeNaverBlogSearchInput,
@@ -40,7 +40,7 @@ export async function POST(request) {
     });
 
     const result = await searchNaverBlogPosts(input);
-    const persisted = await persistSourceSignals(serviceClient, {
+    const persisted = await persistDiscoveredSourceSignals(serviceClient, {
       runId: run.id,
       queryText: input.q,
       signals: result.signals,
@@ -52,6 +52,8 @@ export async function POST(request) {
       run: persisted.run,
       signals: persisted.signals,
       observation_count: persisted.observations.length,
+      discovery: persisted.discovery.summary,
+      admission: persisted.admission_summary,
       paging: result.paging,
     });
   } catch (error) {

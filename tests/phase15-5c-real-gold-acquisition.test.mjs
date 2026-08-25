@@ -59,9 +59,9 @@ test("legacy Gold freeze endpoint remains curator-only for historical compatibil
   assert.match(route, /freezeGoldBenchmark/);
 });
 
-test("Source Lab preserves 15.5C acquisition metrics while Phase 15.5E makes no-LLM admission active", async () => {
+test("Source Lab preserves 15.5C Gold metrics while Phase 15.8A keeps no-LLM admission active", async () => {
   const page = await read("app/curator/sources/page.js");
-  assert.match(page, /Phase 15\.5E/);
+  assert.match(page, /Phase 15\.8A/);
   assert.match(page, /getGoldCampaignProgress/);
   assert.match(page, /unique_signal_pool/);
   assert.match(page, /BlindEvaluationControl/);
