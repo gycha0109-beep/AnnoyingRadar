@@ -208,7 +208,7 @@ test("legacy complaint review remains historical while active Source Lab uses no
     read("app/curator/sources/evaluation/page.js"),
     read("app/components/blind-evaluation-card.js"),
   ]);
-  assert.match(page, /Phase 15\.5E/);
+  assert.match(page, /Phase 15\.8A/);
   assert.match(page, /No-LLM Source Admission/);
   assert.match(page, /BlindEvaluationControl/);
   assert.doesNotMatch(page, /SourceSignalComplaintReview/);
