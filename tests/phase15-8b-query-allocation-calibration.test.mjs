@@ -64,8 +64,8 @@ const observedMetrics = [
   metric({ query_key: "housing__contact__2", fetched_count: 1, discovery_continue_count: 1, inserted_count: 1, admission_reject_count: 1, max_start_fetched_count: 1 }),
 ];
 
-test("Phase 15.8B allocation v0.3 is explicit in request provenance", () => {
-  assert.equal(DISCOVERY_QUERY_ALLOCATION_VERSION, "source-discovery-allocation-v0.3");
+test("Phase 15.8B pagination contracts remain active in allocation v0.4", () => {
+  assert.equal(DISCOVERY_QUERY_ALLOCATION_VERSION, "source-discovery-allocation-v0.4");
   assert.ok(buildDiscoveryQueryPlan().every(
     (item) => item.input.request_metadata.discovery_allocation_version
       === DISCOVERY_QUERY_ALLOCATION_VERSION,
