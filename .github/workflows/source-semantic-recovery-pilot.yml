@@ -2,9 +2,6 @@ name: Source Semantic Recovery Pilot
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-semantic-recovery-pilot
 
 permissions:
   contents: read

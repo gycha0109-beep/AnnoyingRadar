@@ -2,47 +2,29 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE and bounded live recovery pilot**
+**CLOSED — bounded recovery lane implemented, CI/PIE verified, live pilot verified; active resolver unchanged**
 
 ## Purpose
 
-Phase 15.8F completed a disjoint 48-item exact-new Review holdout.
-
-The full public source context fetch succeeded for all 48 items, but eight semantic resolutions remained unresolved:
+Phase 15.8F completed a disjoint 48-item exact-new Review holdout. Full public source context fetch succeeded for all 48 items, but eight semantic resolutions remained unresolved:
 
 ```text
 source_full_context_provider_incomplete:      5
 source_full_context_invalid_evidence_quote:   3
 ```
 
-This isolates the current reliability problem to the semantic-provider / structured-output boundary rather than source acquisition or full-context fetch.
+Phase 15.8G tested a bounded recovery lane for exactly these two empirically observed technical failures without changing Source Admission, Formation, incident identity, publication authority, or active discovery allocation.
 
-Phase 15.8G tests a bounded recovery lane for exactly these two empirically observed technical failures.
+## Repository implementation authority
 
-It does not change Source Admission semantics, Formation semantics, incident identity, publication authority, or active discovery allocation.
-
-## Empirical authority
-
-Baseline Phase 15.8F live run:
+Implementation PR:
 
 ```text
-workflow run: 32807308702
-holdout size: 48
-holdout fingerprint: 30bb0ea9980f1ef1055f6e9d0a97df78271048c573ac66ef95877f02dcbc49d7
-unresolved: 8
+PR #82
+merge: acffe6670cd4fa29c0cb4f530f5b6d6d2be40dea
+CI #349: SUCCESS
+PIE #49: SUCCESS
 ```
-
-The eight unresolved records occurred at the following identity-free 1-based holdout ordinals:
-
-```text
-7, 10, 12, 13, 17, 24, 28, 44
-```
-
-The repository does not persist a list of their Source Signal ids or canonical URLs.
-
-The pilot reconstructs the same frozen 48-item holdout and then selects those eight ordinals only after the holdout fingerprint matches exactly.
-
-## Recovery authority
 
 Recovery version:
 
@@ -56,39 +38,18 @@ Base semantic resolution authority remains:
 source-full-context-resolution-v0.1
 ```
 
-The recovery lane delegates final semantic mapping to the existing:
+The base resolver was not modified. The recovery lane remains separate and evaluation-only.
 
-```text
-resolveFullContextSemantic(...)
-```
+## Exact recovery policy
 
-No new Candidate / Reject rule is introduced.
-
-## Exact retry allowlist
-
-Only the two failures observed in Phase 15.8F may trigger recovery:
+Only these two codes are eligible:
 
 ```text
 source_full_context_provider_incomplete
 source_full_context_invalid_evidence_quote
 ```
 
-No generic retry policy is introduced.
-
-For example, this phase does not automatically retry:
-
-- provider network errors;
-- timeouts;
-- HTTP rejection;
-- missing configuration;
-- semantic uncertainty;
-- full-context fetch failure.
-
-Those remain governed by their existing fail-safe behavior.
-
-## Attempt budget
-
-Maximum semantic attempts per source:
+Maximum semantic attempts:
 
 ```text
 attempt 1: existing semantic judge
@@ -96,57 +57,34 @@ attempt 2: one bounded recovery attempt
 maximum:   2 total attempts
 ```
 
-There is no third attempt.
+No generic retry expansion was introduced for network errors, timeouts, provider rejection, missing configuration, semantic uncertainty, or full-context fetch failure.
 
-If recovery fails, the record remains:
-
-```text
-decision = review
-resolved = false
-```
-
-## Full-context fetch boundary
-
-The public source context is fetched once.
-
-Recovery retries only the semantic provider request against that same ephemeral fetched context.
-
-```text
-source fetch max per target: 1
-semantic calls max per target: 2
-```
-
-For the eight-record pilot:
-
-```text
-public full-context fetches max: 8
-external semantic calls max:    16
-```
-
-No source body is persisted by the recovery lane.
+The public full context is fetched once. Recovery retries only the semantic request against the same ephemeral context.
 
 ## Provider-incomplete recovery
 
-The base semantic request uses a bounded structured response.
+The recovery attempt preserves:
 
-For an incomplete provider result, the recovery attempt:
+- the same model selection;
+- `store: false`;
+- the same strict structured schema;
+- the same semantic fields;
+- the same `resolveFullContextSemantic(...)` final mapping.
 
-1. preserves the same model selection;
-2. preserves `store: false`;
-3. preserves the same strict JSON schema;
-4. preserves the same semantic fields and final decision mapper;
-5. increases the output-token ceiling from 800 to 1600;
-6. adds a concise instruction to return only the required structured fields.
+It changes only the technical completion budget and concision instruction:
+
+```text
+base max_output_tokens:      800
+recovery max_output_tokens: 1600
+```
 
 This is a reliability adjustment, not a semantic-policy adjustment.
 
 ## Invalid evidence quote recovery
 
-The existing base validator requires `evidence_quote` to be an exact contiguous substring of the fetched post.
+The existing exact provenance validator requires `evidence_quote` to be an exact contiguous substring of the fetched post.
 
-The recovery lane does **not** locally rewrite, fuzzy-match, trim into a match, or otherwise repair an invalid quote.
-
-Instead, the one retry adds a stricter instruction:
+The recovery lane does not locally rewrite, fuzzy-match, trim into a match, or otherwise manufacture a quote. The retry instead reinforces:
 
 ```text
 evidence_quote must be copied character-for-character
@@ -154,33 +92,26 @@ as one contiguous substring from <source_full_post>,
 or be null.
 ```
 
-The existing exact validator then runs again unchanged.
+The same exact validator then runs again.
 
-This preserves the provenance boundary.
+## Frozen pilot authority
 
-## Separate recovery lane
-
-Phase 15.8G does not wire the recovery behavior into the active resolver yet.
-
-New lane:
+Baseline Phase 15.8F run:
 
 ```text
-resolveSourceAdmissionWithFullContextRecovery(...)
+run: 32807308702
+holdout size: 48
+holdout fingerprint: 30bb0ea9980f1ef1055f6e9d0a97df78271048c573ac66ef95877f02dcbc49d7
+baseline unresolved: 8
 ```
 
-Existing active/base lane remains:
+Identity-free unresolved ordinals:
 
 ```text
-resolveSourceAdmissionWithFullContext(...)
+7, 10, 12, 13, 17, 24, 28, 44
 ```
 
-The live pilot explicitly invokes the recovery lane only for evaluation.
-
-Production activation requires a separate later phase.
-
-## Pilot reconstruction
-
-The pilot reuses the frozen Phase 15.8D / 15.8F authority window:
+The pilot reconstructs the frozen authority window:
 
 ```text
 completed_at <= 2026-08-25T02:29:36.982Z
@@ -189,89 +120,173 @@ exact-new Sources: 961
 exact-new Reviews: 166
 ```
 
-It reconstructs:
+Then:
 
 ```text
 166 Review queue
 → historical deterministic 24 exclusion
 → same deterministic 48 holdout
-→ verify holdout fingerprint
-→ select baseline unresolved ordinals only
+→ verify exact holdout fingerprint
+→ select eight baseline unresolved ordinals
 ```
 
-The run fails closed on any reconstruction or fingerprint drift.
+No Source Signal identity list is committed as calibration authority.
 
-## Output policy
+## Live recovery pilot
 
-The live pilot emits aggregate diagnostics only.
-
-It does not emit:
-
-- Source Signal ids;
-- canonical URLs;
-- author handles;
-- full source bodies;
-- individual semantic payloads;
-- provider request ids.
-
-It reports:
+Live run:
 
 ```text
-resolved / unresolved after re-run
-Candidate / Reject / Review outcomes
-unresolved reduction from baseline eight
-recovery attempts
-successful retry recoveries
-exhausted recoveries
-aggregate trigger reason codes
-aggregate terminal reason codes
-aggregate decision reason codes
-outcomes by domain and family
-before / after DB boundary counts
+workflow: Source Semantic Recovery Pilot
+run: 32808824853
+artifact: 9549105015
+authoritative main: acffe6670cd4fa29c0cb4f530f5b6d6d2be40dea
 ```
 
-## Attribution rule
-
-A target may resolve on its fresh first attempt even though it was unresolved in the previous Phase 15.8F run.
-
-That counts toward observed unresolved reduction, but it must **not** be reported as a successful retry recovery unless the second recovery attempt was actually invoked and succeeded.
-
-Therefore the pilot reports separately:
+Result:
 
 ```text
-unresolved_reduction
-recovery_attempted
-recovered_after_retry
-recovery_exhausted
+baseline unresolved: 8
+resolved now:         6
+unresolved now:       2
+unresolved reduction: 6
+resolution rate:      75%
 ```
 
-This prevents stochastic provider variation from being falsely attributed to the retry mechanism.
+Final decisions for the eight targets:
+
+```text
+Candidate: 0
+Reject:    6
+Review:    2
+```
+
+## Retry attribution
+
+The pilot separates fresh first-attempt variation from actual retry recovery.
+
+```text
+fresh first-attempt resolution: 2
+recovery attempted:             6
+recovered after retry:          4
+recovery exhausted:             2
+```
+
+Therefore it would be incorrect to attribute all six newly resolved records to the retry mechanism.
+
+Four records were directly recovered by the second bounded attempt.
+
+## Recovery trigger readback
+
+During this fresh eight-target run:
+
+```text
+no retry needed:                             2
+source_full_context_provider_incomplete:     4
+source_full_context_invalid_evidence_quote:  2
+```
+
+Terminal recovery failures:
+
+```text
+source_full_context_invalid_evidence_quote: 2
+```
+
+No provider-incomplete error remained after the bounded recovery attempts in this run.
+
+This is evidence that the completion recovery mechanism is useful under the observed pilot conditions.
+
+It is **not** evidence that every future provider-incomplete error will always recover.
+
+## Quote recovery conclusion
+
+The two recovery attempts triggered by invalid evidence quotes both remained unresolved with the same terminal reason.
+
+Therefore Phase 15.8G does **not** establish quote-recovery effectiveness.
+
+The remaining reliability problem is now narrowed to:
+
+```text
+invalid evidence_quote handling / quote authority
+```
+
+This must be handled in a separate phase rather than weakening the exact quote validator inside this closeout.
+
+## Decision-reason readback
+
+Resolved records were rejected under existing semantic authority:
+
+```text
+full_context_informational_content: 3
+full_context_nonorganic_or_borrowed: 1
+full_context_not_first_hand: 2
+```
+
+No Candidate was manufactured by recovery.
 
 ## Mutation boundary
 
-Expected:
+The live runner verified before/after equality:
+
+```text
+source_signals:        2260 → 2260
+source_observations:   2461 → 2461
+source_ingestion_runs:  108 → 108
+raw_inputs:              10 → 10
+pain_evidences:          27 → 27
+public_problems:          2 → 2
+public_evidence:          5 → 5
+source_incidents:         4 → 4
+```
+
+Independent live DB readback after the pilot:
+
+```text
+Published Problems:     2
+Public Problem feed:    2
+Public Evidence:        5
+Public Evidence feed:   5
+Source Incidents:       4
+Blind samples:        120
+```
+
+Verified boundary:
 
 ```text
 DB writes: 0
-Blind reads: 0
+Blind reads by pilot: 0
 full source bodies persisted: 0
 publication mutations: 0
 active allocation mutations: 0
 active resolver mutations: 0
 ```
 
-The runner snapshots relevant DB counts before and after and fails if they differ.
+## Output policy
 
-## Activation boundary
+The pilot emitted aggregate diagnostics only. It did not emit Source Signal ids, canonical URLs, author handles, full source bodies, individual semantic payloads, or provider request ids.
 
-A successful pilot does not automatically activate the recovery lane.
+## Closeout trigger surface
 
-Phase 15.8G can close after:
+The temporary branch trigger used to execute the one-shot live pilot is removed during closeout.
 
-1. CI and PIE verification;
-2. bounded live eight-target recovery pilot;
-3. aggregate recovery readback;
-4. DB / Blind / publication boundary verification;
-5. temporary ops push trigger removal.
+Retained workflow authority:
 
-Only a later explicit phase may decide whether to integrate the recovery lane into active full-context resolution.
+```text
+workflow_dispatch only
+```
+
+There is no automatic push or pull-request paid execution path after closeout.
+
+## Phase conclusion
+
+Phase 15.8G is closed with a split conclusion:
+
+```text
+provider-incomplete recovery: EMPIRICALLY USEFUL IN PILOT
+invalid-quote recovery:       NOT ESTABLISHED
+active resolver integration:  NOT ACTIVATED
+```
+
+The correct next step is to isolate the quote failure rather than activate the whole recovery lane indiscriminately.
+
+A later activation phase may consider the provider-incomplete recovery path only after the quote authority is resolved or explicitly separated.
