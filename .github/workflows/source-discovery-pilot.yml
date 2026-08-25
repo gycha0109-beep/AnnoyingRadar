@@ -1,0 +1,71 @@
+name: Source Discovery Pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: Maximum discovery requests
+        required: false
+        default: "12"
+  push:
+    branches:
+      - ops/source-discovery-pilot
+    paths:
+      - .ops/source-discovery-pilot-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-discovery-pilot
+  cancel-in-progress: false
+
+jobs:
+  pilot:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/ops/source-discovery-pilot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$NAVER_CLIENT_ID"
+          test -n "$NAVER_CLIENT_SECRET"
+      - name: Run bounded live discovery pilot
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          ALLOW_SOURCE_DISCOVERY_EXPANSION: "1"
+          WORKFLOW_MAX_REQUESTS: ${{ inputs.max_requests || '12' }}
+        run: |
+          set -euo pipefail
+          node scripts/run-source-discovery-campaign.mjs --live --max-requests="$WORKFLOW_MAX_REQUESTS" 2>&1 | tee source-discovery-pilot.log
+      - name: Upload pilot diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-discovery-pilot
+          path: source-discovery-pilot.log
+          if-no-files-found: ignore
