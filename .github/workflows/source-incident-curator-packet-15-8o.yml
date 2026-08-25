@@ -2,9 +2,6 @@ name: Source Incident Curator Packet 15.8O
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8o-live-execution
 
 permissions:
   contents: read
