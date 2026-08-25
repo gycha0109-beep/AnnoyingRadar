@@ -124,6 +124,12 @@ test("shadow summary reports threshold crossings without mutating selection", ()
   assert.equal(summary.shadow_exploitation_eligible, 0);
 });
 
+test("active discovery allocation stays isolated from the promotion shadow module", async () => {
+  const active = await read("lib/sources/discovery-query-plan.mjs");
+  assert.match(active, /source-discovery-allocation-v0\.4/);
+  assert.doesNotMatch(active, /review-promotion-calibration|promotion-shadow/i);
+});
+
 test("Phase 15.8E runner is read-only and does not inspect Blind or source bodies", async () => {
   const runner = await read("scripts/run-discovery-promotion-shadow.mjs");
   assert.match(runner, /status: "SHADOW_ONLY"/);
@@ -132,4 +138,14 @@ test("Phase 15.8E runner is read-only and does not inspect Blind or source bodie
   assert.match(runner, /blind_evaluation_reads: 0/);
   assert.match(runner, /full_source_body_fetches: 0/);
   assert.doesNotMatch(runner, /getEvaluationSampleIds|fetchSourceFullContext|resolveSourceAdmissionWithFullContext/);
+});
+
+test("Phase 15.8E pilot checks out authoritative main and uses a dedicated temporary ops trigger", async () => {
+  const workflow = await read(".github/workflows/source-promotion-shadow-pilot.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /ops\/source-promotion-shadow-pilot/);
+  assert.match(workflow, /Checkout authoritative main/);
+  assert.match(workflow, /ref: main/);
+  assert.match(workflow, /run-discovery-promotion-shadow\.mjs/);
+  assert.doesNotMatch(workflow, /OPENAI_API_KEY|pull_request:/);
 });
