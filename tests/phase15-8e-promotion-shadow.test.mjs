@@ -17,6 +17,7 @@ import {
 import { DISCOVERY_QUERY_ALLOCATION_VERSION } from "../lib/sources/discovery-query-plan.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+const approximatelyEqual = (actual, expected, epsilon = 1e-12) => Math.abs(actual - expected) <= epsilon;
 
 function exactMetrics({ inserted = 50, reviews = 10, rejects = 40 } = {}) {
   return {
@@ -80,8 +81,8 @@ test("promotion-aware score is shadow-only and leaves active allocation version 
   assert.ok(damage.shadow_score < damage.base_score);
   assert.ok(delay.shadow_score < delay.base_score);
   assert.ok(delay.shadow_score > damage.shadow_score);
-  assert.equal(damage.base_review_credit, 0.02);
-  assert.equal(damage.promotion_review_credit, 0.01);
+  assert.ok(approximatelyEqual(damage.base_review_credit, 0.02));
+  assert.ok(approximatelyEqual(damage.promotion_review_credit, 0.01));
 });
 
 test("queries without Review evidence remain unchanged in shadow", () => {
