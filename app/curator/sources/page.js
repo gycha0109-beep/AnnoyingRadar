@@ -114,7 +114,7 @@ export default async function CuratorSourcesPage() {
             <span>reject <strong>{admission.reject}</strong></span>
             <span>full-context <strong>{admission.full_context_required}</strong></span>
           </div>
-          <p className="source-lab-copy">운영 admission pool은 Gold development supply와 Discovery observations를 합친 뒤 Blind 120을 제외합니다. Independent audit과 Blind sampling 자체는 기존 Gold authority에 고정되어 있습니다.</p>
+          <p className="source-lab-copy">운영 admission pool은 Gold development supply와 Discovery observations를 합친 뒤 Blind 120을 제외합니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다. Independent audit과 Blind sampling 자체는 기존 Gold authority에 고정되어 있습니다.</p>
           <div className="inline-actions">
             <Link className="button-link button-compact" href="/curator/sources/admission">Admission queue 보기</Link>
             <Link className="button-link button-compact" href="/curator/sources/audit">Independent audit 열기</Link>
