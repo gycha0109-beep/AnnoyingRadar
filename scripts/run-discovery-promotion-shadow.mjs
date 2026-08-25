@@ -25,6 +25,7 @@ function topChangedRows(ranking, limit = 20) {
       domain: row.domain,
       family: row.family,
       telemetry_scope: row.telemetry_scope,
+      promotion_applicable: row.promotion_applicable,
       exact_runs: row.exact_runs,
       review_count: row.review_count,
       base_score: row.base_score,
@@ -32,8 +33,8 @@ function topChangedRows(ranking, limit = 20) {
       score_delta: row.score_delta,
       base_exploitation_eligible: row.base_exploitation_eligible,
       shadow_exploitation_eligible: row.shadow_exploitation_eligible,
-      calibrated_promotion_rate: row.calibration.calibrated_promotion_rate,
-      calibration_scope: row.calibration.scope,
+      calibrated_promotion_rate: row.calibration?.calibrated_promotion_rate ?? null,
+      calibration_scope: row.calibration?.scope ?? null,
     }));
 }
 
@@ -48,6 +49,7 @@ async function main() {
     status: "SHADOW_ONLY",
     calibration_version: REVIEW_PROMOTION_CALIBRATION_VERSION,
     shadow_version: REVIEW_PROMOTION_SHADOW_VERSION,
+    calibration_authority_scope: "new_source_exact_only",
     empirical_baseline: REVIEW_PROMOTION_EMPIRICAL_BASELINE,
     summary,
     top_changed_queries: topChangedRows(ranking),
