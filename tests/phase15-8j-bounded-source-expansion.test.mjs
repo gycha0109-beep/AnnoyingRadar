@@ -4,10 +4,11 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("15.8J runs exactly one bounded 24-request acquisition batch from authoritative main", async () => {
+test("15.8J retains only explicit manual execution after one-shot closeout", async () => {
   const workflow = await read(".github/workflows/source-discovery-expansion-15-8j.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-discovery-expansion-15-8j/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-discovery-expansion-15-8j/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-source-discovery-campaign\.mjs --live --max-requests=24/);
