@@ -2,13 +2,13 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE, migration 033 live application, and bounded empirical validation**
+**CLOSED — 2026-08-25**
 
-## Why this phase exists
+## Why this phase existed
 
-Phase 15.8B removed material exact-page replay, but the second batch exposed a telemetry semantics problem.
+Phase 15.8B removed material exact-page replay, but the acquisition telemetry still mixed newly inserted Source identities with duplicates.
 
-Existing run-level fields:
+Historical fields:
 
 ```text
 admission_candidate_count
@@ -16,24 +16,20 @@ admission_review_count
 admission_reject_count
 ```
 
-classify every Source Signal that survives Discovery Prefilter in that run. This includes identities that already existed in `ar_source_signals`.
-
-Therefore:
+classify all continued signals in a run. Therefore:
 
 ```text
 run-level Candidate/Review/Reject
 != newly acquired Candidate/Review/Reject
 ```
 
-A duplicate replay can legitimately classify as Candidate or Review again, but it must not be credited as new acquisition yield.
+Phase 15.8C separates exact new-source yield without changing Source Admission or publication authority.
 
-Phase 15.8C separates those meanings without deleting historical telemetry.
+## Authority preserved
 
-## Authority
+Phase 15.8C changed acquisition telemetry and allocation scoring only.
 
-This phase changes acquisition telemetry and allocation scoring only.
-
-It does not change:
+It did not change:
 
 - Discovery Prefilter decisions;
 - Source Admission policy or thresholds;
@@ -44,11 +40,21 @@ It does not change:
 - Public Problem formation;
 - Public Problem publication authority.
 
-## Exact new-source identity
+## Implementation
 
-`persistSourceSignals()` already resolves existing Source identities before upsert.
+Telemetry version:
 
-Phase 15.8C defines:
+```text
+new-source-admission-yield-v0.1
+```
+
+Allocation version:
+
+```text
+source-discovery-allocation-v0.4
+```
+
+Exact new Source identity is defined before upsert:
 
 ```text
 newSignals
@@ -56,21 +62,9 @@ newSignals
 - identities already present in ar_source_signals before this run
 ```
 
-Only `newSignals` feed exact new-source Admission yield telemetry.
+Only `newSignals` feed exact new-source Admission telemetry.
 
-The historical run-level Admission summary remains preserved for continuity and debugging.
-
-## Telemetry version
-
-```text
-new-source-admission-yield-v0.1
-```
-
-Service constant:
-
-```text
-NEW_SOURCE_ADMISSION_TELEMETRY_VERSION
-```
+Historical run-level Admission telemetry remains preserved.
 
 ## Migration 033
 
@@ -80,7 +74,9 @@ Migration:
 033_new_source_admission_yield_telemetry.sql
 ```
 
-Adds nullable fields to `ar_source_ingestion_runs`:
+Live applied before PR #70 merge.
+
+Added to `ar_source_ingestion_runs`:
 
 ```text
 new_admission_telemetry_version
@@ -89,9 +85,9 @@ new_admission_review_count
 new_admission_reject_count
 ```
 
-Historical rows remain null and are not retroactively reinterpreted as exact telemetry.
+Historical rows remain null.
 
-For a versioned exact row, the database requires:
+For each versioned exact row the live database requires:
 
 ```text
 new Candidate
@@ -100,130 +96,227 @@ new Candidate
 = inserted_count
 ```
 
-This prevents partial or internally inconsistent exact-yield telemetry.
-
-No public view or anonymous grant is added.
+No public view or anonymous grant was added.
 
 ## Allocation v0.4
 
-Version:
-
-```text
-source-discovery-allocation-v0.4
-```
-
-The query scorer follows this precedence:
+The scorer uses:
 
 ```text
 exact new-source telemetry exists
-→ score from exact new-source admission outcomes
+→ telemetry_scope = new_source_exact
+→ score from exact new-source Admission outcomes
 
 otherwise
-→ retain legacy run-level scoring for historical compatibility
+→ telemetry_scope = legacy_run_level
+→ preserve historical compatibility
 ```
 
-The exact admission denominator is:
+Exact Candidate/Review/Reject rates use `new_telemetry_inserted_count` as their denominator.
+
+A versioned exact window with zero newly inserted Sources receives score `0`; duplicate-only pages therefore cannot gain exploitation value merely because previously known Sources classify well.
+
+## PR / verification
+
+Implementation PR:
 
 ```text
-new_telemetry_inserted_count
+PR #70
+head: a569314691338aa84ede90742e1064262e49d332
+merge: c1cfaa89ef64451965edc45e0eb7c465861ae2fe
 ```
 
-not all continued signals.
-
-A versioned exact window with:
+Verification:
 
 ```text
-inserted_count = 0
+CI #324: SUCCESS
+PIE Prospective Shadow #36: SUCCESS
+unit/contract: SUCCESS
+release hardening: SUCCESS
+build: SUCCESS
+runtime smoke: SUCCESS
 ```
 
-receives score `0`.
+## Fourth bounded empirical batch — exact telemetry write
 
-This is deliberate. A provider page containing only already-known identities has no immediate acquisition value even if those duplicates classify as useful under the historical run-level summary.
-
-## Query metric aggregation
-
-`listDiscoveryQueryMetrics()` retains both scopes:
-
-### Historical scope
+GitHub Actions:
 
 ```text
-completed_runs
-fetched_count
-inserted_count
-duplicate_count
-discovery_continue_count
-discovery_reject_count
-admission_candidate_count
-admission_review_count
-admission_reject_count
+run: 32797010101
+job: 97662496437
+status: PASS
+main: c1cfaa89ef64451965edc45e0eb7c465861ae2fe
 ```
 
-### Exact new-source scope
+Allocation composition:
 
 ```text
-new_telemetry_runs
-new_telemetry_fetched_count
-new_telemetry_continue_count
-new_telemetry_discovery_reject_count
-new_telemetry_inserted_count
-new_telemetry_duplicate_count
-new_admission_candidate_count
-new_admission_review_count
-new_admission_reject_count
+exploration: 9
+exploitation: 3
 ```
 
-The scorer exposes which scope it used through:
+Totals:
 
 ```text
-telemetry_scope = new_source_exact | legacy_run_level | unmeasured
+requests: 12
+fetched: 554
+continued: 523
+cheap rejected: 31
+inserted new Sources: 496
+duplicates: 27
 ```
 
-## Runner diagnostics
-
-The bounded discovery runner now reports both:
+Historical run-level Admission summary:
 
 ```text
-historical run-level Candidate/Review/Reject
+Candidate: 0
+Review: 95
+Reject: 428
 ```
 
-and:
+Exact new-source Admission summary:
 
 ```text
-new_admission_candidate_count
-new_admission_review_count
-new_admission_reject_count
+new Candidate: 0
+new Review: 89
+new Reject: 407
 ```
 
-It also emits selected query allocation mode and page start so acquisition yield can be interpreted together with pagination behavior.
-
-## Empirical validation gate
-
-After CI/PIE and merge:
-
-1. apply migration 033 live before executing code that writes exact telemetry;
-2. run one bounded 12-request discovery batch from authoritative `main`;
-3. verify every completed versioned run satisfies exact-count integrity;
-4. report new-only Candidate/Review/Reject separately from historical run-level counts;
-5. verify allocation scorer subsequently sees `new_source_exact` for those query keys;
-6. verify downstream authority remains unchanged.
-
-Required boundary readback:
+Exact identity integrity:
 
 ```text
-Published Problems = 2
-Public Evidence = 5
-Source Incidents = 4
-Blind membership = 120
-full source-body fetches = 0
-publication mutations = 0
+0 + 89 + 407 = 496 inserted Sources
+12 exact runs
+12 integrity pass
+0 integrity fail
 ```
 
-## Close criterion
+Downstream product boundaries remained unchanged.
 
-Phase 15.8C may close when a live bounded batch proves that:
+## Fifth bounded empirical batch — exact telemetry consumption
+
+A second v0.4 batch was executed specifically to verify that exact telemetry participates in subsequent allocation.
+
+GitHub Actions:
 
 ```text
-new Candidate + new Review + new Reject = new inserted Sources
+run: 32797010101
+job: 97663035604
+status: PASS
+main: c1cfaa89ef64451965edc45e0eb7c465861ae2fe
 ```
 
-for all exact-telemetry runs, and adaptive scoring consumes this exact scope without changing any Source Admission or publication authority.
+The allocator selected previously exact-measured queries for later provider windows, including:
+
+```text
+account__damage__2
+  prior exact page: start=1
+  subsequent exploitation: start=51
+
+commerce__damage__2
+  prior exact page: start=1
+  subsequent exploitation: start=51
+
+commerce__damage__1
+  prior exact page: start=51
+  subsequent exploitation: start=101
+
+housing__damage__1
+  prior exact page: start=51
+  subsequent exploitation: start=101
+```
+
+This is live evidence that versioned exact history is consumed by the allocation path rather than remaining write-only telemetry.
+
+Fifth-batch totals:
+
+```text
+requests: 12
+fetched: 543
+continued: 486
+cheap rejected: 57
+inserted new Sources: 465
+duplicates: 21
+
+new Candidate: 0
+new Review: 77
+new Reject: 388
+```
+
+Exact identity integrity again holds:
+
+```text
+0 + 77 + 388 = 465 inserted Sources
+```
+
+## Final exact-telemetry live state
+
+Across the two Phase 15.8C empirical batches:
+
+```text
+exact telemetry runs: 24
+integrity pass: 24
+integrity fail: 0
+inserted new Sources: 961
+new Candidates: 0
+new Reviews: 166
+new Rejects: 795
+```
+
+Final Source supply state:
+
+```text
+Source Signals:       2,260
+Source Observations:  2,461
+Discovery Runs:          60
+```
+
+Protected authority state:
+
+```text
+Published Problems: 2
+Public Evidence:     5
+Source Incidents:    4
+Blind membership:  120
+```
+
+Runner boundary assertions for both empirical batches remained:
+
+```text
+Blind reads:           0
+full source-body fetches: 0
+publication mutations: 0
+```
+
+## Close decision
+
+Phase 15.8C close criterion required:
+
+1. exact new-source Candidate/Review/Reject counts to equal inserted Source count for every versioned run;
+2. adaptive allocation to consume exact new-source telemetry;
+3. Source Admission and downstream publication authority to remain unchanged.
+
+All three conditions were verified live.
+
+Therefore:
+
+```text
+Phase 15.8C = CLOSED
+```
+
+## Next boundary
+
+The current acquisition bottleneck is no longer duplicate replay or ambiguous yield accounting.
+
+Exact empirical result:
+
+```text
+961 newly inserted Sources
+0 exact Candidates
+166 exact Reviews
+795 exact Rejects
+```
+
+The next question is whether the 166 exact Reviews contain meaningful full-context Candidates or are primarily ambiguous/noisy search matches.
+
+That question must be resolved through bounded Review-resolution evidence. It must not be answered by lowering Source Admission thresholds.
