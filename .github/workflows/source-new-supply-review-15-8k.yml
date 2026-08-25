@@ -7,9 +7,6 @@ on:
         description: Deterministic 15.8J new-Review sample size
         required: false
         default: "48"
-  push:
-    branches:
-      - ops/source-new-supply-review-15-8k
 
 permissions:
   contents: read
