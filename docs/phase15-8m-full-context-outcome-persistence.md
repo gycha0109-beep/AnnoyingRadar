@@ -2,66 +2,59 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE and live migration verification**
+**CLOSED**
+
+Implementation PR #94 was merged before the live migration was applied.
+
+```text
+implementation merge: e00a5dbea751965bf2cfe098ac87240a206d716a
+CI #374: SUCCESS
+PIE #62: SUCCESS
+migration: 034_source_full_context_resolution_outcomes.sql
+live project: yjdubukqkcvkymabskzd
+migration apply: SUCCESS
+```
+
+15.8M-A performed no paid full-context batch.
 
 ## Why this phase exists
 
-Phase 15.8K and 15.8L deliberately emitted aggregate-only full-context diagnostics. That was correct for calibration, but it creates a new operational problem before resolving the remaining 15.8J Review cohort:
+Phase 15.8K and 15.8L intentionally produced aggregate-only calibration diagnostics. Repeating that model for the remaining Review cohort would lose Candidate identities after the process exits and force a later Formation audit to pay for another refetch + semantic rerun.
 
-```text
-full-context resolution
-→ Candidate identity exists only in process memory
-→ aggregate log discards the identity
-→ later Formation would need another paid refetch + semantic rerun
-```
-
-That would introduce avoidable cost and provider nondeterminism.
-
-Phase 15.8M-A creates a durable, private authority for **current full-context Source Admission outcomes** before any broad remaining-Review batch is executed.
-
-It does not itself perform new paid resolution work.
+15.8M-A creates a durable, private authority for current full-context Source Admission outcomes before any broader remaining-Review resolution.
 
 ## Legacy semantic table is not reused
 
-The existing table:
+The existing:
 
 ```text
 ar_source_signal_semantic_judgments
 ```
 
-belongs to the older Phase 15.5D semantic-gate schema.
+belongs to the older Phase 15.5D semantic-gate schema and is not compatible with current full-context v0.1 semantics.
 
-Its contract differs materially from the current full-context semantic authority:
+Important differences include:
 
 ```text
 legacy problem_claim: yes / no / uncertain
 current problem_claim: yes / no / unclear
 
-legacy fields:
-- problem_claim
-- experience_actor
-- friction_specificity
-- content_kind
-- evidence_quote
-
-current additional fields:
+current fields absent from legacy table:
 - friction_cause
 - pain_centrality
 ```
 
-The legacy schema also requires an evidence quote for `problem_claim = yes`, while current full-context resolution permits a null quote.
+The legacy schema also requires a non-null evidence quote for `problem_claim = yes`, while current full-context resolution permits a null quote.
 
-Live inspection before 15.8M-A found the legacy semantic-judgment table empty, but emptiness does not make its schema semantically compatible.
-
-Therefore 15.8M-A does **not** alter, backfill, repurpose, or write to the legacy table.
-
-## New durable authority
-
-Migration:
+Live verification before and after migration 034 confirmed:
 
 ```text
-034_source_full_context_resolution_outcomes.sql
+ar_source_signal_semantic_judgments rows: 0
 ```
+
+Migration 034 did not alter or backfill that table.
+
+## New durable authority
 
 New table:
 
@@ -75,21 +68,31 @@ Authority granularity:
 (batch_version, source_signal_id)
 ```
 
-The table is append-only at the service-role privilege layer:
+The Source FK is:
+
+```text
+ON DELETE RESTRICT
+```
+
+so an authoritative outcome cannot silently lose its Source provenance through parent deletion.
+
+Service-role access is append-only at the privilege layer:
 
 ```text
 service_role: SELECT + INSERT
 no UPDATE
 no DELETE
-anon/authenticated/public: no privileges
+anon/authenticated/public: no table privileges
 RLS: enabled
 ```
 
-A batch cannot silently overwrite a prior outcome. A later rerun must use a new batch version.
+The PostgreSQL owner retains normal owner privileges; that is not application/service-role authority.
+
+A rerun must use a new batch version rather than overwrite an existing row.
 
 ## Persisted fields
 
-The table stores only the minimum structured metadata needed to preserve the exact resolution decision and later recover Candidate identities safely:
+The durable row stores only structured resolution metadata:
 
 ```text
 outcome schema version
@@ -97,9 +100,7 @@ batch version
 source_signal_id
 resolution version
 recovery version
-status
-final decision
-reason codes
+status / final decision / reason codes
 
 problem_claim
 experience_actor
@@ -110,7 +111,7 @@ content_kind
 
 context fetch status
 context scope
-SHA-256 of the exact text shown to the semantic judge
+SHA-256 of the exact ephemeral text judged
 judged character count
 truncation flag
 
@@ -120,119 +121,114 @@ model name
 
 recovery attempted/recovered/attempt count
 recovery trigger/terminal reason
-timestamps
+evaluated_at / created_at
 ```
 
 ## Data intentionally not persisted
 
-The new table has no columns for:
+Live schema inspection confirmed **zero forbidden columns** for:
 
 ```text
-full source body
+content_text
 raw_text
-canonical URL
-fetched URL
-author handle
-evidence quote
-provider request id
-provider request/response payload
+canonical_url
+fetched_url
+author_handle
+evidence_quote
+provider_request_id
 ```
 
-The persistence helper computes the SHA-256 digest from the ephemeral `content_text` and then discards the body from the durable row.
+Provider payloads are also not persisted.
 
-This means future Formation can use the durable Candidate identity to refetch public context ephemerally without retaining the full body in the resolution authority.
+The helper hashes the ephemeral `content_text` and then discards the body from the durable row.
 
-## Semantic shape
+## Semantic contract
 
-Current semantic enums are preserved exactly:
+Current enum authority is preserved:
 
 ```text
 problem_claim:
   yes | no | unclear
-
 experience_actor:
   self | other | generic | unknown
-
 friction_cause:
   external_service_or_product | self_caused | mixed | unknown
-
 friction_specificity:
   concrete | vague | none | unknown
-
 pain_centrality:
   central | incidental | unclear
-
 content_kind:
   organic | advertisement | informational | news | repost | unknown
 ```
 
-Semantic fields are either:
+Semantic facts must be either all six present or all six absent.
 
-```text
-all six present
-or
-all six absent
-```
-
-A resolved Candidate/Reject outcome requires all six fields.
-
-An unresolved Review may have all fields present when the semantic facts remain uncertain, or all fields absent when the fetch/provider failed before a semantic result existed.
-
-## Decision contract
-
-Persistable statuses are only:
-
-```text
-resolved
-unresolved
-```
-
-Decision mapping is constrained:
+Decision contract:
 
 ```text
 resolved   → candidate | reject
 unresolved → review
 ```
 
-`not_required` snippet-level decisions are not part of this table. This prevents the full-context outcome authority from being polluted by records that never entered full-context resolution.
+A resolved Candidate/Reject requires all six semantic fields. An unresolved Review may contain all six semantic facts when semantic uncertainty remains, or none when fetch/provider failure prevented a semantic result.
+
+`not_required` snippet-level decisions cannot enter this table.
 
 ## Context integrity
 
-For successfully fetched context:
+Resolved context requires:
 
 ```text
 context_status = resolved
 context_scope = full_post
-context_content_sha256 = SHA-256(ephemeral judged content_text)
+context_content_sha256 = 64-char lowercase SHA-256
 context_char_count >= 20
 ```
 
-For unavailable context:
+Unavailable context requires null scope/hash/count and `context_truncated = false`.
 
-```text
-context_status = unavailable
-context_scope = null
-context_content_sha256 = null
-context_char_count = null
-```
-
-No body is retained.
+The persistence helper fails closed if a resolved result claims any scope other than `full_post`.
 
 ## Blind protection
 
-The operational discovery pool already excludes the Blind 120.
-
-15.8M-A adds defense in depth at the database boundary:
+The operational discovery pool already excludes Blind, but 15.8M-A adds a database-level guard:
 
 ```text
-before INSERT/UPDATE
+before INSERT or UPDATE
 if source_signal_id exists in ar_source_signal_evaluation_samples
-→ reject with SQLSTATE 23514
+→ raise SQLSTATE 23514
 ```
 
-Therefore a future batch bug cannot persist full-context AI outcomes for any Blind member even when using service-role credentials.
+A live Blind probe was executed against an existing Blind member using an otherwise valid outcome row.
 
-This trigger is intentionally independent of evaluation-set lock state; Blind membership itself is sufficient to deny the write.
+Result:
+
+```text
+insert blocked: YES
+SQLSTATE: 23514
+outcome rows after probe: 0
+```
+
+The guard is independent of evaluation lock state. Blind membership itself is sufficient to deny an AI full-context outcome write.
+
+## Live schema verification
+
+Verified live:
+
+```text
+RLS enabled: true
+service_role privileges: INSERT, SELECT only
+unique(batch_version, source_signal_id): present
+Source FK ON DELETE RESTRICT: present
+batch/decision index: present
+source/created index: present
+Blind guard trigger: present
+forbidden persisted columns: 0
+new outcome rows: 0
+legacy semantic rows: 0
+```
+
+The new table therefore started empty and ready for an explicitly versioned operational batch.
 
 ## Persistence helper
 
@@ -242,18 +238,16 @@ Module:
 lib/sources/source-full-context-outcome-persistence.mjs
 ```
 
-Responsibilities:
+It:
 
-1. validate current status/decision contracts;
-2. validate complete-or-absent semantic shape;
-3. fail closed on non-`full_post` resolved context;
-4. hash ephemeral judged text;
-5. map recovery metadata;
-6. construct a safe row with no source body or identity-bearing fetch metadata;
-7. perform an INSERT only;
-8. return only safe identity/decision metadata.
-
-The helper does not expose Formation or publication behavior.
+1. validates status/decision contracts;
+2. validates complete-or-absent semantic shape;
+3. validates `full_post` context scope;
+4. computes SHA-256 from ephemeral judged text;
+5. strips body/URL/author/quote/request-id data from the durable row;
+6. maps recovery metadata;
+7. performs INSERT only;
+8. returns only safe identity/decision metadata.
 
 ## Formation boundary
 
@@ -263,58 +257,40 @@ A persisted `decision = candidate` means only:
 Source Admission Candidate under the exact batch authority
 ```
 
-It does **not** mean:
+It does not grant:
 
 ```text
-independent incident
-repeated mechanism
-canonical Problem
-publishable Problem
+independent incident authority
+repeated mechanism authority
+canonical Problem authority
+publication authority
 ```
 
-Future Formation must still:
+Formation remains a later phase and must still refetch public context ephemerally and prove independent incident support.
 
-1. select an explicitly authorized Candidate batch;
-2. refetch required public full context ephemerally;
-3. detect incident identity;
-4. require independent incident support for repetition;
-5. remain separate from publication.
+## Next phase — 15.8M-B
 
-## Planned 15.8M-B
-
-After 15.8M-A is verified live, the next bounded operation is the **82-record complement** of the exact 130 Review cohort from Phase 15.8J after excluding the 48-record Phase 15.8K calibration sample.
-
-Planned authority:
+The next bounded cohort is the deterministic complement of the exact Phase 15.8J Review cohort after excluding the Phase 15.8K calibration sample:
 
 ```text
 130 exact-new Reviews
 - 48 K calibration sample
-= 82 unsampled remainder
+= 82 unsampled Reviews
 ```
 
-15.8M-B should:
+15.8M-B may now:
 
-- reconstruct that complement deterministically;
-- use provider-incomplete-only one-retry behavior proven in 15.8L;
+- reconstruct those exact 82 records fail-closed;
+- use provider-incomplete-only one-retry behavior validated in 15.8L;
 - persist exactly one outcome per attempted Source under one fixed batch version;
-- never persist full source bodies;
+- keep full source bodies ephemeral;
 - keep Source/Observation/Ingestion/Raw/Pain/Public/Incident/Blind boundaries unchanged;
 - perform no Formation or publication mutation.
 
-The 48 K calibration results are not retroactively converted into Formation authority. Re-running them solely to populate this table would add cost and provider nondeterminism without a prior operational authorization.
+The 48 K calibration records are not retroactively converted into operational Formation authority.
 
-## Close criterion for 15.8M-A
+## Close decision
 
-15.8M-A closes only after:
+All 15.8M-A close criteria were met.
 
-1. CI is green;
-2. PIE prospective shadow is green;
-3. migration 034 is merged;
-4. migration 034 is applied live;
-5. live schema/constraints/indexes are verified;
-6. RLS and grants confirm service-role SELECT/INSERT only;
-7. Blind trigger exists;
-8. legacy semantic tables remain untouched;
-9. new outcome table row count remains 0 before 15.8M-B.
-
-No paid full-context batch is part of 15.8M-A.
+Phase 15.8M-A is **CLOSED**.
