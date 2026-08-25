@@ -8,7 +8,7 @@ create table public.ar_source_full_context_resolution_outcomes (
   batch_version text not null,
   source_signal_id uuid not null
     references public.ar_source_signals(id)
-    on delete cascade,
+    on delete restrict,
   resolution_version text not null,
   recovery_version text,
   status text not null,
@@ -38,7 +38,7 @@ create table public.ar_source_full_context_resolution_outcomes (
   recovery_trigger_reason_code text,
   recovery_terminal_reason_code text,
 
-  resolved_at timestamptz not null default now(),
+  evaluated_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
 
   constraint ar_source_full_context_outcomes_schema_version_check
@@ -153,7 +153,7 @@ create table public.ar_source_full_context_resolution_outcomes (
 );
 
 create index ar_idx_source_full_context_outcomes_batch_decision
-  on public.ar_source_full_context_resolution_outcomes (batch_version, decision, resolved_at desc);
+  on public.ar_source_full_context_resolution_outcomes (batch_version, decision, evaluated_at desc);
 create index ar_idx_source_full_context_outcomes_signal_created
   on public.ar_source_full_context_resolution_outcomes (source_signal_id, created_at desc);
 
