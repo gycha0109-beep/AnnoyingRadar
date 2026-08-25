@@ -145,12 +145,6 @@ function priorAdmissionSemantic(row) {
   };
 }
 
-function assertNoWriteMethods(source) {
-  for (const token of [".insert(", ".upsert(", ".update(", ".delete(", ".rpc("]) {
-    assert.equal(source.includes(token), false, `15.8O runner must not contain ${token}`);
-  }
-}
-
 async function main() {
   const live = process.argv.includes("--live");
   const outputPath = parseOutputPath();
