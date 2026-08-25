@@ -5,6 +5,7 @@ import BlindEvaluationControl from "../../components/blind-evaluation-control.js
 import NaverBlogSourceSearchForm from "../../components/naver-blog-source-search-form.js";
 import ThreadsSourceSearchForm from "../../components/threads-source-search-form.js";
 import { getBlindEvaluationProgress } from "../../../lib/sources/blind-evaluation.mjs";
+import { getDiscoveryQueryPlanSummary } from "../../../lib/sources/discovery-query-plan.mjs";
 import { getGoldCampaignProgress } from "../../../lib/sources/gold-campaign.mjs";
 import { getSourceAdmissionStats, listRecentSourceIngestionRuns } from "../../../lib/sources/service.mjs";
 import { createServerSupabaseClient } from "../../../lib/supabase/server.js";
@@ -42,6 +43,7 @@ export default async function CuratorSourcesPage() {
     getBlindEvaluationProgress(serviceClient),
     getSourceAdmissionStats(serviceClient),
   ]);
+  const discoveryPlan = getDiscoveryQueryPlanSummary();
   const naverConfigured = Boolean(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
 
   return (
@@ -60,15 +62,30 @@ export default async function CuratorSourcesPage() {
 
       <header className="curator-hero">
         <div>
-          <p className="curator-kicker">Source Lab · Phase 15.5E</p>
-          <h1>Source admission은 LLM 없이 source intent와 pain role을 먼저 봅니다.</h1>
-          <p>NAVER Search description은 retrieval artifact입니다. v0.8은 광고·SEO의 공감성 Pain → Pitch를 REJECT하고, snippet 승격은 구체적인 실제 피해 사건처럼 강한 경우에만 제한적으로 허용합니다.</p>
+          <p className="curator-kicker">Source Lab · Phase 15.8A</p>
+          <h1>탐지 반경은 넓히고, 명백한 쓰레기는 DB에 들어오기 전에 버립니다.</h1>
+          <p>Discovery Prefilter는 high-recall hard reject만 수행합니다. 애매한 Source는 유지하고 기존 Source Admission이 precision authority를 계속 가집니다.</p>
         </div>
       </header>
 
+      <section className="source-lab-panel" aria-labelledby="discovery-title">
+        <div className="source-lab-heading">
+          <div><p className="curator-kicker">High-Recall Discovery</p><h2 id="discovery-title">운영 Source 공급</h2></div>
+          <span>{discoveryPlan.query_count} query definitions</span>
+        </div>
+        <div className="source-run-metrics">
+          <span>domains <strong>{discoveryPlan.domain_count}</strong></span>
+          <span>families <strong>{discoveryPlan.family_count}</strong></span>
+          <span>full-plan opportunities <strong>{discoveryPlan.result_opportunity_count}</strong></span>
+          <span>discovery observed <strong>{admission.discovery_pool}</strong></span>
+          <span>operational admission pool <strong>{admission.eligible}</strong></span>
+        </div>
+        <p className="source-lab-copy">기본 live batch는 24 requests × 50 결과로 제한됩니다. query별 cheap-reject/new/duplicate/admission-candidate 수율을 누적하고 다음 batch allocation에 반영합니다. 배포만으로 campaign이 자동 실행되지는 않습니다.</p>
+      </section>
+
       <section className="source-lab-panel" aria-labelledby="campaign-title">
         <div className="source-lab-heading">
-          <div><p className="curator-kicker">Real Signal Acquisition</p><h2 id="campaign-title">수집 캠페인</h2></div>
+          <div><p className="curator-kicker">Historical Calibration Acquisition</p><h2 id="campaign-title">Gold 수집 캠페인</h2></div>
           <span>{campaignProgress.completed_queries} / {campaignProgress.planned_queries} queries</span>
         </div>
         <div className="source-run-metrics">
@@ -79,24 +96,25 @@ export default async function CuratorSourcesPage() {
           <span>failed <strong>{campaignProgress.failed_runs}</strong></span>
         </div>
         <p className={campaignProgress.unique_signal_pool >= 600 ? "source-configured" : "source-warning"}>
-          {campaignProgress.unique_signal_pool >= 600 ? "Acquisition gate passed." : "추가 수집이 필요합니다."}
+          {campaignProgress.unique_signal_pool >= 600 ? "Calibration acquisition gate passed." : "Historical calibration pool is below target."}
         </p>
       </section>
 
       <section className="source-lab-grid">
         <div className="source-lab-panel">
           <p className="curator-kicker">No-LLM Source Admission</p>
-          <h2>Source-intent admission</h2>
+          <h2>Operational Source-intent admission</h2>
           <div className="source-run-metrics">
-            <span>campaign <strong>{admission.campaign_pool}</strong></span>
+            <span>Gold pool <strong>{admission.campaign_pool}</strong></span>
+            <span>discovery pool <strong>{admission.discovery_pool}</strong></span>
             <span>blind excluded <strong>{admission.blind_excluded}</strong></span>
-            <span>development <strong>{admission.eligible}</strong></span>
+            <span>operational <strong>{admission.eligible}</strong></span>
             <span>candidate <strong>{admission.candidate}</strong></span>
             <span>review <strong>{admission.review}</strong></span>
             <span>reject <strong>{admission.reject}</strong></span>
             <span>full-context <strong>{admission.full_context_required}</strong></span>
           </div>
-          <p className="source-lab-copy">정보/가이드·긍정 리뷰·제품 홍보는 조기 제외합니다. 실제 complaint가 글의 주제인지, 광고/SEO의 공감성 hook인지 분리하고, 경고·systemic harm·구체적 lived event는 별도 경계로 처리합니다. Blind 120은 이 화면의 admission 계산·queue에서 제외됩니다.</p>
+          <p className="source-lab-copy">운영 admission pool은 Gold development supply와 Discovery observations를 합친 뒤 Blind 120을 제외합니다. Independent audit과 Blind sampling 자체는 기존 Gold authority에 고정되어 있습니다.</p>
           <div className="inline-actions">
             <Link className="button-link button-compact" href="/curator/sources/admission">Admission queue 보기</Link>
             <Link className="button-link button-compact" href="/curator/sources/audit">Independent audit 열기</Link>
@@ -106,7 +124,7 @@ export default async function CuratorSourcesPage() {
         <div className="source-lab-panel">
           <p className="curator-kicker">Blind Human Evaluation</p>
           <h2>Representative 60 + Challenge 60</h2>
-          <p className="source-lab-copy">Blind 120은 기존 authority를 유지합니다. labeling 상태에서는 DB trigger가 이 120개에 AI judgment/Silver INSERT를 거부합니다.</p>
+          <p className="source-lab-copy">Blind 120은 기존 authority를 유지합니다. Discovery supply는 이 평가 세트의 membership을 변경하지 않습니다.</p>
           <BlindEvaluationControl evaluation={evaluation} />
         </div>
       </section>
@@ -133,7 +151,13 @@ export default async function CuratorSourcesPage() {
               <article key={run.id}>
                 <div className="source-run-title"><strong>{run.query_text}</strong><span className={`source-run-status source-run-status-${run.status}`}>{run.status}</span></div>
                 <p>{run.source_platform} · {run.search_type} · {run.search_mode} · limit {run.requested_limit}</p>
-                <div className="source-run-metrics compact"><span>fetched <strong>{run.fetched_count}</strong></span><span>new <strong>{run.inserted_count}</strong></span><span>dup <strong>{run.duplicate_count}</strong></span></div>
+                <div className="source-run-metrics compact">
+                  <span>fetched <strong>{run.fetched_count}</strong></span>
+                  <span>new <strong>{run.inserted_count}</strong></span>
+                  <span>dup <strong>{run.duplicate_count}</strong></span>
+                  {run.discovery_policy_version ? <span>cheap reject <strong>{run.discovery_reject_count}</strong></span> : null}
+                  {run.discovery_policy_version ? <span>candidate <strong>{run.admission_candidate_count}</strong></span> : null}
+                </div>
                 <small>{formatTime(run.started_at)}</small>
               </article>
             ))}
