@@ -40,12 +40,12 @@ jobs:
   pie:
     needs: profile-preflight
     if: needs.profile-preflight.outputs.ready == 'true'
-    uses: gycha0109-beep/Project_Intelligence_Engine/.github/workflows/prospective-pr.yml@d83547bc52a122679f56e338c138c150316a9499
+    uses: gycha0109-beep/Project_Intelligence_Engine/.github/workflows/prospective-pr.yml@96f9061d7538e92dbb8fdc8567147b3d6c01744e
     with:
       repository: ${{ github.repository }}
       pull_request_number: ${{ github.event.pull_request.number }}
       event_head_sha: ${{ github.event.pull_request.head.sha }}
-      pie_revision: d83547bc52a122679f56e338c138c150316a9499
+      pie_revision: 96f9061d7538e92dbb8fdc8567147b3d6c01744e
       profile: .review/project.yml
       config: .review/intelligence/config.yml
       operational_policy: .review/operational/policy.yml
