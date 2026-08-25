@@ -12,6 +12,7 @@ import {
 import { NEW_SOURCE_ADMISSION_TELEMETRY_VERSION } from "../lib/sources/service.mjs";
 
 const LOOKUP_CHUNK_SIZE = 150;
+const OBSERVATION_PAGE_SIZE = 1000;
 const DEFAULT_SAMPLE_SIZE = 24;
 
 function parseSampleSize() {
@@ -69,12 +70,22 @@ async function loadObservations(client, runIds) {
   const rows = [];
   for (let index = 0; index < runIds.length; index += LOOKUP_CHUNK_SIZE) {
     const ids = runIds.slice(index, index + LOOKUP_CHUNK_SIZE);
-    const { data, error } = await client
-      .from("ar_source_signal_observations")
-      .select("ingestion_run_id, source_signal_id")
-      .in("ingestion_run_id", ids);
-    if (error) throw error;
-    rows.push(...(data ?? []));
+    let from = 0;
+    while (true) {
+      const to = from + OBSERVATION_PAGE_SIZE - 1;
+      const { data, error } = await client
+        .from("ar_source_signal_observations")
+        .select("ingestion_run_id, source_signal_id")
+        .in("ingestion_run_id", ids)
+        .order("ingestion_run_id", { ascending: true })
+        .order("source_signal_id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < OBSERVATION_PAGE_SIZE) break;
+      from += OBSERVATION_PAGE_SIZE;
+    }
   }
   return rows;
 }
@@ -154,6 +165,7 @@ async function main() {
       status: "ESTIMATE_ONLY",
       sample_version: NEW_REVIEW_SAMPLE_VERSION,
       exact_runs: runs.length,
+      observation_rows: observations.length,
       exact_new_sources: exactNew.length,
       exact_new_reviews: reviewQueue.length,
       requested_sample_size: sampleSize,
@@ -189,6 +201,7 @@ async function main() {
     status,
     sample_version: NEW_REVIEW_SAMPLE_VERSION,
     exact_runs: runs.length,
+    observation_rows: observations.length,
     exact_new_sources: exactNew.length,
     exact_new_reviews: reviewQueue.length,
     selected_sample_size: sample.length,
