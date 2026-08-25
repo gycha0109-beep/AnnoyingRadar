@@ -51,6 +51,36 @@ Discovery Prefilter is not Source Admission.
 
 It cannot promote anything to Candidate, Evidence, Incident, or Public Problem. Ambiguity is retained and passed downstream.
 
+## Pool authority
+
+Phase 15.8A introduces a new **operational Source supply** without rewriting historical calibration authority.
+
+The pools are deliberately distinct:
+
+```text
+Gold Calibration Pool
+= original Gold campaign observations
+
+Blind 120
+= frozen membership selected from Gold authority
+
+Discovery Pool
+= Source Signals observed by completed Discovery-prefiltered runs
+
+Operational Admission Pool
+= Gold Calibration Pool ∪ Discovery Pool − Blind 120
+```
+
+Consequences:
+
+- active Source Admission stats and queue see new Discovery supply;
+- a Source rediscovered by Discovery cannot leak a Blind-120 item into operational admission because Blind IDs are removed after the union;
+- `loadCampaignPool()` remains Gold-only;
+- Blind sampling and existing Blind membership remain Gold-only;
+- the Phase 15.5E independent human audit remains on the fixed Gold development pool rather than silently changing when new Discovery data arrives.
+
+This separation prevents supply expansion from invalidating historical calibration or blind evaluation authority.
+
 ## Discovery Prefilter v0.1
 
 Implementation:
@@ -83,6 +113,8 @@ Hard-reject classes are intentionally narrow:
 Critical high-recall invariant:
 
 > Lived/narrative evidence or strongly explicit friction always survives the Discovery Prefilter, even when the title also resembles a guide or commercial surface.
+
+Generic contractual phrases such as `환불 불가` or a generic word such as `후기` are deliberately insufficient by themselves to force `continue`; otherwise SEO and terms pages would bypass the cheap-reject layer.
 
 News/report-style or otherwise ambiguous material is not automatically rejected here. Provenance and first-hand authority remain later-stage responsibilities.
 
@@ -212,6 +244,8 @@ persistSourceSignals()
 
 so Phase 15.8A does not retroactively alter the Gold/Blind calibration pool.
 
+The Source Lab explicitly displays Gold pool, Discovery pool, Blind exclusion, and the resulting operational Admission pool as separate quantities.
+
 ## Campaign runner
 
 Script:
@@ -250,10 +284,13 @@ Phase 15.8A does not authorize:
 - treating Source count as Incident count;
 - automatic Incident creation;
 - automatic Public Problem creation/publication;
-- blind 120 reads or mutations;
+- changing Blind-120 membership;
+- using Discovery supply to redefine Gold calibration membership;
 - full source-body fetches;
 - LLM calls in the Discovery Prefilter;
 - automatic execution merely because code is deployed.
+
+The live campaign runner itself does not read Blind evaluation rows. Blind exclusion is enforced by the separate operational-pool reader when Source Admission is displayed or queued.
 
 Expected live mutation scope is only:
 
@@ -282,6 +319,15 @@ admission Reviews
 admission Rejects
 reason-code distribution
 per-query yield
+```
+
+It must also confirm that:
+
+```text
+Blind membership count is unchanged
+Published Public Problems remain 2
+Public Evidence remains 5
+Source Incidents remain 4
 ```
 
 Only after observing those numbers should request depth, query families, and source adapters be expanded further.
