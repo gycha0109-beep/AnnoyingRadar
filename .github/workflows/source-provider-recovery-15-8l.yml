@@ -2,9 +2,6 @@ name: Source Provider Recovery 15.8L
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-provider-recovery-15-8l
 
 permissions:
   contents: read
