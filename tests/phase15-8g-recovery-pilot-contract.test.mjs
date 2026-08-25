@@ -30,10 +30,11 @@ test("15.8G pilot emits aggregate recovery diagnostics without source identity p
   assert.doesNotMatch(runner, /provider_request_id:/);
 });
 
-test("15.8G workflow uses authoritative main and only an exact temporary ops push trigger", async () => {
+test("15.8G pilot workflow is manual-only after closeout and still checks out authoritative main", async () => {
   const workflow = await read(".github/workflows/source-semantic-recovery-pilot.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-semantic-recovery-pilot/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
+  assert.doesNotMatch(workflow, /ops\/source-semantic-recovery-pilot/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-source-full-context-recovery-pilot\.mjs --live/);
