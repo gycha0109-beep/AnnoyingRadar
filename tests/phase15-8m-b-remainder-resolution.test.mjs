@@ -161,13 +161,13 @@ test("15.8M-B runner keeps full bodies ephemeral and persists only after all 82 
   assert.doesNotMatch(script, /persistSourceFullContextOutcome\(/);
 });
 
-test("15.8M-B workflow is bounded, checks out authoritative main, and only has the exact temporary live branch trigger", async () => {
+test("15.8M-B closeout leaves only manual dispatch and removes the temporary live push trigger", async () => {
   const workflow = await read(".github/workflows/source-new-supply-remainder-15-8m-b.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8m-b-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8m-b-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PAID_SOURCE_FULL_CONTEXT: "true"/);
   assert.match(workflow, /run-new-supply-review-remainder-resolution\.mjs --live/);
-  assert.doesNotMatch(workflow, /agent\/phase15-8m-b-remainder-resolution/);
 });
