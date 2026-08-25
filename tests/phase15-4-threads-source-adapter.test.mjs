@@ -118,12 +118,12 @@ test("source persistence is service-role only and preserves query observations",
   assert.match(migration, /revoke all on table public\.ar_source_signals from public, anon, authenticated/);
 });
 
-test("Threads ingestion endpoint is curator-only and records a run before external fetch", async () => {
+test("Threads ingestion endpoint is curator-only, records a run before fetch, and prefilters before persistence", async () => {
   const route = await read("app/api/radar/admin/sources/threads/search/route.js");
   assert.match(route, /requireRadarCurator/);
   assert.match(route, /createSourceIngestionRun/);
   assert.ok(route.indexOf("createSourceIngestionRun") < route.indexOf("searchThreadsPosts(input)"));
-  assert.match(route, /persistSourceSignals/);
+  assert.match(route, /persistDiscoveredSourceSignals/);
   assert.match(route, /failSourceIngestionRun/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_.*THREADS|access_token/);
 });
