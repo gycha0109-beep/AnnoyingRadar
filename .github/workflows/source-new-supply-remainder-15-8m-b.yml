@@ -2,9 +2,6 @@ name: Source New-Supply Remainder 15.8M-B
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8m-b-live-execution
 
 permissions:
   contents: read
