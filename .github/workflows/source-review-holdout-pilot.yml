@@ -7,9 +7,6 @@ on:
         description: Disjoint exact-new Review holdout size
         required: false
         default: "48"
-  push:
-    branches:
-      - ops/source-review-holdout-pilot
 
 permissions:
   contents: read
