@@ -91,10 +91,11 @@ test("15.8L runner reconstructs exact K sample and targets identity-free unresol
   assert.match(runner, /provider_recovery_product_activation: false/);
 });
 
-test("15.8L workflow is one-shot main-authoritative with no acquisition credentials", async () => {
+test("15.8L closed workflow is manual-only, main-authoritative, and has no acquisition credentials", async () => {
   const workflow = await read(".github/workflows/source-provider-recovery-15-8l.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-provider-recovery-15-8l/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-provider-recovery-15-8l/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /OPENAI_API_KEY/);
