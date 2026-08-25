@@ -12,7 +12,7 @@
 
 Phase 15.6 established and then persisted the precision boundary between an admitted Source and a repeatable Canonical Public Problem draft.
 
-Current live result:
+Phase 15.6 closeout result:
 
 ```text
 2 Canonical Public Problem drafts
@@ -379,7 +379,7 @@ Source Signal
 → Canonical Public Problem draft
 ```
 
-Current persisted result:
+Phase 15.6D persisted result:
 
 ```text
 2 draft Problems
@@ -408,7 +408,7 @@ Structural readiness is not editorial approval and never auto-publishes.
 
 Phase 15.6 is **CLOSED through 15.6E**.
 
-Authoritative state:
+Phase 15.6 closeout state:
 
 ```text
 669 development Source Signals
@@ -457,13 +457,25 @@ Git/Vercel CD
 Public Problem publication
 ```
 
-### Next boundary
+### Subsequent publication phase
 
-There is **no automatically authorized Phase 15.6F** in this document.
+Phase 15.6 itself authorized no automatic `15.6F` publication step.
 
-A next phase that actually publishes one or both current drafts must first define the controlled publication/E2E scope and requires explicit curator publication intent. Until then the authoritative public state remains:
+A separate phase, **Phase 15.7 — Controlled First Publication E2E**, was explicitly authorized and executed on 2026-08-25. It published the two structurally ready drafts through the governed curator/database status RPC and verified anonymous public feed readback.
+
+See:
 
 ```text
-Published Problems: 0
-Public feed rows:    0
+docs/phase15-7-controlled-first-publication.md
 ```
+
+Post-15.7 public state:
+
+```text
+Published Problems:        2
+Draft Problems:            0
+Public feed rows:          2
+Public Evidence feed rows: 5
+```
+
+This later publication does not retroactively grant Phase 15.6 or future pipeline stages automatic publication authority.
