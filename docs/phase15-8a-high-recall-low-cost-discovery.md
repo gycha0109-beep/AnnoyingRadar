@@ -2,104 +2,34 @@
 
 ## Status
 
-IMPLEMENTED / VERIFIED — empirical pilot BLOCKED by GitHub Actions secret availability
+**CLOSED — 2026-08-25**
 
-Repository implementation, CI/PIE verification, and live migration are complete. The first bounded empirical pilot was attempted on 2026-08-25, but failed closed during credential validation before any provider request or database mutation.
+Phase 15.8A established a bounded, measurable Source-supply expansion layer without weakening Source Admission, Incident identity, formation, Blind-120, or publication authority.
 
-## Empirical pilot attempt — 2026-08-25
+The first real empirical pilot completed successfully on 2026-08-25 after two fail-closed operational attempts:
 
-Implementation PR:
+1. missing GitHub Actions secrets — blocked before provider request or DB mutation;
+2. empty `SUPABASE_SECRET_KEY` prevented legacy `SUPABASE_SERVICE_ROLE_KEY` fallback — blocked before provider request or DB mutation;
+3. service fallback fixed in PR #67, then the same bounded pilot completed **PASS**.
+
+## Repository / runtime record
 
 ```text
-PR #63
-main merge: 6242b709e9545d35a6e5b5ffd04136c1880886d7
+Phase 15.8A implementation PR:  #63
+Guarded pilot workflow PR:      #65
+Blocked-attempt hardening PR:   #66
+Supabase fallback fix PR:       #67
+Fallback-fix merge main:        c1c684ad3bf4e7a9ae6b7df8e40c80a8830a730a
+GitHub Actions pilot run:        32797010101
+Successful pilot job:           97653617527
 ```
 
-Migration:
+Live migration:
 
 ```text
 032_source_discovery_telemetry.sql
-live: applied
+status: applied
 ```
-
-Guarded execution path PR:
-
-```text
-PR #65
-main merge: f2ff55cec1ad836916fa7912503717c3b200ff12
-```
-
-First pilot run:
-
-```text
-GitHub Actions run: 32797010101
-workflow: Source Discovery Pilot
-requested budget: 12 queries × 50 = up to 600 result opportunities
-result: BLOCKED_BEFORE_EXECUTION
-```
-
-The workflow successfully checked out authoritative `main` and installed dependencies, then failed in `Validate required secrets` because the repository had none of the required Actions secrets configured:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL
-SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
-NAVER_CLIENT_ID
-NAVER_CLIENT_SECRET
-```
-
-No secret values were printed or recovered.
-
-The live discovery runner itself was skipped, therefore:
-
-```text
-provider requests: 0
-discovery runs: 0
-Source mutations: 0
-full source-body fetches: 0
-LLM calls: 0
-publication mutations: 0
-```
-
-Live database state after the blocked attempt remained exactly:
-
-```text
-Source Signals:       830
-Source Observations:  880
-Discovery Runs:         0
-Published Problems:     2
-Public Evidence:         5
-Source Incidents:        4
-Blind membership:      120
-```
-
-This is a safe blocked state, not an empirical PASS. Phase 15.8A must not be marked CLOSED until a real bounded acquisition run produces measurable discovery/admission yield.
-
-After the blocked attempt, the temporary push-trigger fallback is removed. The retained pilot workflow is manual `workflow_dispatch` only, checks out authoritative `main`, has read-only repository permissions, and keeps the default budget at 12 requests. Future validation reports missing secret names without printing secret values.
-
-## Problem
-
-Phase 15.5–15.7 proved a high-precision Source → Incident → Public Problem pipeline, but the observed funnel is supply-limited:
-
-```text
-669 development Source Signals
-→ 17 admitted Candidates
-→ 11 formation-eligible Source rows
-→ 10 independent incidents
-→ 2 repeated canonical Problems
-```
-
-Increasing Public Problem coverage by lowering Source Admission, formation, Incident, or publication thresholds is forbidden. The next lever is Source Supply.
-
-The failure mode to avoid is equally important:
-
-```text
-more API results
-→ more obvious SEO / sales / promotional / informational noise
-→ larger Source table
-→ higher review and processing cost
-```
-
-Phase 15.8A therefore expands discovery recall while rejecting only cheap, deterministic, high-confidence noise before Source persistence.
 
 ## Authority separation
 
@@ -121,17 +51,20 @@ Canonical Problem
 
 Discovery Prefilter is not Source Admission.
 
-It cannot promote anything to Candidate, Evidence, Incident, or Public Problem. Ambiguity is retained and passed downstream.
+It can only decide:
+
+```text
+continue
+reject
+```
+
+It cannot create or promote Candidate, Evidence, Incident, Public Problem, or publication state.
 
 ## Pool authority
 
-Phase 15.8A introduces a new **operational Source supply** without rewriting historical calibration authority.
-
-The pools are deliberately distinct:
-
 ```text
 Gold Calibration Pool
-= original Gold campaign observations
+= historical Gold acquisition authority
 
 Blind 120
 = frozen membership selected from Gold authority
@@ -143,23 +76,9 @@ Operational Admission Pool
 = Gold Calibration Pool ∪ Discovery Pool − Blind 120
 ```
 
-Consequences:
-
-- active Source Admission stats and queue see new Discovery supply;
-- a Source rediscovered by Discovery cannot leak a Blind-120 item into operational admission because Blind IDs are removed after the union;
-- `loadCampaignPool()` remains Gold-only;
-- Blind sampling and existing Blind membership remain Gold-only;
-- the Phase 15.5E independent human audit remains on the fixed Gold development pool rather than silently changing when new Discovery data arrives.
-
-This separation prevents supply expansion from invalidating historical calibration or blind evaluation authority.
+`loadCampaignPool()` remains Gold-only. Blind sampling and independent historical audit authority remain unchanged.
 
 ## Discovery Prefilter v0.1
-
-Implementation:
-
-```text
-lib/sources/discovery-prefilter.mjs
-```
 
 Version:
 
@@ -167,38 +86,19 @@ Version:
 source-discovery-prefilter-v0.1
 ```
 
-Allowed decisions:
-
-```text
-continue
-reject
-```
-
-Hard-reject classes are intentionally narrow:
+Hard rejects remain deliberately narrow:
 
 - obvious sales/listing content;
-- obvious informational/guide content without lived or strongly explicit friction;
+- obvious informational/guide content without lived or explicit friction;
 - obvious commercial content without friction;
 - positive-only content without friction;
 - missing search text.
 
-Critical high-recall invariant:
+Ambiguous material is retained rather than force-rejected.
 
-> Lived/narrative evidence or strongly explicit friction always survives the Discovery Prefilter, even when the title also resembles a guide or commercial surface.
+Rejected source bodies are not persisted by the discovery result object. Telemetry retains aggregate reason codes and acquisition identity only.
 
-Generic contractual phrases such as `환불 불가` or a generic word such as `후기` are deliberately insufficient by themselves to force `continue`; otherwise SEO and terms pages would bypass the cheap-reject layer.
-
-News/report-style or otherwise ambiguous material is not automatically rejected here. Provenance and first-hand authority remain later-stage responsibilities.
-
-Rejected bodies are not retained in the discovery result object. Telemetry keeps only counts, reason codes, source platform, external identity, and index.
-
-## Query-space expansion
-
-Implementation:
-
-```text
-lib/sources/discovery-query-plan.mjs
-```
+## Query plan
 
 Version:
 
@@ -206,219 +106,184 @@ Version:
 source-discovery-plan-v0.1
 ```
 
-The initial deterministic query space covers:
+Deterministic query space:
 
 ```text
 12 domains
 × 2 subject variants
-× 8 friction-expression families
+× 8 friction families
 = 192 queries
 ```
 
-At the current Naver result limit of 50 per request:
+Maximum theoretical first-page opportunity space:
 
 ```text
-192 × 50
-= 9,600 search-result opportunities per full plan pass
+192 × 50 = 9,600 result opportunities
 ```
 
-The full plan is not executed automatically.
+The full plan was not executed.
 
-Default campaign batch:
+## First empirical pilot
+
+Bounded budget:
 
 ```text
-24 requests × 50
-= up to 1,200 search-result opportunities
+12 requests
+up to 600 result opportunities
+actual fetched: 150
 ```
 
-The first empirical pilot remains intentionally smaller:
+The initial domain-balanced selection sampled the `contact / 연락 안됨` family across 12 domains.
+
+### Aggregate result
 
 ```text
-12 requests × 50
-= up to 600 search-result opportunities
+requests:                    12
+fetched:                    150
+normalized:                 150
+cheap rejected:               6
+continued:                  144
+new Source Signals:         137
+duplicates:                   7
+Admission Candidates:         1
+Admission Reviews:           22
+Admission Rejects:          121
+failed requests:              0
 ```
 
-This keeps expansion measurable and allows query allocation to change before the next batch.
-
-## Yield telemetry
-
-Migration:
+Observed rates:
 
 ```text
-032_source_discovery_telemetry.sql
+cheap reject / fetched:             4.00%
+new Source / fetched:              91.33%
+duplicate / continued:              4.86%
+Candidate / continued:              0.69%
+Review / continued:                15.28%
+Admission Reject / continued:      84.03%
 ```
 
-`ar_source_ingestion_runs` gains:
+Discovery reason distribution:
 
 ```text
-discovery_policy_version
-discovery_continue_count
-discovery_reject_count
-discovery_reason_counts
-admission_candidate_count
-admission_review_count
-admission_reject_count
+obvious_informational_guide: 5
+obvious_commercial_content:  1
 ```
 
-Existing run fields already preserve:
+### Per-query telemetry
+
+| Query | Fetched | Cheap reject | New | Dup | Candidate | Review | Admission Reject |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 로그인 인증 연락 안됨 | 2 | 0 | 2 | 0 | 0 | 1 | 1 |
+| 구독 결제 연락 안됨 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 온라인 쇼핑 연락 안됨 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 배달 주문 연락 안됨 | 3 | 0 | 3 | 0 | 0 | 1 | 2 |
+| 병원 예약 연락 안됨 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 전세 계약 연락 안됨 | 2 | 0 | 2 | 0 | 0 | 0 | 2 |
+| 숙소 예약 연락 안됨 | 2 | 0 | 2 | 0 | 0 | 1 | 1 |
+| 택시 호출 연락 안됨 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 환불 연락 안됨 | 13 | 0 | 13 | 0 | **1** | 3 | 9 |
+| 수리 연락 안됨 | 50 | 0 | 50 | 0 | 0 | 1 | 49 |
+| 예약 연락 안됨 | 28 | 1 | 24 | 3 | 0 | 6 | 21 |
+| 고객센터 연락 안됨 | 50 | 5 | 41 | 4 | 0 | 9 | 36 |
+
+The only Candidate-bearing query in the pilot was:
 
 ```text
-fetched_count
-inserted_count
-duplicate_count
-skipped_count
+환불 연락 안됨
 ```
 
-Together these support query-level measurement of:
+The clearest request-budget waste was:
 
 ```text
-cheap reject rate
-new Source rate
-duplicate rate
-Source Admission candidate rate
+수리 연락 안됨
+50 fetched → 0 Candidate / 1 Review / 49 Reject
 ```
 
-Phase 15.8A does not claim independent-Incident yield because formation outcomes are not yet persisted comprehensively for all discovered Sources. Adaptive logic must not fabricate that metric.
+Four measured queries returned zero results.
 
-## Adaptive request budget
+## Boundary verification
 
-The query scorer uses only observed acquisition/admission telemetry.
-
-It rewards:
-
-- new unique Source supply;
-- higher Source Admission Candidate yield.
-
-It penalizes:
-
-- high duplicate rate;
-- high cheap-reject rate.
-
-Unmeasured queries retain an exploration priority. Initial exploration is domain-balanced through round-robin selection so one domain cannot consume the entire first batch.
-
-This is acquisition-budget guidance, not evidence truth.
-
-## Runtime integration
-
-Manual Naver Blog and Threads ingestion now use:
+Runner before/after snapshot:
 
 ```text
-persistDiscoveredSourceSignals()
+Raw Inputs:        10 → 10
+Pain Evidence:     27 → 27
+Public Problems:    2 → 2
+Public Evidence:    5 → 5
+Source Incidents:   4 → 4
 ```
 
-which performs:
+Post-pilot live DB:
 
 ```text
-filterDiscoverySignals()
-→ persist only continued Source Signals
-→ calculate existing Source Admission outcomes for telemetry
-→ close ingestion run with yield metrics
+Source Signals:        967
+Source Observations:  1,024
+Discovery Runs:         12
+Published Problems:      2
+Public Problem feed:      2
+Public Evidence:          5
+Public Evidence feed:     5
+Source Incidents:         4
+Blind membership:       120
 ```
 
-The historical Gold acquisition runner intentionally remains on:
+Runner-declared protected operations:
 
 ```text
-persistSourceSignals()
+Blind-120 reads:          0
+full source-body fetches: 0
+publication mutations:    0
 ```
 
-so Phase 15.8A does not retroactively alter the Gold/Blind calibration pool.
-
-The Source Lab explicitly displays Gold pool, Discovery pool, Blind exclusion, and the resulting operational Admission pool as separate quantities.
-
-## Campaign runner
-
-Script:
+Therefore:
 
 ```text
-scripts/run-source-discovery-campaign.mjs
+Source supply mutation:       VERIFIED
+Public/Incident mutation:     NONE
+Blind membership mutation:    NONE
+Formation/publication action: NONE
 ```
 
-Plan-only command:
+## Empirical conclusion
+
+Phase 15.8A succeeded at **recall expansion and provenance-safe Source acquisition**:
 
 ```text
-npm run acquire:discovery:plan
+830 Source Signals → 967 Source Signals
 ```
 
-Live command:
+It did **not** demonstrate strong cheap-filter efficiency.
 
-```text
-npm run acquire:discovery:live
-```
+Only 4% of fetched results were removed by the Discovery Prefilter while 84.03% of continued results were later rejected by Source Admission. The first pilot therefore exposed the next optimization boundary:
 
-Live execution is fail-closed unless both are true:
+> request-budget quality, not downstream threshold relaxation.
 
-```text
---live
-ALLOW_SOURCE_DISCOVERY_EXPANSION=1
-```
+The first adaptive scorer also has two empirical defects:
 
-The runner snapshots downstream product boundaries before and after the batch and requires them to remain identical.
+1. a completed zero-result query is treated as `exploration=true`, allowing repeated allocation to a measured empty query;
+2. Admission Reject rate is not included in query yield scoring, allowing high-volume / high-reject queries to remain attractive because they produce many novel Source rows.
 
-The repository also retains:
-
-```text
-.github/workflows/source-discovery-pilot.yml
-```
-
-as a manual-only bounded execution path. It does not run on push, pull request, merge, or deploy.
+These are acquisition-allocation defects, not evidence-truth defects.
 
 ## Preserved boundaries
 
 Phase 15.8A does not authorize:
 
 - lowering Source Admission thresholds;
-- lowering full-context Formation thresholds;
-- treating Source count as Incident count;
+- lowering Formation thresholds;
+- using Source count as Incident count;
 - automatic Incident creation;
-- automatic Public Problem creation/publication;
+- automatic Public Problem creation or publication;
 - changing Blind-120 membership;
-- using Discovery supply to redefine Gold calibration membership;
-- full source-body fetches;
-- LLM calls in the Discovery Prefilter;
-- automatic execution merely because code is deployed.
+- redefining Gold calibration membership;
+- full source-body fetches in Discovery;
+- LLM calls in Discovery Prefilter;
+- automatic execution on deploy or merge.
 
-The live campaign runner itself does not read Blind evaluation rows. Blind exclusion is enforced by the separate operational-pool reader when Source Admission is displayed or queued.
+## Next boundary
 
-Expected live mutation scope is only:
+Phase 15.8B is **Query Allocation Calibration**.
 
-```text
-ar_source_ingestion_runs
-ar_source_signals
-ar_source_signal_observations
-```
+It may use only already-recorded acquisition/admission telemetry to spend provider request budget more efficiently.
 
-No Public Problem, Public Evidence, Source Incident, Raw Input, or Pain Evidence mutation is permitted by the campaign runner.
-
-## Remaining empirical gate
-
-A real bounded pilot still must report at minimum:
-
-```text
-fetched
-cheap rejected
-continued
-new Sources
-duplicates
-admission Candidates
-admission Reviews
-admission Rejects
-reason-code distribution
-per-query yield
-```
-
-It must also confirm that:
-
-```text
-Blind membership count is unchanged
-Published Public Problems remain 2
-Public Evidence remains 5
-Source Incidents remain 4
-```
-
-Required operational prerequisite:
-
-```text
-configure the repository GitHub Actions secrets for Supabase service access and NAVER API HUB access
-```
-
-Only after the real empirical result is observed may request depth, query families, or source adapters be expanded further, and only then may Phase 15.8A be considered for CLOSED status.
+It must not change Source Admission semantics, formation semantics, Incident identity, Blind authority, or publication authority.

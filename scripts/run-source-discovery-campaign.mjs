@@ -13,6 +13,7 @@ import {
   getDiscoveryQueryPlanSummary,
   selectDiscoveryRequestBudget,
   DISCOVERY_QUERY_PLAN_VERSION,
+  DISCOVERY_QUERY_ALLOCATION_VERSION,
 } from "../lib/sources/discovery-query-plan.mjs";
 
 function parseIntegerFlag(name, fallback) {
@@ -139,6 +140,7 @@ async function main() {
     console.log(JSON.stringify({
       status: "PLAN_ONLY",
       version: DISCOVERY_QUERY_PLAN_VERSION,
+      allocation_version: DISCOVERY_QUERY_ALLOCATION_VERSION,
       plan: planSummary,
       batch: {
         max_requests: maxRequests,
@@ -165,7 +167,7 @@ async function main() {
   const executed = [];
   const failed = [];
 
-  console.log(`[source-discovery] version=${DISCOVERY_QUERY_PLAN_VERSION} requests=${selected.length}`);
+  console.log(`[source-discovery] version=${DISCOVERY_QUERY_PLAN_VERSION} allocation=${DISCOVERY_QUERY_ALLOCATION_VERSION} requests=${selected.length}`);
   for (const item of selected) {
     console.log(`[source-discovery] query=${item.query_key} domain=${item.domain} family=${item.family} q=${JSON.stringify(item.input.q)} starting`);
     try {
@@ -189,6 +191,7 @@ async function main() {
   console.log(JSON.stringify({
     status: failed.length === 0 ? "PASS" : "PARTIAL_FAILURE",
     version: DISCOVERY_QUERY_PLAN_VERSION,
+    allocation_version: DISCOVERY_QUERY_ALLOCATION_VERSION,
     plan: planSummary,
     batch: {
       selected_requests: selected.length,
