@@ -2,7 +2,79 @@
 
 ## Status
 
-IMPLEMENTED — pending CI, live migration, and empirical pilot
+IMPLEMENTED / VERIFIED — empirical pilot BLOCKED by GitHub Actions secret availability
+
+Repository implementation, CI/PIE verification, and live migration are complete. The first bounded empirical pilot was attempted on 2026-08-25, but failed closed during credential validation before any provider request or database mutation.
+
+## Empirical pilot attempt — 2026-08-25
+
+Implementation PR:
+
+```text
+PR #63
+main merge: 6242b709e9545d35a6e5b5ffd04136c1880886d7
+```
+
+Migration:
+
+```text
+032_source_discovery_telemetry.sql
+live: applied
+```
+
+Guarded execution path PR:
+
+```text
+PR #65
+main merge: f2ff55cec1ad836916fa7912503717c3b200ff12
+```
+
+First pilot run:
+
+```text
+GitHub Actions run: 32797010101
+workflow: Source Discovery Pilot
+requested budget: 12 queries × 50 = up to 600 result opportunities
+result: BLOCKED_BEFORE_EXECUTION
+```
+
+The workflow successfully checked out authoritative `main` and installed dependencies, then failed in `Validate required secrets` because the repository had none of the required Actions secrets configured:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
+NAVER_CLIENT_ID
+NAVER_CLIENT_SECRET
+```
+
+No secret values were printed or recovered.
+
+The live discovery runner itself was skipped, therefore:
+
+```text
+provider requests: 0
+discovery runs: 0
+Source mutations: 0
+full source-body fetches: 0
+LLM calls: 0
+publication mutations: 0
+```
+
+Live database state after the blocked attempt remained exactly:
+
+```text
+Source Signals:       830
+Source Observations:  880
+Discovery Runs:         0
+Published Problems:     2
+Public Evidence:         5
+Source Incidents:        4
+Blind membership:      120
+```
+
+This is a safe blocked state, not an empirical PASS. Phase 15.8A must not be marked CLOSED until a real bounded acquisition run produces measurable discovery/admission yield.
+
+After the blocked attempt, the temporary push-trigger fallback is removed. The retained pilot workflow is manual `workflow_dispatch` only, checks out authoritative `main`, has read-only repository permissions, and keeps the default budget at 12 requests. Future validation reports missing secret names without printing secret values.
 
 ## Problem
 
@@ -159,6 +231,13 @@ Default campaign batch:
 = up to 1,200 search-result opportunities
 ```
 
+The first empirical pilot remains intentionally smaller:
+
+```text
+12 requests × 50
+= up to 600 search-result opportunities
+```
+
 This keeps expansion measurable and allows query allocation to change before the next batch.
 
 ## Yield telemetry
@@ -275,6 +354,14 @@ ALLOW_SOURCE_DISCOVERY_EXPANSION=1
 
 The runner snapshots downstream product boundaries before and after the batch and requires them to remain identical.
 
+The repository also retains:
+
+```text
+.github/workflows/source-discovery-pilot.yml
+```
+
+as a manual-only bounded execution path. It does not run on push, pull request, merge, or deploy.
+
 ## Preserved boundaries
 
 Phase 15.8A does not authorize:
@@ -302,11 +389,9 @@ ar_source_signal_observations
 
 No Public Problem, Public Evidence, Source Incident, Raw Input, or Pain Evidence mutation is permitted by the campaign runner.
 
-## Next empirical gate
+## Remaining empirical gate
 
-After migration and CI, the first live pilot should run a bounded discovery batch rather than the full 192-query plan.
-
-The pilot must report at minimum:
+A real bounded pilot still must report at minimum:
 
 ```text
 fetched
@@ -330,4 +415,10 @@ Public Evidence remains 5
 Source Incidents remain 4
 ```
 
-Only after observing those numbers should request depth, query families, and source adapters be expanded further.
+Required operational prerequisite:
+
+```text
+configure the repository GitHub Actions secrets for Supabase service access and NAVER API HUB access
+```
+
+Only after the real empirical result is observed may request depth, query families, or source adapters be expanded further, and only then may Phase 15.8A be considered for CLOSED status.
