@@ -46,6 +46,7 @@ test("lived or strongly explicit friction survives even when a title looks infor
 
 test("obvious guide, sales, commercial and positive-only noise is rejected before persistence", () => {
   assert.deepEqual(classifyDiscoverySignal(signal("환불 규정 총정리", "환불 신청 방법과 기준을 정리합니다.")).reason_codes, ["obvious_informational_guide"]);
+  assert.deepEqual(classifyDiscoverySignal(signal("환불 불가 규정 총정리", "상품별 규정을 안내합니다.")).reason_codes, ["obvious_informational_guide"]);
   assert.deepEqual(classifyDiscoverySignal(signal("콘서트 티켓 원가 양도합니다", "좋은 자리입니다.")).reason_codes, ["obvious_sales_listing"]);
   assert.deepEqual(classifyDiscoverySignal(signal("이번 주말 맛집 할인 이벤트", "쿠폰 혜택을 확인하세요.")).reason_codes, ["obvious_commercial_content"]);
   assert.deepEqual(classifyDiscoverySignal(signal("호텔 정말 좋았어요", "깔끔했고 편했습니다.")).reason_codes, ["positive_content_without_friction"]);
@@ -131,6 +132,26 @@ test("runtime routes apply discovery filtering before persistence while legacy G
   assert.match(service, /admission_candidate_count/);
   assert.match(goldRunner, /persistSourceSignals/);
   assert.doesNotMatch(goldRunner, /persistDiscoveredSourceSignals/);
+});
+
+test("operational admission sees Discovery supply while Gold/Blind and independent audit authority remain fixed", async () => {
+  const [service, blind, page] = await Promise.all([
+    read("lib/sources/service.mjs"),
+    read("lib/sources/blind-evaluation.mjs"),
+    read("app/curator/sources/page.js"),
+  ]);
+  assert.match(service, /loadBlindSafeOperationalSourceSignals/);
+  assert.match(service, /loadDiscoverySignalIds/);
+  assert.match(service, /not\("discovery_policy_version", "is", null\)/);
+  assert.match(service, /new Set\(\[\.\.\.campaign\.signalIds, \.\.\.discoverySignalIds\]\)/);
+  assert.match(service, /filter\(\(id\) => !evaluationIds\.has\(id\)\)/);
+  assert.match(service, /getSourceAdmissionStats[\s\S]*loadBlindSafeOperationalSourceSignals/);
+  assert.match(service, /listSourceAdmissionQueue[\s\S]*loadBlindSafeOperationalSourceSignals/);
+  assert.match(service, /getSourceAdmissionIndependentAudit[\s\S]*loadBlindSafeCampaignDevelopmentSignals/);
+  assert.match(blind, /GOLD_ACQUISITION_CAMPAIGN_VERSION/);
+  assert.match(blind, /contains\("request_metadata", \{ campaign_version: GOLD_ACQUISITION_CAMPAIGN_VERSION \}\)/);
+  assert.match(page, /Gold development supply와 Discovery observations를 합친 뒤 Blind 120을 제외/);
+  assert.match(page, /Independent audit과 Blind sampling 자체는 기존 Gold authority/);
 });
 
 test("migration stores cheap-filter and admission yield telemetry without adding a public data surface", async () => {
