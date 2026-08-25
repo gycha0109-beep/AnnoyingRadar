@@ -2,9 +2,6 @@ name: Source Promotion Shadow Pilot
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-promotion-shadow-pilot
 
 permissions:
   contents: read
