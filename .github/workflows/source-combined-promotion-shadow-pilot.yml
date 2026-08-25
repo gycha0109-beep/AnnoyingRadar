@@ -2,9 +2,6 @@ name: Source Combined Promotion Shadow Pilot
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-combined-promotion-shadow
 
 permissions:
   contents: read

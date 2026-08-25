@@ -4,10 +4,11 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("15.8I pilot checks out authoritative main and uses only read-side Supabase credentials", async () => {
+test("15.8I closeout keeps the pilot manual-only on authoritative main", async () => {
   const workflow = await read(".github/workflows/source-combined-promotion-shadow-pilot.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-combined-promotion-shadow/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-combined-promotion-shadow/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-discovery-combined-promotion-shadow\.mjs/);
