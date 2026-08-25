@@ -2,9 +2,17 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE and bounded live shadow readback**
+**CLOSED — IMPLEMENTED / CI VERIFIED / PIE VERIFIED / LIVE SHADOW VERIFIED / MERGED**
 
-## Why this phase exists
+Active discovery allocation remains:
+
+```text
+source-discovery-allocation-v0.4
+```
+
+Phase 15.8E did **not** activate a new production allocation version.
+
+## Why this phase existed
 
 Phase 15.8C established exact new-source snippet-level yield:
 
@@ -15,7 +23,7 @@ snippet Review: 166
 snippet Reject: 795
 ```
 
-Phase 15.8D then resolved a deterministic bounded sample of 24 exact-new Reviews with full public post context:
+Phase 15.8D resolved a deterministic bounded sample of 24 exact-new Reviews using full public post context:
 
 ```text
 Candidate: 4
@@ -24,40 +32,33 @@ unresolved: 5
 Review → Candidate promotion: 4 / 24 = 16.67%
 ```
 
-The active allocation v0.4 currently credits every Review equally:
+The active v0.4 scorer credits Review directly:
 
 ```text
 0.1 × review_rate
 ```
 
-The 15.8D result shows that Review has nonzero acquisition value but is not equivalent to Candidate.
-
-Phase 15.8E tests a promotion-aware interpretation in shadow only.
+15.8E tested whether Review credit should instead reflect empirically observed full-context Candidate promotion.
 
 ## Authority boundary
 
-Active production acquisition remains:
+Phase 15.8E never changed:
 
-```text
-source-discovery-allocation-v0.4
-```
-
-Phase 15.8E does not modify:
-
-- query plan generation;
+- the 192-query plan;
 - active request selection;
 - exploitation threshold;
-- exploration slot ratio;
+- exploration ratio;
 - Source Admission thresholds;
 - full-context semantic authority;
 - Formation / Incident identity;
-- Gold / Blind membership;
+- Gold membership;
+- Blind 120 membership;
 - Public Problem formation;
 - publication authority.
 
-The shadow cannot cause a discovery request to be selected or rejected.
+The shadow score was observational only.
 
-## Aggregate-only empirical authority
+## Calibration authority
 
 Calibration version:
 
@@ -71,43 +72,47 @@ Shadow version:
 review-promotion-shadow-v0.1
 ```
 
-The repository stores only aggregate Phase 15.8D counts and provenance metadata.
-
-It does not persist:
-
-- full source bodies;
-- evidence quotes;
-- individual semantic payloads;
-- new Candidate decisions to Supabase.
-
-Global bounded sample:
+Empirical authority is aggregate-only:
 
 ```text
-sampled: 24
-Candidate: 4
-Reject: 15
-unresolved: 5
+global:
+  sampled: 24
+  Candidate: 4
+  Reject: 15
+  unresolved: 5
+
+damage:
+  sampled: 16
+  Candidate: 1
+  Reject: 11
+  unresolved: 4
+
+delay:
+  sampled: 8
+  Candidate: 3
+  Reject: 4
+  unresolved: 1
 ```
 
-Family observations:
+Unresolved remains in the denominator so technical failures cannot inflate promotion yield.
 
-```text
-damage: sampled 16 / Candidate 1 / Reject 11 / unresolved 4
-delay:  sampled  8 / Candidate 3 / Reject  4 / unresolved 1
-```
-
-Unresolved remains in the denominator. This deliberately prevents technical failures from inflating apparent promotion yield.
+The repository does not store Phase 15.8D full bodies or individual semantic outputs as calibration data.
 
 ## Shrinkage
 
-A 24-observation global empirical prior is used as a strong shrinkage anchor.
+Global bounded promotion rate:
 
 ```text
-global promotion rate = 4 / 24 = 0.1667
-prior strength = 24
+4 / 24 = 0.1666667
 ```
 
-For observed families:
+Prior strength:
+
+```text
+24
+```
+
+Observed-family calibration:
 
 ```text
 calibrated family promotion
@@ -115,25 +120,21 @@ calibrated family promotion
   / (family sampled + 24)
 ```
 
-This produces:
+Result:
 
 ```text
-damage raw:       1 / 16 = 0.0625
- damage calibrated: 5 / 40 = 0.1250
- empirical weight: 16 / 40 = 0.40
+damage raw:        1 / 16 = 0.0625
+damage calibrated: 5 / 40 = 0.1250
 
-delay raw:        3 / 8 = 0.3750
- delay calibrated: 7 / 32 = 0.21875
- empirical weight: 8 / 32 = 0.25
+delay raw:         3 / 8 = 0.3750
+delay calibrated:  7 / 32 = 0.21875
 ```
 
-Unobserved families use only the global fallback `4/24` and receive no invented family evidence.
+This prevents the small delay sample from becoming a 37.5% production assumption.
 
-This deliberately prevents the small `delay` sample from receiving a 37.5% production promotion rate.
+## Shadow formula
 
-## Shadow scoring
-
-Active v0.4 uses:
+Active v0.4:
 
 ```text
 0.4 × candidate_rate
@@ -141,15 +142,7 @@ Active v0.4 uses:
 + remaining acquisition-quality terms
 ```
 
-The Phase 15.8E shadow replaces only the Review credit conceptually:
-
-```text
-0.4 × candidate_rate
-+ 0.4 × review_rate × calibrated_promotion_rate
-+ the same remaining acquisition-quality terms
-```
-
-Implementation computes this as a delta from the unchanged active v0.4 score:
+Promotion-aware shadow:
 
 ```text
 shadow_score
@@ -158,66 +151,187 @@ shadow_score
 + (0.4 × review_rate × calibrated_promotion_rate)
 ```
 
-No active allocation code consumes `shadow_score`.
+No active selector consumes `shadow_score`.
 
-## Read-only shadow runner
+## Critical authority correction
 
-Runner:
+The first live shadow run exposed an authority leak: legacy run-level telemetry was also receiving the global promotion fallback even though the 15.8D evidence came only from exact-new Review samples.
+
+Pre-correction run:
 
 ```text
-scripts/run-discovery-promotion-shadow.mjs
+workflow run: 32804810085
+artifact: 9547757728
+main: 8601e6d5d5af0ded8fc767168e350bdec1bc67e5
 ```
 
-It reads existing discovery query metrics, builds the unchanged 192-query plan, computes base v0.4 and promotion-aware shadow scores side by side, and reports:
+It still produced zero threshold crossings, but some `legacy_run_level` rows received negative shadow deltas.
+
+That was not accepted as final authority.
+
+PR #78 corrected the scope:
 
 ```text
-measured query count
-exact-measured query count
-base exploitation-eligible count
-shadow exploitation-eligible count
-threshold crossings
-crossed-up / crossed-down query keys
-family-level mean score deltas
-top changed queries
+calibration_authority_scope = new_source_exact_only
 ```
 
-Expected scope:
+Rules after correction:
 
 ```text
+new_source_exact
+→ promotion calibration may apply
+
+legacy_run_level
+→ promotion_applicable = false
+→ calibrated_promotion_rate = null
+→ shadow_score = base_score
+→ score_delta = 0
+```
+
+Active v0.4 remained unchanged throughout.
+
+## Final live shadow readback
+
+Authoritative exact-only run:
+
+```text
+workflow run: 32806513404
+artifact: 9548323124
+main: 4da500b4f754670995d195be22f4205969879569
+status: SUCCESS
+```
+
+Summary:
+
+```text
+total queries:                 192
+measured queries:               46
+exact measured queries:         19
+promotion-applicable queries:   19
+
+base exploitation eligible:      7
+shadow exploitation eligible:    7
+threshold crossings:             0
+crossed up:                       0
+crossed down:                     0
+```
+
+Family readback:
+
+```text
+damage:
+  measured queries: 16
+  exact/applicable: 13
+  base eligible: 6
+  shadow eligible: 6
+  mean base score:   0.3272141008
+  mean shadow score: 0.3212648356
+  mean delta:       -0.0059492652
+
+delay:
+  measured queries: 6
+  exact/applicable: 6
+  base eligible: 1
+  shadow eligible: 1
+  mean base score:   0.3213112345
+  mean shadow score: 0.3199549729
+  mean delta:       -0.0013562616
+
+contact legacy telemetry:
+  measured queries: 24
+  exact/applicable: 0
+  mean base score = mean shadow score
+  mean delta: 0
+```
+
+Largest observed exact-query delta:
+
+```text
+commerce__damage__1
+0.4570479308 → 0.4295754033
+Δ -0.0274725275
+```
+
+It remained exploitation-eligible.
+
+## Boundary verification
+
+Final live shadow runner reported:
+
+```text
+active allocation mutations: 0
 DB writes: 0
 Blind reads: 0
 full source-body fetches: 0
 publication mutations: 0
-active allocation mutations: 0
 ```
 
-## Pilot workflow
-
-Workflow:
+Independent post-run live DB verification:
 
 ```text
-.github/workflows/source-promotion-shadow-pilot.yml
+Public Problems: 2
+Published Problems: 2
+Public Problem feed: 2
+Public Evidence snapshots: 5
+Public Evidence feed: 5
+Source Incidents: 4
+Blind evaluation samples: 120
 ```
 
-It checks out authoritative `main` before using Supabase secrets.
+No public/incident/Blind authority changed during 15.8E.
 
-A temporary dedicated ops push trigger exists solely because the current connector cannot dispatch `workflow_dispatch` directly. It must be removed during closeout after the empirical shadow run.
+## Verification
 
-## Empirical decision criteria
+PR #78 exact-scope correction:
 
-The shadow is safe to continue toward a later activation phase only if the live readback shows all of the following:
+```text
+CI #341: SUCCESS
+PIE #45: SUCCESS
+unit: SUCCESS
+release hardening: SUCCESS
+build: SUCCESS
+runtime smoke: SUCCESS
+```
 
-1. no active allocation mutation;
-2. no DB / Blind / publication mutation;
-3. score deltas are interpretable from promotion calibration;
-4. threshold crossings are bounded rather than broad destabilization;
-5. no family receives strong preference solely from tiny sample size;
-6. exploration remains untouched in active v0.4.
+## Closeout decision
 
-Phase 15.8E itself does not activate promotion-aware allocation even if the shadow looks favorable.
+Phase 15.8E is closed with the following conclusion:
+
+1. Review has measurable downstream value; the 15.8D sample produced 4/24 Candidate promotion.
+2. Promotion-aware discounting is behaviorally stable on current exact telemetry; 7/7 exploitation eligibility remained unchanged.
+3. Legacy telemetry must not inherit exact-new promotion calibration. That boundary is now enforced.
+4. The current 24-sample empirical basis is too small and too concentrated in `damage` and `delay` to justify activating a production allocation v0.5.
+5. Therefore active allocation remains `source-discovery-allocation-v0.4`.
+
+This is a **defer activation**, not a rejection of promotion-aware scoring.
+
+## Workflow closeout
+
+`.github/workflows/source-promotion-shadow-pilot.yml` remains available only as explicit `workflow_dispatch` diagnostics.
+
+The temporary:
+
+```text
+push → ops/source-promotion-shadow-pilot
+```
+
+trigger is removed during closeout.
 
 ## Next-stage boundary
 
-If shadow behavior is acceptable, a separate later phase may decide whether to activate promotion-aware Review credit with explicit versioning and additional safeguards.
+The next calibration stage should obtain additional deterministic holdout full-context observations before any production activation.
 
-If shadow behavior is unstable, calibration must be revised or more full-context samples collected. The solution is not to lower Source Admission thresholds.
+Recommended next target:
+
+```text
+additional exact-new Review holdout: up to 48
+exclude the original Phase 15.8D 24 samples
+reuse existing full-context authority
+aggregate-only result retention
+DB writes: 0
+Blind reads: 0
+```
+
+The purpose is to reduce uncertainty and test whether promotion yield persists beyond the initial 24-sample development slice.
+
+A later activation phase may create a separately versioned allocation only after that evidence exists. Source Admission or Formation thresholds must not be loosened to manufacture volume.
