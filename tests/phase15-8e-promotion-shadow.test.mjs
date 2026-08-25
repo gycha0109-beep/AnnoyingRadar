@@ -183,12 +183,25 @@ test("Phase 15.8E runner is read-only, exact-authority scoped, and does not insp
   assert.doesNotMatch(runner, /getEvaluationSampleIds|fetchSourceFullContext|resolveSourceAdmissionWithFullContext/);
 });
 
-test("Phase 15.8E pilot checks out authoritative main and uses a dedicated temporary ops trigger", async () => {
+test("Phase 15.8E closeout keeps the shadow workflow manual-only", async () => {
   const workflow = await read(".github/workflows/source-promotion-shadow-pilot.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-promotion-shadow-pilot/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-promotion-shadow-pilot/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-discovery-promotion-shadow\.mjs/);
   assert.doesNotMatch(workflow, /OPENAI_API_KEY|pull_request:/);
+});
+
+test("Phase 15.8E closeout records final exact-only evidence and defers activation", async () => {
+  const doc = await read("docs/phase15-8e-full-context-yield-calibration.md");
+  assert.match(doc, /\*\*CLOSED — IMPLEMENTED \/ CI VERIFIED \/ PIE VERIFIED \/ LIVE SHADOW VERIFIED \/ MERGED\*\*/);
+  assert.match(doc, /32806513404/);
+  assert.match(doc, /9548323124/);
+  assert.match(doc, /promotion-applicable queries:\s+19/);
+  assert.match(doc, /threshold crossings:\s+0/);
+  assert.match(doc, /Blind evaluation samples: 120/);
+  assert.match(doc, /source-discovery-allocation-v0\.4/);
+  assert.match(doc, /defer activation/i);
 });
