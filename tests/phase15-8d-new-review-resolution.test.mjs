@@ -97,3 +97,15 @@ test("Phase 15.8D runner reuses the existing full-context authority and remains 
   assert.doesNotMatch(runner, /getEvaluationSampleIds|loadCampaignPool/);
   assert.doesNotMatch(runner, /content_text: result\.full_context|evidence_quote:/);
 });
+
+test("Phase 15.8D workflow runs secrets only from authoritative main and a dedicated ops trigger", async () => {
+  const workflow = await read(".github/workflows/source-review-resolution-pilot.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /ops\/source-review-resolution-pilot/);
+  assert.match(workflow, /Checkout authoritative main/);
+  assert.match(workflow, /ref: main/);
+  assert.match(workflow, /OPENAI_API_KEY/);
+  assert.match(workflow, /ALLOW_PAID_SOURCE_FULL_CONTEXT: "true"/);
+  assert.match(workflow, /run-new-review-full-context-resolution\.mjs --live/);
+  assert.doesNotMatch(workflow, /pull_request:/);
+});
