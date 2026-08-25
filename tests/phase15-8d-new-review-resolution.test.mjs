@@ -83,6 +83,17 @@ test("sampling does not exceed the available queue", () => {
   assert.equal(selectDeterministicReviewSample(records, { sampleSize: 24 }).length, 2);
 });
 
+test("Phase 15.8D runner paginates observation reads beyond Supabase default row limit", async () => {
+  const runner = await read("scripts/run-new-review-full-context-resolution.mjs");
+  assert.match(runner, /OBSERVATION_PAGE_SIZE = 1000/);
+  assert.match(runner, /\.order\("ingestion_run_id"/);
+  assert.match(runner, /\.order\("source_signal_id"/);
+  assert.match(runner, /\.range\(from, to\)/);
+  assert.match(runner, /if \(page\.length < OBSERVATION_PAGE_SIZE\) break/);
+  assert.match(runner, /from \+= OBSERVATION_PAGE_SIZE/);
+  assert.match(runner, /observation_rows: observations\.length/);
+});
+
 test("Phase 15.8D runner reuses the existing full-context authority and remains DB read-only", async () => {
   const runner = await read("scripts/run-new-review-full-context-resolution.mjs");
   assert.match(runner, /resolveSourceAdmissionWithFullContext/);
