@@ -109,10 +109,11 @@ test("Phase 15.8D runner reuses the existing full-context authority and remains 
   assert.doesNotMatch(runner, /content_text: result\.full_context|evidence_quote:/);
 });
 
-test("Phase 15.8D workflow runs secrets only from authoritative main and a dedicated ops trigger", async () => {
+test("Phase 15.8D workflow remains manual-only after empirical pilot closeout", async () => {
   const workflow = await read(".github/workflows/source-review-resolution-pilot.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-review-resolution-pilot/);
+  assert.doesNotMatch(workflow, /ops\/source-review-resolution-pilot/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /OPENAI_API_KEY/);
