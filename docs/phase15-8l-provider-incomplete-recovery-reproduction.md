@@ -2,13 +2,25 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE and bounded live reproduction**
+**CLOSED**
+
+Implementation PR #92 was merged to authoritative `main` before the live reproduction.
+
+```text
+implementation merge: 74456cc0737b9d10fa309d84537c42f614b1cc84
+CI #370: SUCCESS
+PIE #60: SUCCESS
+live workflow run: 32815533647
+artifact: 9551287039
+```
+
+The temporary `ops/source-provider-recovery-15-8l` push trigger was removed during closeout. The workflow remains manual-only.
 
 ## Purpose
 
 Phase 15.8K measured the full-context yield of the exact new Review supply created by Phase 15.8J.
 
-The bounded 48-record live sample produced:
+Its bounded 48-record sample ended with:
 
 ```text
 Candidate: 7
@@ -16,11 +28,9 @@ Reject: 28
 unresolved Review: 13
 resolved: 35
 unresolved: 13
-conservative Review → Candidate: 7 / 48 = 14.58%
-resolved-only Review → Candidate: 7 / 35 = 20.00%
 ```
 
-The unresolved aggregate reason counts were:
+Baseline unresolved aggregate reasons were:
 
 ```text
 source_full_context_provider_incomplete: 10
@@ -28,37 +38,32 @@ source_full_context_invalid_evidence_quote: 1
 full_context_url_invalid: 2
 ```
 
-The dominant remaining technical failure class is therefore provider-incomplete structured output.
-
-15.8L measures whether the existing bounded semantic recovery mechanism can reduce that failure class on the same 15.8K unresolved cohort without activating quote recovery, changing Source Admission semantics, or mutating any production data.
+15.8L tested whether the existing bounded semantic recovery mechanism can reduce provider-incomplete failures without activating quote recovery, changing Source Admission semantics, or mutating production data.
 
 ## Baseline authority
 
-Baseline live run:
+Phase 15.8K live authority:
 
 ```text
-Phase: 15.8K
-GitHub Actions run: 32813922410
+run: 32813922410
 artifact: 9550886238
-baseline sample size: 48
+sample size: 48
 sample fingerprint: 9a3c8192c57c48450ec1b39b5cc590cd6ccc5219869a23924a3d58a87a609be6
 ```
 
-15.8K intentionally did not persist an identity-bearing mapping from each unresolved record to its reason code.
-
-The aggregate log does, however, expose the deterministic sample ordinals that remained unresolved:
+The deterministic sample ordinals that were unresolved in 15.8K were:
 
 ```text
 5, 8, 10, 15, 17, 19, 20, 26, 28, 29, 41, 44, 45
 ```
 
-15.8L therefore reconstructs the same 48-record sample and selects exactly these 13 ordinals. It does **not** claim to know which ten identities originally corresponded to provider-incomplete.
+15.8K intentionally did not persist an identity-bearing reason mapping. Therefore 15.8L did **not** claim which ten identities corresponded to the original provider-incomplete aggregate.
 
-This prevents a post-hoc identity inference from being promoted into repository authority.
+Instead it reconstructed all 13 unresolved ordinals and allowed a second semantic attempt only when the fresh first attempt itself returned `source_full_context_provider_incomplete`.
 
 ## Frozen reconstruction authority
 
-The runner reuses the exact Phase 15.8J cohort authority:
+The runner successfully reconstructed the exact 15.8J authority:
 
 ```text
 completed_at from: 2026-08-25T05:15:33.082Z
@@ -69,120 +74,187 @@ exact new Reviews: 130
 run fingerprint: df80cfd2b8cec8899e8d87af6943ed2fa190db3d90ba192afc1c8332d9e028df
 ```
 
-It then reconstructs the exact Phase 15.8K deterministic sample:
+It then reconstructed the exact 15.8K sample:
 
 ```text
 sample size: 48
 sample fingerprint: 9a3c8192c57c48450ec1b39b5cc590cd6ccc5219869a23924a3d58a87a609be6
 ```
 
-Any drift in run count, exact-new count, Review count, run fingerprint, sample size, or sample fingerprint fails closed before paid provider work begins.
+All fail-closed reconstruction checks passed before paid provider work began.
 
-## Recovery scope
+## Recovery authority
 
-Recovery-eligible reason codes for 15.8L:
+15.8L explicitly narrowed retry eligibility to:
 
 ```text
 source_full_context_provider_incomplete
 ```
 
-Only this code may trigger a second semantic-provider attempt.
-
-Explicitly excluded from 15.8L retry authority:
+Excluded retry reasons included:
 
 ```text
 source_full_context_invalid_evidence_quote
 full_context_url_invalid
 provider network errors
 semantic uncertainty
-all other reason codes
+all other codes
 ```
 
-The generic 15.8G recovery implementation remains backward compatible: when no narrowed scope is supplied, its historical two-code recovery behavior is unchanged.
+The historical 15.8G default behavior remains backward compatible when no narrowed reason scope is supplied.
 
-15.8L passes the provider-only scope explicitly.
+15.8L changed no semantic decision thresholds and did not activate the recovery resolver in product behavior.
 
-## Attempt semantics
+## Live result
 
-For each of the 13 reconstructed targets:
+The bounded live reproduction completed successfully on authoritative `main`.
+
+### Final outcomes across the 13 baseline-unresolved targets
 
 ```text
-public full-context fetch
-→ fresh base semantic attempt
-→ if base attempt resolves: stop
-→ if base attempt fails with provider_incomplete: one bounded recovery attempt
-→ otherwise: stop unresolved without retry
+Candidate: 1
+Reject: 7
+Review: 5
+resolved: 8
+unresolved: 5
+unresolved reduction: 13 → 5 (-8)
 ```
 
-Provider-incomplete recovery retains the existing 15.8G behavior:
+### Attribution of the reduction
 
 ```text
-maximum semantic attempts per target: 2
-recovery max_output_tokens: 1600
-structured schema: unchanged
-store: false
-semantic decision mapping: unchanged
+fresh first-attempt resolved: 5
+provider recovery attempted: 4
+provider recovered after retry: 3
+provider recovery exhausted: 1
+quote recovery attempted: 0
 ```
 
-15.8L does not activate quote-specific retry instructions.
-
-A runtime assertion requires:
+Therefore the eight-record reduction must be split as:
 
 ```text
-quote_recovery_attempted = 0
+5 = fresh base-attempt resolution
+3 = recovery-caused resolution after reproduced provider_incomplete
 ```
 
-## Interpretation boundary
+It would be incorrect to attribute all eight reductions to retry.
 
-The 13 targets were unresolved in the previous 15.8K live run, but semantic-provider behavior is not assumed deterministic across runs.
+### Provider-incomplete reproducibility
 
-Therefore 15.8L distinguishes:
+The 15.8K baseline had ten aggregate provider-incomplete failures, but only four of the 13 replayed targets produced provider-incomplete again on the fresh 15.8L base attempt.
 
-- `fresh_first_attempt_resolved`: previously unresolved target now resolves on the fresh base attempt;
-- `provider_recovery_attempted`: fresh base attempt reproduced provider-incomplete and triggered the one retry;
-- `provider_recovered_after_retry`: the retry produced a valid semantic result;
-- `provider_recovery_exhausted`: provider-incomplete retry was attempted but still failed;
-- final unresolved count.
+This demonstrates substantial run-to-run instability in this failure class.
 
-A target resolving on the fresh first attempt is evidence of provider instability/reproducibility behavior, not evidence that the retry mechanism caused the resolution.
+The exact identity overlap with the original ten cannot be asserted because 15.8K intentionally did not persist identity→reason authority.
+
+### Retry efficacy when provider-incomplete reproduced
+
+Of the four fresh provider-incomplete events:
+
+```text
+retry recovered: 3
+retry did not produce a valid final semantic resolution: 1
+conditional recovery rate: 3 / 4 = 75%
+```
+
+The exhausted retry did not remain provider-incomplete; its terminal recovery reason was an invalid evidence quote. This means the second provider attempt completed far enough to move into quote validation but still did not produce an admissible final result.
+
+### Final unresolved reasons
+
+After 15.8L:
+
+```text
+full_context_url_invalid: 2
+source_full_context_invalid_evidence_quote: 3
+source_full_context_provider_incomplete: 0 final unresolved
+```
+
+Three invalid-quote terminal reasons were observed. No quote-specific retry was permitted.
+
+This is an important separation:
+
+```text
+provider-incomplete retry behavior: tested
+quote-isolation recovery behavior: not activated by 15.8L
+```
+
+## Interpretation
+
+15.8L supports two conclusions simultaneously.
+
+### 1. Provider incomplete is materially transient
+
+Five previously unresolved targets resolved on the fresh first attempt without any recovery. Only four fresh attempts reproduced provider-incomplete despite ten such aggregate failures in 15.8K.
+
+Therefore raw provider-incomplete counts should not be interpreted as deterministic semantic-policy failures.
+
+### 2. One bounded retry is useful when provider incomplete actually occurs
+
+When provider-incomplete did reproduce, three of four retry attempts reached a valid final semantic decision.
+
+This is evidence that a one-retry provider-only reliability path is technically useful, but 15.8L itself does **not** authorize product activation.
+
+Any activation must remain separately governed because it changes runtime provider-call behavior and cost, even though it does not change Source Admission semantics.
+
+## Family / allocation observations
+
+Final outcomes over the 13 replay targets:
+
+```text
+family error:  6 total / 3 resolved / 3 unresolved
+family delay:  2 total / 1 resolved / 1 unresolved
+family damage: 5 total / 4 resolved / 1 unresolved
+```
+
+Allocation provenance:
+
+```text
+exploration:  10 total / 6 resolved / 4 unresolved
+exploitation: 3 total / 2 resolved / 1 unresolved
+```
+
+These counts are diagnostic only. The sample is too small and conditioned on prior unresolved status, so they do not authorize query-allocation tuning.
 
 ## Cost boundary
 
-The live reproduction is bounded to:
+Authorized maximum:
 
 ```text
 public full-context fetches: <= 13
-paid semantic-provider calls: <= 26
+semantic-provider calls: <= 26
 ```
 
-The second-call ceiling is reachable only if every target reproduces provider-incomplete.
-
-No broad replay of the 48-record sample or 130-record Review cohort is authorized.
+The run stayed inside this bounded authority. No broad 48-record or 130-record replay was performed.
 
 ## Mutation and privacy boundary
 
-15.8L is read-only.
-
-Before and after execution, the runner snapshots:
+Live before/after snapshots were exactly equal:
 
 ```text
-ar_source_signals
-ar_source_signal_observations
-ar_source_ingestion_runs
-ar_raw_inputs
-ar_pain_evidences
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_source_incidents
+Source Signals: 3245 → 3245
+Source Observations: 3537 → 3537
+Source Ingestion Runs: 132 → 132
+Raw Inputs: 10 → 10
+Pain Evidences: 27 → 27
+Public Problems: 2 → 2
+Public Evidence: 5 → 5
+Source Incidents: 4 → 4
 ```
 
-Exact equality is required.
+Independent DB readback also confirmed:
 
-Additional invariants:
+```text
+Published Problems: 2
+Blind membership: 120
+representative: 60
+challenge: 60
+```
+
+Additional invariants remained:
 
 ```text
 DB writes: 0
-Blind reads: 0
+Blind reads by runner: 0
 full source bodies persisted: 0
 Formation authority granted: false
 Incident mutations: 0
@@ -192,57 +264,22 @@ active resolver mutations: 0
 provider recovery product activation: false
 ```
 
-The runner emits aggregate diagnostics and baseline ordinals only. It does not emit Source Signal ids, canonical URLs, author handles, full source bodies, provider payloads, or provider request ids as repository authority.
+No Source Signal identity list, canonical URL, author handle, full source body, provider payload, or provider request id was promoted into repository authority.
 
-## Workflow
+## Close decision
 
-One-shot workflow:
+Phase 15.8L is **CLOSED**.
 
-```text
-.github/workflows/source-provider-recovery-15-8l.yml
-```
-
-During execution preparation it supports a temporary exact push branch:
+The empirical result justifies evaluating a separately governed provider-incomplete-only product activation path, because:
 
 ```text
-ops/source-provider-recovery-15-8l
+provider-incomplete is transient
+AND
+when it reproduces, one retry recovered 3/4 cases
+AND
+quote retry can remain disabled
 ```
 
-The workflow always checks out authoritative `main` before any Supabase read or paid semantic-provider call.
+However, activation is **not** implied by this closeout. Any next phase must explicitly define runtime call-site authority, one-retry cost bounds, observability, and fail-closed behavior.
 
-The temporary push trigger must be removed during closeout.
-
-## Close criterion
-
-15.8L may close after all of the following are true:
-
-1. implementation CI is green;
-2. PIE prospective shadow is green;
-3. the exact 15.8K sample and 13 unresolved ordinals reconstruct successfully;
-4. bounded live reproduction completes;
-5. `quote_recovery_attempted = 0`;
-6. DB and Blind boundaries remain unchanged;
-7. aggregate results clearly separate fresh first-attempt resolution from retry-caused recovery;
-8. the temporary ops trigger is removed;
-9. closeout is merged to `main`.
-
-## Decision boundary
-
-15.8L is a reliability reproduction only.
-
-It does **not** authorize automatic product activation of semantic recovery.
-
-Possible later decisions are:
-
-```text
-provider-incomplete materially reproduces + retry recovers reliably
-→ consider a separately governed product-activation phase for provider-incomplete only
-
-provider-incomplete rarely reproduces because fresh base attempts resolve
-→ treat the dominant issue as transient provider instability; quantify whether retry is operationally justified before activation
-
-retry frequently exhausts
-→ do not activate; inspect provider/schema/token behavior
-```
-
-Quote-isolation recovery remains a separate authority and is not inferred from 15.8L.
+Quote recovery remains a separate decision surface.
