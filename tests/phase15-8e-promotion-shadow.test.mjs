@@ -42,6 +42,20 @@ function exactMetrics({ inserted = 50, reviews = 10, rejects = 40 } = {}) {
   };
 }
 
+function legacyMetrics({ reviews = 10, rejects = 40 } = {}) {
+  return {
+    completed_runs: 1,
+    fetched_count: 50,
+    inserted_count: 50,
+    duplicate_count: 0,
+    discovery_continue_count: 50,
+    discovery_reject_count: 0,
+    admission_candidate_count: 0,
+    admission_review_count: reviews,
+    admission_reject_count: rejects,
+  };
+}
+
 test("15.8D bounded result is represented as aggregate-only calibration authority", () => {
   assert.equal(REVIEW_PROMOTION_CALIBRATION_VERSION, "review-promotion-calibration-v0.1");
   assert.equal(REVIEW_PROMOTION_SHADOW_VERSION, "review-promotion-shadow-v0.1");
@@ -78,11 +92,23 @@ test("promotion-aware score is shadow-only and leaves active allocation version 
   const damage = scoreDiscoveryRunMetricsWithPromotionShadow(exactMetrics(), { family: "damage" });
   const delay = scoreDiscoveryRunMetricsWithPromotionShadow(exactMetrics(), { family: "delay" });
   assert.equal(damage.version, REVIEW_PROMOTION_SHADOW_VERSION);
+  assert.equal(damage.promotion_applicable, true);
   assert.ok(damage.shadow_score < damage.base_score);
   assert.ok(delay.shadow_score < delay.base_score);
   assert.ok(delay.shadow_score > damage.shadow_score);
   assert.ok(approximatelyEqual(damage.base_review_credit, 0.02));
   assert.ok(approximatelyEqual(damage.promotion_review_credit, 0.01));
+});
+
+test("legacy run-level telemetry is outside promotion calibration authority and remains byte-for-byte score equivalent", () => {
+  const result = scoreDiscoveryRunMetricsWithPromotionShadow(legacyMetrics(), { family: "damage" });
+  assert.equal(result.base.telemetry_scope, "legacy_run_level");
+  assert.equal(result.promotion_applicable, false);
+  assert.equal(result.calibration.scope, "not_applicable_non_exact");
+  assert.equal(result.calibration.calibrated_promotion_rate, null);
+  assert.equal(result.promotion_review_credit, null);
+  assert.equal(result.score_delta, 0);
+  assert.equal(result.shadow_score, result.base_score);
 });
 
 test("queries without Review evidence remain unchanged in shadow", () => {
@@ -94,13 +120,14 @@ test("queries without Review evidence remain unchanged in shadow", () => {
   assert.equal(result.shadow_score, result.base_score);
 });
 
-test("shadow summary reports threshold crossings without mutating selection", () => {
+test("shadow summary reports threshold crossings only inside promotion-applicable exact telemetry", () => {
   const summary = summarizePromotionShadow([
     {
-      query_key: "a",
+      query_key: "exact-crossing",
       family: "delay",
       completed_runs: 1,
       exact_runs: 1,
+      promotion_applicable: true,
       base_score: 0.33,
       shadow_score: 0.31,
       score_delta: -0.02,
@@ -108,10 +135,23 @@ test("shadow summary reports threshold crossings without mutating selection", ()
       shadow_exploitation_eligible: false,
     },
     {
-      query_key: "b",
+      query_key: "legacy-ignored",
+      family: "contact",
+      completed_runs: 1,
+      exact_runs: 0,
+      promotion_applicable: false,
+      base_score: 0.33,
+      shadow_score: 0.31,
+      score_delta: -0.02,
+      base_exploitation_eligible: true,
+      shadow_exploitation_eligible: false,
+    },
+    {
+      query_key: "exact-stable",
       family: "damage",
       completed_runs: 1,
       exact_runs: 1,
+      promotion_applicable: true,
       base_score: 0.3,
       shadow_score: 0.3,
       score_delta: 0,
@@ -119,9 +159,10 @@ test("shadow summary reports threshold crossings without mutating selection", ()
       shadow_exploitation_eligible: false,
     },
   ]);
+  assert.equal(summary.promotion_applicable_queries, 2);
   assert.equal(summary.threshold_crossings, 1);
-  assert.deepEqual(summary.crossed_down, ["a"]);
-  assert.equal(summary.base_exploitation_eligible, 1);
+  assert.deepEqual(summary.crossed_down, ["exact-crossing"]);
+  assert.equal(summary.base_exploitation_eligible, 2);
   assert.equal(summary.shadow_exploitation_eligible, 0);
 });
 
@@ -131,9 +172,10 @@ test("active discovery allocation stays isolated from the promotion shadow modul
   assert.doesNotMatch(active, /review-promotion-calibration|promotion-shadow/i);
 });
 
-test("Phase 15.8E runner is read-only and does not inspect Blind or source bodies", async () => {
+test("Phase 15.8E runner is read-only, exact-authority scoped, and does not inspect Blind or source bodies", async () => {
   const runner = await read("scripts/run-discovery-promotion-shadow.mjs");
   assert.match(runner, /status: "SHADOW_ONLY"/);
+  assert.match(runner, /calibration_authority_scope: "new_source_exact_only"/);
   assert.match(runner, /active_allocation_mutated: false/);
   assert.match(runner, /database_writes: 0/);
   assert.match(runner, /blind_evaluation_reads: 0/);
