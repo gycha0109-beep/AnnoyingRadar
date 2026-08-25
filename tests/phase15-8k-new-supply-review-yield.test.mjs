@@ -48,10 +48,11 @@ test("15.8K runner freezes the exact 15.8J authority and stays read-only", async
   assert.doesNotMatch(runner, /resolveSourceAdmissionWithFullContextRecovery/);
 });
 
-test("15.8K one-shot workflow checks out main and has no acquisition credentials", async () => {
+test("15.8K workflow is manual-only after live closeout and has no acquisition credentials", async () => {
   const workflow = await read(".github/workflows/source-new-supply-review-15-8k.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-new-supply-review-15-8k/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-new-supply-review-15-8k/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /OPENAI_API_KEY/);
