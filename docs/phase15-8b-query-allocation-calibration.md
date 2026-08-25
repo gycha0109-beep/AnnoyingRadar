@@ -2,13 +2,11 @@
 
 ## Status
 
-**CALIBRATION CONTINUES — allocation v0.3 implemented, pending CI/PIE and third bounded batch**
+**CLOSED — 2026-08-25**
 
-Phase 15.8B changes provider request allocation only. It does not alter Discovery Prefilter, Source Admission, Formation, Incident, Gold, Blind-120, Public Problem, or publication authority.
+Phase 15.8B changed provider request allocation only. It did not alter Discovery Prefilter, Source Admission, Formation, Incident, Gold, Blind-120, Public Problem, or publication authority.
 
-## Phase 15.8A baseline
-
-First empirical batch:
+## Baseline from Phase 15.8A
 
 ```text
 requests: 12
@@ -22,7 +20,7 @@ Reviews: 22
 Admission Rejects: 121
 ```
 
-The baseline proved Source-supply expansion, but exposed a request-budget problem.
+This proved that Source supply could be expanded without touching downstream authority, but it exposed request-budget inefficiency.
 
 ## Allocation v0.2
 
@@ -37,7 +35,7 @@ v0.2 fixed two allocation-v0.1 defects:
 1. completed zero-result queries stopped masquerading as unexplored queries;
 2. Source Admission Reject rate began penalizing exploitation score.
 
-It also introduced a minimum exploitation score:
+It also introduced:
 
 ```text
 DISCOVERY_MIN_EXPLOITATION_SCORE = 0.32
@@ -80,55 +78,26 @@ Reviews: 21
 Admission Rejects: 72
 ```
 
-Observed rates:
+Rates:
 
 ```text
-new Source / fetched:       2.00%
-duplicate / continued:    97.87%
+new Source / fetched:      2.00%
+duplicate / continued:   97.87%
 ```
 
-Post-batch live state:
+The 1 Candidate and 21 Reviews were run-level Admission classifications over continued signals, including duplicates. They are not 22 newly discovered useful Sources.
+
+The failure was exact provider-window replay:
 
 ```text
-Source Signals:        969
-Source Observations:  1,118
-Discovery Runs:         24
-Published Problems:      2
-Public Evidence:          5
-Source Incidents:         4
-Blind membership:       120
-```
-
-Protected runner boundaries remained unchanged:
-
-```text
-Raw Inputs:        10
-Pain Evidence:     27
-Public Problems:    2
-Public Evidence:    5
-Source Incidents:   4
-Blind reads:        0
-full-body fetches:  0
-publication writes: 0
-```
-
-## Empirical defect exposed by v0.2
-
-The scorer was no longer the only bottleneck.
-
-Exploitation still called the exact same provider window:
-
-```text
-sort = date
-start = 1
-limit = 50
+sort=date
+start=1
+limit=50
 ```
 
 for already measured queries.
 
-That produced near-total replay of previously observed rows. The 1 Candidate and 21 Reviews in batch 2 are run-level Admission classifications over continued signals, including duplicates. They must not be described as 22 newly discovered useful signals.
-
-Therefore Phase 15.8B was not closed after batch 2.
+Phase 15.8B therefore remained open after v0.2.
 
 ## Allocation v0.3
 
@@ -138,11 +107,9 @@ Version:
 source-discovery-allocation-v0.3
 ```
 
-v0.3 adds provider-window authority to allocation.
+v0.3 added provider-window authority to allocation.
 
-### Historical page state
-
-`listDiscoveryQueryMetrics()` now retains, per semantic query key:
+`listDiscoveryQueryMetrics()` retains per semantic query key:
 
 ```text
 requested_limit
@@ -150,101 +117,128 @@ max_start
 max_start_fetched_count
 ```
 
-No schema migration is required. Existing `requested_limit` and `request_metadata.start` are reused.
-
-### Exploitation eligibility
-
-A measured query may be exploited only when all are true:
+A measured query can be exploited only when:
 
 ```text
 score >= 0.32
 max_start_fetched_count >= requested_limit
-next provider window is within Naver's 1..1000 bound
+next provider window remains within Naver's 1..1000 bound
 ```
 
-If the highest observed page returned fewer rows than requested, that query is considered exhausted for immediate sequential acquisition.
+A partial or empty highest page is treated as exhausted for immediate sequential acquisition. A productive full page advances to the next page instead of replaying the same page.
 
-Example:
-
-```text
-환불 연락 안됨
-start=1, limit=50, fetched=13
-→ useful Candidate observed
-→ page is nevertheless exhausted
-→ do not replay start=1
-```
-
-A high-scoring full page advances instead of replaying:
-
-```text
-start=1, limit=50, fetched=50
-→ next exploitation start=51
-```
-
-### Allocation provenance
-
-Selected requests now record:
+Selected requests record:
 
 ```text
 discovery_allocation_version
-discovery_allocation_mode   = exploration | exploitation
+discovery_allocation_mode = exploration | exploitation
 discovery_page_start
 ```
 
-Exploration begins at the plan's initial page. Exploitation advances only to a new provider window.
+## Third bounded empirical batch
 
-### Low-score and exhausted queries
-
-Measured low-score queries are not selected while unexplored query space remains.
-
-Measured partial/empty pages are not exact-page replay fallbacks.
-
-This intentionally allows a bounded batch to contain fewer than the requested maximum if the query space eventually becomes exhausted rather than spending provider calls on known replay.
-
-## Third empirical gate
-
-After CI/PIE and merge, run another 12-request bounded batch from authoritative `main`.
-
-The gate must verify:
+Authoritative main:
 
 ```text
-no exact start=1 replay for measured queries
-no measured-empty replay
-no low-score repair replay
-pagination uses start=51 only for eligible full-page queries
-unmeasured exploration remains the dominant budget when no productive full page exists
+afd040378cbbf12474eb8e3b16fceb16a51552ef
 ```
 
-Report:
+GitHub Actions:
 
 ```text
-selected query key + start
-allocation mode
-fetched
-continued
-cheap rejected
-new Sources
-duplicates
-Candidates
-Reviews
-Rejects
+run: 32797010101
+job: 97656701961
+status: PASS
 ```
 
-Compare new-source and duplicate rates with both prior batches, but do not claim general causal superiority from one batch.
-
-Protected boundaries remain mandatory:
+Every selected request was a previously unmeasured query:
 
 ```text
-Published Problems = 2
-Public Evidence = 5
-Source Incidents = 4
-Blind membership = 120
-full source-body fetches = 0
-publication mutations = 0
+allocation_mode = exploration
+page_start = 1
 ```
 
-## Close criterion
+There was no measured `start=1` replay.
 
-Phase 15.8B may close only after a live batch demonstrates that allocation no longer spends material budget on exact-page replay while preserving the downstream authority boundaries.
+Third-batch totals:
 
-Any remaining quality problem after that is evaluated at the acquisition/query layer first. Source Admission, Formation, Incident, Blind, and publication thresholds remain out of scope.
+```text
+requests: 12
+fetched: 355
+continued: 334
+cheap rejected: 21
+new Sources: 330
+duplicates: 4
+Candidates: 0
+Reviews: 49
+Admission Rejects: 285
+```
+
+Rates:
+
+```text
+new Source / fetched:      92.96%
+duplicate / continued:      1.20%
+```
+
+This removed the material exact-page replay observed under v0.2:
+
+```text
+duplicate / continued
+v0.2 batch: 97.87%
+v0.3 batch:  1.20%
+```
+
+This comparison is evidence that the replay defect was removed. It is not a claim that one batch proves general semantic quality improvement.
+
+## Protected authority readback
+
+After the third batch:
+
+```text
+Source Signals:       1,299
+Source Observations:  1,452
+Discovery Runs:          36
+Published Problems:       2
+Public Evidence:          5
+Source Incidents:         4
+Blind membership:       120
+```
+
+Runner boundaries remained:
+
+```text
+Blind reads:          0
+full source fetches:  0
+publication writes:   0
+```
+
+## Close decision
+
+Phase 15.8B close criterion was:
+
+> a live batch must demonstrate that allocation no longer spends material budget on exact-page replay while preserving downstream authority boundaries.
+
+The v0.3 batch satisfied that criterion.
+
+Therefore:
+
+```text
+Phase 15.8B = CLOSED
+```
+
+## Subsequent boundary
+
+The remaining telemetry issue is different from request-window allocation.
+
+Run-level fields:
+
+```text
+admission_candidate_count
+admission_review_count
+admission_reject_count
+```
+
+classify all continued signals, including duplicates. They therefore cannot be treated as exact yield for newly acquired Source identities.
+
+That semantic correction belongs to Phase 15.8C — New-Source Yield Telemetry. It does not reopen Phase 15.8B and does not change Source Admission thresholds.

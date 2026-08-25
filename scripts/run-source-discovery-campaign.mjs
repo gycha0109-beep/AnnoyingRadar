@@ -86,6 +86,8 @@ async function executeQuery(client, curatorUserId, item) {
       query_key: item.query_key,
       domain: item.domain,
       family: item.family,
+      allocation_mode: item.input.request_metadata?.discovery_allocation_mode ?? null,
+      page_start: item.input.start,
       run_id: run.id,
       fetched_count: result.fetched_count,
       normalized_count: result.signals.length,
@@ -97,6 +99,9 @@ async function executeQuery(client, curatorUserId, item) {
       admission_candidate_count: persisted.run.admission_candidate_count,
       admission_review_count: persisted.run.admission_review_count,
       admission_reject_count: persisted.run.admission_reject_count,
+      new_admission_candidate_count: persisted.run.new_admission_candidate_count ?? 0,
+      new_admission_review_count: persisted.run.new_admission_review_count ?? 0,
+      new_admission_reject_count: persisted.run.new_admission_reject_count ?? 0,
       provider_total: result.paging.total,
     };
   } catch (error) {
@@ -117,6 +122,9 @@ function aggregate(executed) {
     admission_candidate_count: 0,
     admission_review_count: 0,
     admission_reject_count: 0,
+    new_admission_candidate_count: 0,
+    new_admission_review_count: 0,
+    new_admission_reject_count: 0,
   };
   for (const item of executed) {
     for (const field of Object.keys(totals)) {
@@ -144,7 +152,14 @@ async function main() {
       plan: planSummary,
       batch: {
         max_requests: maxRequests,
-        selected_requests: selected.map(({ query_key, domain, family, input }) => ({ query_key, domain, family, q: input.q })),
+        selected_requests: selected.map(({ query_key, domain, family, input }) => ({
+          query_key,
+          domain,
+          family,
+          q: input.q,
+          allocation_mode: input.request_metadata?.discovery_allocation_mode ?? null,
+          page_start: input.start,
+        })),
         result_opportunity_count: selected.reduce((sum, item) => sum + item.input.limit, 0),
       },
       mutation: false,
@@ -169,11 +184,12 @@ async function main() {
 
   console.log(`[source-discovery] version=${DISCOVERY_QUERY_PLAN_VERSION} allocation=${DISCOVERY_QUERY_ALLOCATION_VERSION} requests=${selected.length}`);
   for (const item of selected) {
-    console.log(`[source-discovery] query=${item.query_key} domain=${item.domain} family=${item.family} q=${JSON.stringify(item.input.q)} starting`);
+    const mode = item.input.request_metadata?.discovery_allocation_mode ?? "unknown";
+    console.log(`[source-discovery] query=${item.query_key} domain=${item.domain} family=${item.family} mode=${mode} start=${item.input.start} q=${JSON.stringify(item.input.q)} starting`);
     try {
       const result = await executeQuery(client, curatorUserId, item);
       executed.push(result);
-      console.log(`[source-discovery] query=${item.query_key} fetched=${result.fetched_count} cheap_reject=${result.discovery_reject_count} new=${result.inserted_count} candidate=${result.admission_candidate_count}`);
+      console.log(`[source-discovery] query=${item.query_key} start=${result.page_start} fetched=${result.fetched_count} cheap_reject=${result.discovery_reject_count} new=${result.inserted_count} new_candidate=${result.new_admission_candidate_count} new_review=${result.new_admission_review_count}`);
     } catch (error) {
       failed.push({
         query_key: item.query_key,
@@ -196,6 +212,13 @@ async function main() {
     batch: {
       selected_requests: selected.length,
       max_requests: maxRequests,
+      selected: executed.map((item) => ({
+        query_key: item.query_key,
+        domain: item.domain,
+        family: item.family,
+        allocation_mode: item.allocation_mode,
+        page_start: item.page_start,
+      })),
       failed,
       totals,
     },
