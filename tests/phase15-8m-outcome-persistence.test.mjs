@@ -132,7 +132,7 @@ test("15.8M persistence is append-only insert semantics and returns only safe me
     status: "resolved",
     decision: "candidate",
     reason_codes: ["full_context_first_hand_external_friction"],
-    resolved_at: "2026-08-25T00:00:00Z",
+    evaluated_at: "2026-08-25T00:00:00Z",
     created_at: "2026-08-25T00:00:00Z",
   };
   const client = {
@@ -161,6 +161,7 @@ test("15.8M persistence is append-only insert semantics and returns only safe me
   });
   assert.equal(capturedTable, SOURCE_FULL_CONTEXT_OUTCOME_TABLE);
   assert.equal(capturedRow.decision, "candidate");
+  assert.match(selected, /evaluated_at/);
   assert.doesNotMatch(selected, /problem_claim|model_name|context_content_sha256/);
   assert.deepEqual(persisted, response);
 });
@@ -185,10 +186,12 @@ test("15.8M rejects partial semantic facts and unexpected resolved context scope
   }), /full_post scope/);
 });
 
-test("migration 034 is private, append-only, blind-guarded, and does not mutate the legacy semantic table", async () => {
+test("migration 034 is private, append-only, blind-guarded, provenance-preserving, and leaves legacy semantics untouched", async () => {
   const migration = await read("supabase/migrations/034_source_full_context_resolution_outcomes.sql");
   assert.match(migration, /create table public\.ar_source_full_context_resolution_outcomes/);
+  assert.match(migration, /references public\.ar_source_signals\(id\)\s+on delete restrict/);
   assert.match(migration, /unique \(batch_version, source_signal_id\)/);
+  assert.match(migration, /evaluated_at timestamptz not null default now\(\)/);
   assert.match(migration, /enable row level security/);
   assert.match(migration, /grant select, insert on table public\.ar_source_full_context_resolution_outcomes\s+to service_role/);
   assert.doesNotMatch(migration, /grant[^;]*(?:update|delete)[^;]*ar_source_full_context_resolution_outcomes/i);
