@@ -162,10 +162,11 @@ test("15.8N disposable artifact excludes full body and routing identity while pr
   assert.match(script, /repeated_problem_clusters_asserted: false/);
 });
 
-test("15.8N workflow is bounded to authoritative main and one temporary live trigger", async () => {
+test("15.8N closeout leaves only manual dispatch and removes the temporary autonomous live trigger", async () => {
   const workflow = await read(".github/workflows/source-problem-formation-audit-15-8n.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8n-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8n-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PAID_SOURCE_FORMATION: "true"/);
