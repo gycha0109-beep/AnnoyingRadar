@@ -15,6 +15,26 @@ alter table public.ar_source_ingestion_runs
     check (new_admission_review_count is null or new_admission_review_count >= 0),
   drop constraint if exists ar_source_ingestion_runs_new_admission_reject_nonnegative,
   add constraint ar_source_ingestion_runs_new_admission_reject_nonnegative
-    check (new_admission_reject_count is null or new_admission_reject_count >= 0);
+    check (new_admission_reject_count is null or new_admission_reject_count >= 0),
+  drop constraint if exists ar_source_ingestion_runs_new_admission_telemetry_complete,
+  add constraint ar_source_ingestion_runs_new_admission_telemetry_complete
+    check (
+      (
+        new_admission_telemetry_version is null
+        and new_admission_candidate_count is null
+        and new_admission_review_count is null
+        and new_admission_reject_count is null
+      )
+      or
+      (
+        new_admission_telemetry_version is not null
+        and new_admission_candidate_count is not null
+        and new_admission_review_count is not null
+        and new_admission_reject_count is not null
+        and new_admission_candidate_count
+          + new_admission_review_count
+          + new_admission_reject_count = inserted_count
+      )
+    );
 
 commit;
