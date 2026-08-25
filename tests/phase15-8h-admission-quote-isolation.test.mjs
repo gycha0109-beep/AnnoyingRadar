@@ -194,7 +194,9 @@ test("15.8H remains isolated from the separate Formation provenance authority", 
   ]);
   assert.doesNotMatch(isolation, /from "\.\/source-problem-formation\.mjs"/);
   assert.match(formation, /evidence_quote/);
-  assert.match(formation, /fullText\.includes\(evidenceQuote\)/);
+  assert.match(formation, /sourceText\.includes\(evidenceQuote\)/);
+  assert.match(formation, /formation_evidence_quote_required/);
+  assert.match(formation, /formation_evidence_quote_unverified/);
   assert.match(base, /evidence_quote must be null or the shortest exact contiguous excerpt/);
   assert.doesNotMatch(base, /source-full-context-quote-isolation/);
 });
