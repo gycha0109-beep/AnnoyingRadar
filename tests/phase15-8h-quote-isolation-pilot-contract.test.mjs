@@ -31,10 +31,11 @@ test("15.8H pilot emits identity-free aggregate authority and explicit Formation
   assert.doesNotMatch(runner, /provider_request_id:/);
 });
 
-test("15.8H workflow checks out authoritative main and has only one exact temporary paid push trigger", async () => {
+test("15.8H closeout returns the paid pilot workflow to manual-only", async () => {
   const workflow = await read(".github/workflows/source-quote-isolation-pilot.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /ops\/source-quote-isolation-pilot/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /ops\/source-quote-isolation-pilot/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-source-full-context-quote-isolation-pilot\.mjs --live/);

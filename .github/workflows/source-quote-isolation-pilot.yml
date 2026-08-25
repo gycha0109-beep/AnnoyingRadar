@@ -2,9 +2,6 @@ name: Source Admission Quote Isolation Pilot
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ops/source-quote-isolation-pilot
 
 permissions:
   contents: read
