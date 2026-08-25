@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED — pending CI/PIE and read-only live shadow**
+**CLOSED — IMPLEMENTED / CI VERIFIED / PIE VERIFIED / LIVE SHADOW VERIFIED / MERGED IMPLEMENTATION / NOT ACTIVATED**
 
 Active discovery allocation remains:
 
@@ -11,6 +11,26 @@ source-discovery-allocation-v0.4
 ```
 
 Phase 15.8I is observational only. It does not activate a new production allocation version.
+
+## Implementation authority
+
+Implementation PR:
+
+```text
+PR #86
+merged main: 0f6cea49d623b830e093de57da96ea83b4ef9020
+```
+
+Verification:
+
+```text
+CI #358   SUCCESS
+PIE #54   SUCCESS
+unit      SUCCESS
+release   SUCCESS
+build     SUCCESS
+runtime   SUCCESS
+```
 
 ## Purpose
 
@@ -34,7 +54,7 @@ unresolved: 8
 conservative promotion: 7 / 48 = 14.58%
 ```
 
-The combined disjoint one-shot authority is therefore:
+The combined disjoint one-shot authority is:
 
 ```text
 sampled: 72
@@ -44,15 +64,7 @@ unresolved: 13
 conservative promotion: 11 / 72 = 15.28%
 ```
 
-Phase 15.8G and 15.8H later reran technical unresolved cases to study provider reliability. Those reruns are not replacement labels for the original one-shot calibration samples. In particular, fresh provider outputs changed some technical outcomes on rerun. Replacing the original observations with later provider outputs would silently change the empirical protocol.
-
-Phase 15.8I therefore keeps unresolved cases in the original denominators and asks a narrower question:
-
-```text
-If the larger 72-item disjoint evidence set replaces the initial 24-item
-calibration baseline, does the promotion-aware shadow materially change
-query allocation eligibility relative to active v0.4?
-```
+Phase 15.8G and 15.8H reliability reruns are not replacement labels for those original one-shot observations. The combined calibration therefore preserves unresolved cases in the original denominator.
 
 ## Combined empirical authority
 
@@ -71,72 +83,43 @@ review-promotion-shadow-v0.2-combined
 Global:
 
 ```text
-sampled: 72
-Candidate: 11
-Reject: 48
-unresolved: 13
-raw conservative promotion: 15.2778%
+72 / Candidate 11 / Reject 48 / unresolved 13
+raw conservative promotion: 0.1527777778
 ```
 
-Family totals are the exact sum of the 15.8D and 15.8F disjoint samples.
-
-### damage
+Family totals:
 
 ```text
-15.8D: 16 / Candidate 1 / Reject 11 / unresolved 4
-15.8F: 37 / Candidate 5 / Reject 26 / unresolved 6
-combined: 53 / Candidate 6 / Reject 37 / unresolved 10
-raw conservative promotion: 6 / 53 = 11.3208%
-```
+damage:
+  53 / Candidate 6 / Reject 37 / unresolved 10
+  raw promotion: 6 / 53 = 0.1132075472
 
-### delay
-
-```text
-15.8D: 8 / Candidate 3 / Reject 4 / unresolved 1
-15.8F: 11 / Candidate 2 / Reject 7 / unresolved 2
-combined: 19 / Candidate 5 / Reject 11 / unresolved 3
-raw conservative promotion: 5 / 19 = 26.3158%
+delay:
+  19 / Candidate 5 / Reject 11 / unresolved 3
+  raw promotion: 5 / 19 = 0.2631578947
 ```
 
 ## Method isolation
 
-Phase 15.8I changes the empirical baseline only.
-
-It deliberately preserves the Phase 15.8E shrinkage method and prior strength:
+Phase 15.8I changes empirical evidence only. The Phase 15.8E shrinkage method and prior strength remain fixed:
 
 ```text
 prior strength: 24
 ```
 
-This avoids changing both evidence and calibration method in one phase.
-
-Family calibration remains:
+Calibrated rates:
 
 ```text
-calibrated family promotion
-= (family Candidate + 24 × global promotion rate)
-  / (family sampled + 24)
+global: 0.1527777778
+damage: 0.1255411255
+delay:  0.2015503876
 ```
 
-With the combined evidence:
-
-```text
-global: 11 / 72 = 0.1527777778
-
-damage calibrated:
-(6 + 24 × 11/72) / (53 + 24)
-= 0.1255411255
-
-delay calibrated:
-(5 + 24 × 11/72) / (19 + 24)
-= 0.2015503876
-```
-
-For families with no direct full-context sample, the global conservative rate remains the fallback.
+This avoids changing evidence and calibration methodology simultaneously.
 
 ## Shadow formula
 
-Active v0.4 remains unchanged:
+Active v0.4 remains:
 
 ```text
 0.4 × candidate_rate
@@ -144,7 +127,7 @@ Active v0.4 remains unchanged:
 + remaining acquisition-quality terms
 ```
 
-15.8I shadow:
+Combined shadow:
 
 ```text
 combined_shadow_score
@@ -153,11 +136,21 @@ combined_shadow_score
 + (0.4 × review_rate × combined_calibrated_promotion_rate)
 ```
 
-No active selector imports or consumes the combined shadow module.
+Only `new_source_exact` telemetry is promotion-applicable. Legacy run-level telemetry remains byte-equivalent to the base score.
 
-## Exact telemetry authority
+## Live shadow
 
-The live shadow must still observe the exact telemetry authority used by the 15.8D/15.8F calibration work:
+Authoritative run:
+
+```text
+workflow: Source Combined Promotion Shadow Pilot
+run: 32811565398
+artifact: 9549962412
+main: 0f6cea49d623b830e093de57da96ea83b4ef9020
+conclusion: SUCCESS
+```
+
+Frozen exact authority passed:
 
 ```text
 query plan: 192
@@ -166,90 +159,136 @@ exact-new Sources: 961
 exact-new Reviews: 166
 ```
 
-The runner fails closed if these values drift.
-
-This prevents applying the historical 72-item calibration evidence to a silently changed acquisition telemetry population.
-
-## Scope boundary
-
-Promotion calibration applies only to:
+Live summary:
 
 ```text
-telemetry_scope = new_source_exact
+total queries:                 192
+measured queries:               46
+exact measured queries:         19
+promotion-applicable queries:   19
+
+base exploitation eligible:      7
+combined-shadow eligible:        7
+threshold crossings:             0
+crossed up:                       0
+crossed down:                     0
 ```
 
-Legacy run-level telemetry remains:
+Family readback:
 
 ```text
-promotion_applicable = false
-shadow_score = base_score
-score_delta = 0
+damage:
+  measured queries: 16
+  exact/applicable: 13
+  base eligible: 6
+  shadow eligible: 6
+  mean base score:   0.3272141008
+  mean shadow score: 0.3212905900
+  mean delta:       -0.0059235108
+
+delay:
+  measured queries: 6
+  exact/applicable: 6
+  base eligible: 1
+  shadow eligible: 1
+  mean base score:   0.3213112345
+  mean shadow score: 0.3192085033
+  mean delta:       -0.0021027311
+
+contact legacy telemetry:
+  measured queries: 24
+  exact/applicable: 0
+  mean delta: 0
 ```
 
-This preserves the Phase 15.8E authority correction.
-
-## Mutation and privacy boundary
-
-The runner is telemetry-only.
-
-Expected:
+Largest observed score change:
 
 ```text
+commerce__damage__1
+base:   0.4570479308
+shadow: 0.4296943320
+delta: -0.0273535988
+```
+
+It remained exploitation-eligible.
+
+## Interpretation
+
+The larger combined evidence set reproduces the Phase 15.8E behavioral conclusion:
+
+```text
+7 base-eligible queries
+→ 7 combined-shadow-eligible queries
+→ 0 threshold crossings
+```
+
+The Review promotion estimate is therefore no longer based only on the initial 24-item slice, yet the current allocation decision surface is still unchanged.
+
+This does **not** imply that production must activate a new allocation version. It establishes that promotion-aware discounting remains behaviorally stable under the larger disjoint 72-item calibration authority.
+
+Because active selection is unchanged, there is no immediate product benefit that requires an allocation-version mutation in this phase.
+
+## Mutation / privacy boundary
+
+Runner-declared live boundaries:
+
+```text
+active allocation mutations: 0
 DB writes: 0
 Blind reads: 0
 full source-body fetches: 0
 semantic-provider calls: 0
 publication mutations: 0
 Formation mutations: 0
-active allocation mutations: 0
 ```
 
-It does not inspect or emit Source Signal ids, canonical URLs, author handles, raw source bodies, or semantic payloads.
-
-## Live output
-
-The read-only live shadow reports:
-
-- total / measured / exact-measured queries;
-- promotion-applicable queries;
-- base versus combined-shadow exploitation eligibility;
-- threshold crossings;
-- family mean score deltas;
-- top changed query keys;
-- frozen exact-authority totals;
-- active allocation version and mutation assertions.
-
-## Workflow
-
-Temporary execution workflow:
+Independent post-run DB verification:
 
 ```text
-.github/workflows/source-combined-promotion-shadow-pilot.yml
+Source Signals:        2260
+Source Observations:   2461
+Source Ingestion Runs: 108
+Raw Inputs:            10
+Pain Evidences:        27
+Public Problems:        2
+Published Problems:     2
+Public Evidence:        5
+Source Incidents:       4
+Blind membership:     120
+  representative:      60
+  challenge:           60
 ```
 
-Because the connector cannot directly dispatch `workflow_dispatch`, one exact temporary push branch is permitted for the one-shot read-only evaluation:
+No Admission, Formation, Incident, Blind, Public Problem, Evidence, or publication authority changed.
+
+## Workflow closeout
+
+The temporary one-shot push trigger:
 
 ```text
-ops/source-combined-promotion-shadow
+push → ops/source-combined-promotion-shadow
 ```
 
-The workflow checks out authoritative `main`, uses only Supabase server-side credentials, and makes no OpenAI or Naver call.
+is removed during closeout.
 
-The push trigger must be removed during closeout.
+The retained workflow is `workflow_dispatch` only and continues to check out authoritative `main` with `contents: read` permission.
 
-## Activation boundary
+## Closeout decision
 
-Phase 15.8I does not authorize production activation even if the shadow is stable.
-
-A later explicit activation phase would need to consider at minimum:
-
-1. threshold-crossing behavior under the combined calibration;
-2. whether the combined evidence is sufficiently precise for the operational cost of changing allocation;
-3. whether provider-incomplete recovery should be separately activated or left diagnostic-only;
-4. unchanged Admission, Formation, Incident, Blind, and publication authorities.
-
-Until then:
+Phase 15.8I is closed with:
 
 ```text
-ACTIVE ALLOCATION = source-discovery-allocation-v0.4
+combined calibration evidence: VERIFIED
+shadow behavioral stability:   VERIFIED
+threshold crossings:           0
+active allocation change:      NO
+production activation:         NO
 ```
+
+Active authority remains:
+
+```text
+source-discovery-allocation-v0.4
+```
+
+A future activation phase should only be opened if changing the allocation version creates a concrete operational benefit beyond reproducing the same seven-query eligibility set, or if new source-supply telemetry materially changes the decision surface. Source Admission or Formation thresholds must not be loosened to manufacture volume.
