@@ -2,163 +2,237 @@
 
 ## Status
 
-IMPLEMENTED — pending CI/PIE and second bounded empirical batch
+**CALIBRATION CONTINUES — allocation v0.3 implemented, pending CI/PIE and third bounded batch**
 
-## Why this phase exists
+Phase 15.8B changes provider request allocation only. It does not alter Discovery Prefilter, Source Admission, Formation, Incident, Gold, Blind-120, Public Problem, or publication authority.
 
-Phase 15.8A closed with a real 12-request pilot:
+## Phase 15.8A baseline
 
-```text
-150 fetched
-6 cheap rejected
-144 continued
-137 new Sources
-1 Candidate
-22 Reviews
-121 Admission Rejects
-```
-
-The empirical issue is not insufficient Source volume. It is request-budget efficiency.
-
-Two defects were observed in allocation v0.1:
-
-1. a completed query with `fetched_count = 0` remained `exploration=true` and could be selected repeatedly;
-2. the scorer rewarded novelty and Candidate yield but did not penalize downstream Source Admission Reject rate.
-
-The result is that a query such as:
+First empirical batch:
 
 ```text
-수리 연락 안됨
-50 fetched → 0 Candidate / 1 Review / 49 Reject
+requests: 12
+fetched: 150
+continued: 144
+cheap rejected: 6
+new Sources: 137
+duplicates: 7
+Candidates: 1
+Reviews: 22
+Admission Rejects: 121
 ```
 
-could still score as attractive because it produced 50 new Source rows.
+The baseline proved Source-supply expansion, but exposed a request-budget problem.
 
-## Authority
+## Allocation v0.2
 
-Phase 15.8B changes **request allocation only**.
-
-It does not change:
-
-- Discovery Prefilter decisions;
-- Source Admission policy or thresholds;
-- full-context Formation;
-- Incident identity;
-- Gold membership;
-- Blind-120 membership;
-- Public Problem creation/publication;
-- public evidence semantics.
-
-The allocation scorer is an API-budget mechanism, not an evidence classifier.
-
-## Allocation version
+Version:
 
 ```text
 source-discovery-allocation-v0.2
 ```
 
-The underlying query space remains:
+v0.2 fixed two allocation-v0.1 defects:
 
-```text
-source-discovery-plan-v0.1
-192 deterministic queries
-```
+1. completed zero-result queries stopped masquerading as unexplored queries;
+2. Source Admission Reject rate began penalizing exploitation score.
 
-New runs record the allocation version inside `request_metadata.discovery_allocation_version` without a schema migration.
-
-## Scoring changes
-
-### Measured empty queries
-
-Old behavior:
-
-```text
-completed_runs >= 1
-fetched_count = 0
-→ exploration = true
-```
-
-New behavior:
-
-```text
-completed_runs >= 1
-fetched_count = 0
-→ exploration = false
-→ score = 0
-```
-
-A measured empty query is evidence about provider yield and must not masquerade as unexplored space.
-
-### Admission Reject penalty
-
-Allocation v0.2 incorporates:
-
-```text
-Candidate rate
-Review rate
-new Source rate
-result density
-Admission Reject rate
-duplicate rate
-cheap-reject rate
-```
-
-Candidate yield remains the strongest positive semantic signal.
-
-Review yield receives a smaller positive weight because Review is potentially useful but carries downstream resolution cost.
-
-Admission Reject rate directly reduces allocation score.
-
-### Low-score exploitation gate
+It also introduced a minimum exploitation score:
 
 ```text
 DISCOVERY_MIN_EXPLOITATION_SCORE = 0.32
 ```
 
-Measured queries below this score are deferred behind unmeasured exploration.
+### Second bounded empirical batch
 
-They are not permanently banned; they are fallback budget only when higher-value exploitation and unmeasured exploration cannot fill the requested batch.
-
-## Pilot-anchored expectations
-
-The frozen first-pilot telemetry must produce these relative outcomes:
+Authoritative main:
 
 ```text
-refund__contact__1 > repair__contact__1
-repair__contact__1 < exploitation threshold
-billing__contact__1 = measured zero-result, not exploration
+90ebbaf4b6632391da9fcb1aa357406ecc2cae9e
 ```
 
-For a 12-request next batch:
-
-- `환불 연락 안됨` remains eligible for exploitation;
-- `수리 연락 안됨` is not replayed while unmeasured query space remains;
-- zero-result contact queries are not replayed as exploration;
-- at least five requests remain reserved for previously unmeasured query space.
-
-## Second empirical gate
-
-After CI/PIE and merge, execute another bounded 12-request pilot from authoritative `main`.
-
-Report separately from the Phase 15.8A baseline:
+GitHub Actions:
 
 ```text
-selected query keys
-exploration vs exploitation composition
+run: 32797010101
+job: 97655224496
+status: PASS
+```
+
+Observed selection behavior was partly correct:
+
+- `수리 연락 안됨` was not replayed;
+- first-batch zero-result queries were not replayed as exploration;
+- six previously unmeasured query keys were explored;
+- `환불 연락 안됨` remained exploitation-eligible under v0.2.
+
+Second-batch totals:
+
+```text
+requests: 12
+fetched: 100
+continued: 94
+cheap rejected: 6
+new Sources: 2
+duplicates: 92
+Candidates: 1
+Reviews: 21
+Admission Rejects: 72
+```
+
+Observed rates:
+
+```text
+new Source / fetched:       2.00%
+duplicate / continued:    97.87%
+```
+
+Post-batch live state:
+
+```text
+Source Signals:        969
+Source Observations:  1,118
+Discovery Runs:         24
+Published Problems:      2
+Public Evidence:          5
+Source Incidents:         4
+Blind membership:       120
+```
+
+Protected runner boundaries remained unchanged:
+
+```text
+Raw Inputs:        10
+Pain Evidence:     27
+Public Problems:    2
+Public Evidence:    5
+Source Incidents:   4
+Blind reads:        0
+full-body fetches:  0
+publication writes: 0
+```
+
+## Empirical defect exposed by v0.2
+
+The scorer was no longer the only bottleneck.
+
+Exploitation still called the exact same provider window:
+
+```text
+sort = date
+start = 1
+limit = 50
+```
+
+for already measured queries.
+
+That produced near-total replay of previously observed rows. The 1 Candidate and 21 Reviews in batch 2 are run-level Admission classifications over continued signals, including duplicates. They must not be described as 22 newly discovered useful signals.
+
+Therefore Phase 15.8B was not closed after batch 2.
+
+## Allocation v0.3
+
+Version:
+
+```text
+source-discovery-allocation-v0.3
+```
+
+v0.3 adds provider-window authority to allocation.
+
+### Historical page state
+
+`listDiscoveryQueryMetrics()` now retains, per semantic query key:
+
+```text
+requested_limit
+max_start
+max_start_fetched_count
+```
+
+No schema migration is required. Existing `requested_limit` and `request_metadata.start` are reused.
+
+### Exploitation eligibility
+
+A measured query may be exploited only when all are true:
+
+```text
+score >= 0.32
+max_start_fetched_count >= requested_limit
+next provider window is within Naver's 1..1000 bound
+```
+
+If the highest observed page returned fewer rows than requested, that query is considered exhausted for immediate sequential acquisition.
+
+Example:
+
+```text
+환불 연락 안됨
+start=1, limit=50, fetched=13
+→ useful Candidate observed
+→ page is nevertheless exhausted
+→ do not replay start=1
+```
+
+A high-scoring full page advances instead of replaying:
+
+```text
+start=1, limit=50, fetched=50
+→ next exploitation start=51
+```
+
+### Allocation provenance
+
+Selected requests now record:
+
+```text
+discovery_allocation_version
+discovery_allocation_mode   = exploration | exploitation
+discovery_page_start
+```
+
+Exploration begins at the plan's initial page. Exploitation advances only to a new provider window.
+
+### Low-score and exhausted queries
+
+Measured low-score queries are not selected while unexplored query space remains.
+
+Measured partial/empty pages are not exact-page replay fallbacks.
+
+This intentionally allows a bounded batch to contain fewer than the requested maximum if the query space eventually becomes exhausted rather than spending provider calls on known replay.
+
+## Third empirical gate
+
+After CI/PIE and merge, run another 12-request bounded batch from authoritative `main`.
+
+The gate must verify:
+
+```text
+no exact start=1 replay for measured queries
+no measured-empty replay
+no low-score repair replay
+pagination uses start=51 only for eligible full-page queries
+unmeasured exploration remains the dominant budget when no productive full page exists
+```
+
+Report:
+
+```text
+selected query key + start
+allocation mode
 fetched
-cheap rejected
 continued
+cheap rejected
 new Sources
 duplicates
 Candidates
 Reviews
 Rejects
-per-query yield
 ```
 
-Compare batch 2 with batch 1, but do not claim causal improvement from one batch alone.
+Compare new-source and duplicate rates with both prior batches, but do not claim general causal superiority from one batch.
 
-Protected boundaries must remain:
+Protected boundaries remain mandatory:
 
 ```text
 Published Problems = 2
@@ -169,8 +243,8 @@ full source-body fetches = 0
 publication mutations = 0
 ```
 
-## Decision after batch 2
+## Close criterion
 
-If allocation v0.2 avoids measured-empty and high-reject replay while maintaining or improving useful Candidate/Review yield per request, Phase 15.8B may close.
+Phase 15.8B may close only after a live batch demonstrates that allocation no longer spends material budget on exact-page replay while preserving the downstream authority boundaries.
 
-If it does not, calibration continues at the allocation layer. Source Admission and publication thresholds remain out of scope.
+Any remaining quality problem after that is evaluated at the acquisition/query layer first. Source Admission, Formation, Incident, Blind, and publication thresholds remain out of scope.
