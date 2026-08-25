@@ -1,0 +1,75 @@
+name: Source Discovery Expansion 15.8J
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ops/source-discovery-expansion-15-8j
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-discovery-expansion-15-8j
+  cancel-in-progress: false
+
+jobs:
+  expansion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          missing=0
+          require_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              missing=1
+            fi
+          }
+          require_secret NEXT_PUBLIC_SUPABASE_URL "$NEXT_PUBLIC_SUPABASE_URL"
+          if [ -z "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}" ]; then
+            echo "Missing required GitHub Actions Supabase service credential" >&2
+            missing=1
+          fi
+          require_secret NAVER_CLIENT_ID "$NAVER_CLIENT_ID"
+          require_secret NAVER_CLIENT_SECRET "$NAVER_CLIENT_SECRET"
+          test "$missing" -eq 0
+      - name: Run 24-request bounded source expansion
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          ALLOW_SOURCE_DISCOVERY_EXPANSION: "1"
+        run: |
+          set -euo pipefail
+          node scripts/run-source-discovery-campaign.mjs --live --max-requests=24 2>&1 | tee source-discovery-expansion-15-8j.log
+      - name: Upload expansion diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-discovery-expansion-15-8j
+          path: source-discovery-expansion-15-8j.log
+          if-no-files-found: error
