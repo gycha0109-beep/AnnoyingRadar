@@ -34,6 +34,10 @@ test("service client prefers secret key and retains legacy service-role fallback
   assert.match(service, /SUPABASE_SECRET_KEY/);
   assert.match(service, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.ok(service.indexOf("SUPABASE_SECRET_KEY") < service.indexOf("SUPABASE_SERVICE_ROLE_KEY"));
+  assert.match(
+    service,
+    /process\.env\.SUPABASE_SECRET_KEY\s*\|\|\s*process\.env\.SUPABASE_SERVICE_ROLE_KEY/,
+  );
   assert.doesNotMatch(
     service,
     /NEXT_PUBLIC_SUPABASE_SECRET_KEY|NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/,
@@ -41,6 +45,30 @@ test("service client prefers secret key and retains legacy service-role fallback
   assert.match(service, /persistSession:\s*false/);
   assert.match(service, /autoRefreshToken:\s*false/);
   assert.match(service, /detectSessionInUrl:\s*false/);
+});
+
+test("empty current secret does not block legacy service-role fallback", async () => {
+  const previous = {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    secret: process.env.SUPABASE_SECRET_KEY,
+    legacy: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+
+  try {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SECRET_KEY = "";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "legacy-service-role-key";
+
+    const { createServiceClient } = await import("../lib/supabase/service.js");
+    assert.doesNotThrow(() => createServiceClient());
+  } finally {
+    if (previous.url === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    else process.env.NEXT_PUBLIC_SUPABASE_URL = previous.url;
+    if (previous.secret === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = previous.secret;
+    if (previous.legacy === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previous.legacy;
+  }
 });
 
 test("example env advertises current Supabase key names first", () => {
