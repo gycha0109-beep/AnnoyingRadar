@@ -2,163 +2,49 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE READ-ONLY VERIFICATION NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
-Phase 15.8S evaluates whether the two curator-approved, persisted lodging Incidents can supply publication-grade external Public Evidence for the Phase 15.8R Canonical Problem draft.
+Phase 15.8S evaluated whether the two curator-approved, persisted lodging Incidents can supply publication-grade external Public Evidence for the Phase 15.8R Canonical Problem draft.
 
-This phase is deliberately read-only.
-
-It does not insert Evidence, mutate the draft, transition status, or publish anything.
+The phase was deliberately read-only. It inserted no Evidence, mutated no Problem, changed no status, and published nothing.
 
 ---
 
 ## 1. Upstream authority
 
-Phase 15.8R closed with:
+Target Canonical Problem:
 
 ```text
-problem_signature:
-  lodging_reservation_fulfillment_gap
-
-Public Problems: 3
-Published:       2
-Drafts:          1
-Target Evidence: 0
-Target public feed rows: 0
+problem_signature = lodging_reservation_fulfillment_gap
+status            = draft
+published_at      = NULL
+archived_at       = NULL
 ```
 
-The target Canonical Problem remains:
-
-```text
-status = draft
-published_at = NULL
-archived_at = NULL
-```
-
-The two approved Incident identities remain:
+Approved Incident identities:
 
 ```text
 agoda_reservation_fulfillment_gap_case
 yeogieottae_reservation_fulfillment_gap_case
 ```
 
-Each is already bound to one distinct persisted Source Signal by Phase 15.8P authority.
+Each Incident remains bound to one distinct persisted Source Signal.
 
 ---
 
-## 2. Current publication invariant
+## 2. Evidence readiness contract
 
-The live database publication gate requires a Public Problem to have, among other conditions:
-
-```text
-title non-empty
-summary non-empty
-Evidence snapshots >= 2
-distinct source_key >= 2
-incident identity on every Evidence row
-distinct incident_id >= 2
-external_public Evidence bound to an actual Source→Incident link
-```
-
-Phase 15.8S does not call the publication gate and does not claim the draft is publishable now because no Evidence rows exist yet.
-
-It only simulates whether two exact Evidence plans would satisfy the Evidence cardinality and lineage portion of the current gate if a later governed phase persisted them unchanged.
-
----
-
-## 3. Full-context rule
-
-Both approved Sources are currently `naver_blog`, which is supported by:
+A ready item requires:
 
 ```text
-fetchSourceFullContext()
+full context resolved
+content_scope = full_post
+truncated = false
+support_level = direct
+exact contiguous excerpt = 1..600 characters
 ```
 
-The full source body is fetched ephemerally.
-
-Evidence readiness fails closed to review when:
-
-```text
-full context unavailable
-content_scope != full_post
-full post truncated
-```
-
-Full source bodies are never written to Supabase, repository files, or the disposable readiness artifact.
-
----
-
-## 4. Evidence observer
-
-Observer:
-
-```text
-public-evidence-readiness-v0.1
-public-evidence-excerpt-observer-v0.1
-```
-
-The model receives:
-
-```text
-Canonical Problem title
-Canonical Problem summary
-Source platform
-Source title
-full visible Source text
-```
-
-Its authority is narrow: identify whether the source directly supports the already-authorized Canonical Problem mechanism and, if so, return the shortest supporting excerpt.
-
-It does not decide:
-
-```text
-Problem identity
-Incident identity
-publication
-ranking
-product action
-```
-
----
-
-## 5. Exact excerpt invariant
-
-A ready Evidence excerpt must be:
-
-```text
-1..600 characters
-exactly present in the fetched source text
-one contiguous passage
-not rewritten
-not summarized
-not spliced from multiple passages
-not model-redacted
-```
-
-The observer schema limits the excerpt to 600 characters and the deterministic normalizer independently verifies exact substring membership.
-
-A generated paraphrase cannot become Public Evidence.
-
----
-
-## 6. Deterministic readiness states
-
-```text
-support_level = direct + exact excerpt
-  → ready
-  → public_evidence_direct_exact_excerpt
-
-support_level = partial
-  → review
-
-support_level = unclear
-  → review
-
-support_level = none
-  → blocked
-```
-
-Only `ready` items may be considered by a later Evidence persistence phase.
+The excerpt must be literally present in the fetched source body. Rewriting, summarization, splicing, generated redaction, or combining separated passages is rejected deterministically.
 
 Provider recovery is bounded to one retry and only for:
 
@@ -166,83 +52,236 @@ Provider recovery is bounded to one retry and only for:
 public_evidence_provider_incomplete
 ```
 
-No generic retry product is activated.
+Readiness does not grant Evidence persistence or publication authority.
 
 ---
 
-## 7. Source / Incident lineage plan
+## 3. Implementation authority
 
-For each ready item, a later persistence phase can reconstruct the required Evidence fields from current authority:
+Implementation PR:
 
 ```text
-excerpt            = exact ready excerpt
-publication_basis  = external_public
-source_type         = Source platform
-source_label        = fetched source title
-source_url          = persisted canonical URL
-source_key          = persisted canonical URL
-source_observed_at  = persisted published_at
-source_signal_id    = persisted Source identity
-incident_id         = already-linked Incident identity
+#109
 ```
 
-15.8S does not persist this plan.
-
-The artifact hashes `source_key` rather than exposing the raw URL as identity metadata.
-
----
-
-## 8. Runner boundary
-
-Runner:
+Initial implementation head:
 
 ```text
-scripts/run-public-evidence-readiness-15-8s.mjs
+ea1d5d65c11ddf547cb47d6dd44ee35e18b06412
 ```
 
-It:
+Initial CI #407 exposed one contract-test false positive: the test interpreted Node crypto `createHash(...).update(...)` as a Supabase `.update(...)` write primitive. No database write existed.
 
-1. requires exactly one active Canonical draft for `lodging_reservation_fulfillment_gap`;
-2. requires the two approved Incident identities;
-3. requires exactly one governed Source link per Incident and two distinct Sources;
-4. requires target Evidence count = 0 and target public-feed rows = 0 before audit;
-5. fetches full source context ephemerally;
-6. evaluates exact excerpt readiness;
-7. simulates the current Evidence cardinality/lineage requirements;
-8. verifies all database counts remain exactly unchanged;
-9. verifies target Evidence remains 0 and target public feed remains 0.
-
-The runner contains no:
+Tests-only correction head:
 
 ```text
-rpc()
-insert()
-upsert()
-update()
-delete()
+beb22ceb238aa29364ae4387dd2cdc20cdf2e50a
+```
+
+Corrected verification:
+
+```text
+CI #408: SUCCESS
+PIE #81: SUCCESS
+```
+
+Merged main used for the live run:
+
+```text
+0c9c2d49ee9ab7d9c081d6302bee24b55d98036e
+```
+
+Merged-main CI:
+
+```text
+CI #409: SUCCESS
 ```
 
 ---
 
-## 9. Disposable artifact boundary
+## 4. Authoritative live run
 
-The one-day artifact may contain:
+Workflow:
 
 ```text
-problem_signature
-Incident keys
-source platform
-readiness state
-reason codes
-support level
-exact candidate Evidence excerpt
-excerpt length / SHA-256
-source-key SHA-256
-full-context hash/count metadata
-aggregate DB counts
+Source Public Evidence Readiness 15.8S
 ```
 
-It does not contain:
+Run:
+
+```text
+32921675139
+```
+
+Result:
+
+```text
+SUCCESS
+```
+
+Artifact:
+
+```text
+id:     9590042893
+name:   source-public-evidence-readiness-15-8s
+digest: sha256:b3743e53ab1f94dcb394303f8fe0b592fad54880ad54fdf391d3c7a332cec343
+retention: 1 day
+```
+
+Provider/model:
+
+```text
+openai
+gpt-5-mini-2025-08-07
+```
+
+---
+
+## 5. Live readiness result
+
+Aggregate result:
+
+```text
+total:   2
+ready:   1
+review:  1
+blocked: 0
+all_evidence_ready: false
+```
+
+Provider recovery:
+
+```text
+attempted: 1
+recovered: 0
+```
+
+The unresolved item was not judged unsupported. Its final state was:
+
+```text
+reason = public_evidence_provider_incomplete
+attempt_count = 2
+recovery_attempted = true
+recovery_recovered = false
+```
+
+Therefore Phase 15.8S does not authorize Evidence persistence.
+
+---
+
+## 6. Ready Evidence item
+
+Incident:
+
+```text
+agoda_reservation_fulfillment_gap_case
+```
+
+Result:
+
+```text
+evidence_state = ready
+support_level  = direct
+reason         = public_evidence_direct_exact_excerpt
+excerpt_length = 83
+excerpt_sha256 = 1cc568874a8e42fe1d690d132176fb994fbc74bcdca4852f9949ee7f926790aa
+context_scope  = full_post
+context_truncated = false
+```
+
+The exact candidate excerpt itself is retained only in the one-day disposable artifact. Permanent repository authority records its hash and length rather than copying the source passage.
+
+---
+
+## 7. Residual review item
+
+Incident:
+
+```text
+yeogieottae_reservation_fulfillment_gap_case
+```
+
+Result:
+
+```text
+evidence_state = review
+reason         = public_evidence_provider_incomplete
+excerpt        = none
+attempt_count  = 2
+context_scope  = full_post
+context_truncated = false
+context_char_count = 4170
+context_hash   = 8c9db5684507752f2e9d77af3de5968ff25622a4ad6c923630acac5af8ad640f
+```
+
+The source context itself resolved successfully. The residual uncertainty is specifically the semantic provider completion boundary, not missing source content or failed Source→Incident lineage.
+
+A later bounded residual-review phase may reevaluate only this one item. The generic 15.8S workflow must not be treated as an autonomous retry product.
+
+---
+
+## 8. Structural publication simulation
+
+Live simulation:
+
+```text
+proposed_evidence_count: 1
+distinct_source_key_count: 2
+distinct_incident_count: 2
+source_incident_bindings_valid: true
+title_nonempty: true
+summary_nonempty: true
+would_meet_current_publication_cardinality_if_exact_plans_were_persisted: false
+```
+
+The two lineage identities exist, but only one exact ready Evidence plan exists. Current publication cardinality is therefore not satisfied.
+
+This simulation is not publication authority in any case.
+
+---
+
+## 9. Database zero-mutation verification
+
+Workflow before/after counts matched exactly:
+
+```text
+source_signals:        3245
+source_observations:   3537
+source_ingestion_runs: 132
+raw_inputs:            10
+pain_evidences:        27
+public_problems:       3
+public_evidence:       5
+public_feed:           2
+source_incidents:      6
+source_incident_links: 7
+full_context_outcomes: 82
+```
+
+Independent Supabase post-readback matched the artifact:
+
+```text
+target active draft rows: 1
+target Evidence rows:     0
+target public-feed rows:  0
+```
+
+Thus:
+
+```text
+database write statements = 0
+Public Evidence rows written = 0
+existing Problem mutations = 0
+status transitions = 0
+publication mutations = 0
+full source bodies persisted = 0
+```
+
+---
+
+## 10. Privacy boundary
+
+The disposable artifact did not emit:
 
 ```text
 Source Signal UUID
@@ -250,74 +289,44 @@ Incident UUID
 Public Problem UUID
 canonical URL
 fetched URL
-raw Source text
-full source body
+raw full source text
 provider request ID
 ```
 
-The excerpt is the narrow candidate public Evidence itself, not the full source body.
+The one ready exact excerpt was allowed only in the one-day artifact as the prospective narrow Evidence payload. Permanent docs retain only excerpt hash/length and aggregate/context metadata.
 
 ---
 
-## 10. Structural simulation
+## 11. Closeout boundary
 
-When both Evidence items are ready, the runner may report:
-
-```text
-proposed_evidence_count = 2
-distinct_source_key_count = 2
-distinct_incident_count = 2
-source_incident_bindings_valid = true
-```
-
-and:
+The temporary one-shot push trigger is removed in the closeout changeset. Retained trigger:
 
 ```text
-would_meet_current_publication_cardinality_if_exact_plans_were_persisted = true
+workflow_dispatch only
 ```
 
-This is not publication authority.
-
-It means only that the exact plans would satisfy the current cardinality/lineage portion of the gate after a separate governed persistence phase.
-
----
-
-## 11. Explicit exclusions
-
-Phase 15.8S does not authorize:
+Phase 15.8S closes with:
 
 ```text
-ar_add_incident_bound_public_problem_evidence(...)
-Public Evidence INSERT
-Canonical Problem edits
-status transition
-publication
-existing published Problem mutation or merge
+Evidence ready items = 1/2
+residual review items = 1/2
+Public Evidence persistence = NOT AUTHORIZED
+publication = NOT AUTHORIZED
 ```
 
-Expected database mutation:
+The next governed step is not 15.8T Evidence persistence. It is a bounded residual review of only the unresolved `yeogieottae_reservation_fulfillment_gap_case` Evidence plan.
+
+Closeout condition:
 
 ```text
-0 rows
-0 write statements
+closeout exact-head CI = SUCCESS
+PIE = SUCCESS
+closeout merge = SUCCESS
+merged-main CI = SUCCESS
 ```
 
----
-
-## 12. Release flow
+When those conditions hold:
 
 ```text
-implementation PR
-→ exact-head CI / PIE
-→ merge main
-→ merged-main CI
-→ authoritative one-shot read-only live run
-→ artifact + independent DB verification
-→ remove temporary live trigger
-→ closeout PR / CI / PIE
-→ merge
-→ merged-main CI
-→ Phase 15.8S CLOSED
+Phase 15.8S = CLOSED
 ```
-
-Only after 15.8S is closed should a later governed phase decide whether the exact ready Evidence plans may be persisted.
