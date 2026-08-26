@@ -92,10 +92,11 @@ test("15.8P live runner writes only through the approved atomic Incident RPC", a
   assert.match(script, /repeat_eligible, true/);
 });
 
-test("15.8P workflow is authoritative-main, explicitly gated, and temporarily one-shot triggerable", async () => {
+test("15.8P workflow is manual-only after authoritative closeout", async () => {
   const workflow = await read(".github/workflows/source-approved-incident-persistence-15-8p.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8p-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8p-live-execution/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_APPROVED_INCIDENT_PERSISTENCE: "true"/);
