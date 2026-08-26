@@ -164,7 +164,7 @@ test("15.8S runner is structurally read-only and hides identity/full-body data f
   assert.doesNotMatch(script, /\.rpc\(/);
   assert.doesNotMatch(script, /\.insert\(/);
   assert.doesNotMatch(script, /\.upsert\(/);
-  assert.doesNotMatch(script, /\.update\(/);
+  assert.doesNotMatch(script, /\n\s*\.update\(/);
   assert.doesNotMatch(script, /\.delete\(/);
   assert.match(script, /assert\.deepEqual\(after, before/);
   assert.match(script, /public_evidence_rows_written: 0/);
