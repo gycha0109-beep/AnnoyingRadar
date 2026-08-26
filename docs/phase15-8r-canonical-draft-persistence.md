@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
 Phase 15.8R persists exactly one Phase 15.8Q-ready Canonical Problem as a non-public draft.
 
@@ -24,8 +24,8 @@ draft_state:
 reason:
   draft_supported_by_independent_incidents
 
-source_count:     2
-incident_count:   2
+source_count:      2
+incident_count:    2
 persistence_state: not_persisted
 publication_state: not_published
 ```
@@ -42,7 +42,7 @@ The existing RPC:
 ar_create_public_problem(...)
 ```
 
-always inserts a new draft and the current `ar_public_problems` schema has no Canonical formation identity or uniqueness key.
+always inserts a new draft and the pre-15.8R `ar_public_problems` schema had no Canonical formation identity or uniqueness key.
 
 Therefore rerunning a formation persistence job could create duplicate drafts for one problem mechanism.
 
@@ -56,11 +56,11 @@ problem_signature
 
 with a partial unique index applying only to non-null signatures.
 
-Historical/manual Public Problems may remain `NULL`; no forced backfill is performed.
+Historical/manual Public Problems remain `NULL`; no forced backfill was performed.
 
 ---
 
-## 3. Migration 036
+## 3. Migration 036 — live applied
 
 ```text
 036_canonical_public_problem_draft_identity.sql
@@ -79,7 +79,7 @@ UNIQUE(problem_signature)
 WHERE problem_signature IS NOT NULL
 ```
 
-The new governed RPC is:
+The governed RPC is:
 
 ```text
 ar_create_canonical_public_problem_draft(
@@ -103,6 +103,20 @@ Properties:
 - a non-draft existing row for the signature fails closed;
 - public/anon/authenticated execution revoked;
 - service-role execution only.
+
+Live preflight after migration 036 confirmed:
+
+```text
+problem_signature column: present
+partial unique index:     present
+service_role execute:     true
+anon execute:             false
+authenticated execute:    false
+legacy Problems:          2 rows, both problem_signature = NULL
+target signature rows:    0
+public feed:              2
+Public Evidence:          5
+```
 
 The existing `ar_create_public_problem()` remains available for its existing manual compatibility surface.
 
@@ -128,43 +142,139 @@ Category:
 travel_booking
 ```
 
-The exact title/summary/target/situation/category come from the already-ready 15.8Q draft authority. 15.8R does not synthesize or rewrite them during persistence.
+The exact title/summary/target/situation/category came from the already-ready 15.8Q draft authority. 15.8R did not synthesize or rewrite them during persistence.
 
 ---
 
-## 5. Expected live mutation
+## 5. Authoritative live run
 
-Before first live persistence:
-
-```text
-Public Problems: 2
-Published:       2
-Public feed:     2
-Public Evidence: 5
-```
-
-Expected first successful transition:
+Authoritative main at live execution:
 
 ```text
-Public Problems: 2 → 3
-New signature rows: 0 → 1
-New row status: draft
-New row Evidence: 0
-Public feed: 2 → 2
-Public Evidence: 5 → 5
+a146231c57be3f695c90b4a56953abfdac1c1b2e
 ```
 
-All Source/Incident/full-context tables remain unchanged.
+Implementation authority:
 
-The anonymous feed already filters strictly to `status='published'`, so the new draft must remain absent from public feed readback.
+```text
+PR #107
+exact-head CI #403: SUCCESS
+PIE #78:           SUCCESS
+merged-main CI #404: SUCCESS
+```
+
+Live workflow:
+
+```text
+Source Canonical Draft Persistence 15.8R
+run: 32918855367
+result: SUCCESS
+```
+
+Artifact:
+
+```text
+id: 9589115880
+name: source-canonical-draft-persistence-15-8r
+digest: sha256:783dc4249010b56e15e815e26d5a9dc59455a7de50484eff6d9ab40ffd15a72a
+retention: 1 day
+```
+
+Artifact result:
+
+```text
+status: CANONICAL_DRAFT_PERSISTED
+version: canonical-draft-only-persistence-v0.1
+problem_signature: lodging_reservation_fulfillment_gap
+source_count: 2
+incident_count: 2
+public_problem_status: draft
+canonical_draft_rows_for_signature: 1
+canonical_draft_evidence_count: 0
+canonical_draft_public_feed_rows: 0
+write_rpc_calls: 1
+public_problem_id_emitted: false
+source_signal_ids_emitted: false
+public_evidence_write_count: 0
+existing_problem_mutation_count: 0
+publication_count: 0
+```
 
 ---
 
-## 6. Idempotent rerun behavior
+## 6. Exact live mutation
+
+Workflow snapshot before:
+
+```text
+source_signals:          3245
+source_observations:     3537
+source_ingestion_runs:   132
+raw_inputs:              10
+pain_evidences:          27
+public_problems:         2
+public_evidence:         5
+public_feed:             2
+source_incidents:        6
+source_incident_links:   7
+full_context_outcomes:   82
+```
+
+Workflow snapshot after:
+
+```text
+source_signals:          3245
+source_observations:     3537
+source_ingestion_runs:   132
+raw_inputs:              10
+pain_evidences:          27
+public_problems:         3
+public_evidence:         5
+public_feed:             2
+source_incidents:        6
+source_incident_links:   7
+full_context_outcomes:   82
+```
+
+Only one new `ar_public_problems` draft row was created.
+
+---
+
+## 7. Independent database post-readback
+
+An independent Supabase readback after the workflow confirmed:
+
+```text
+Public Problems:             3
+Published Problems:          2
+Draft Problems:              1
+Public feed:                 2
+Public Evidence:             5
+
+target signature rows:       1
+target active draft rows:    1
+target Evidence rows:        0
+target public-feed rows:     0
+
+Source Signals:              3245
+Source Observations:         3537
+Source Ingestion Runs:       132
+Raw Inputs:                  10
+Pain Evidences:              27
+Source Incidents:            6
+Source Incident Links:       7
+Full-context Outcomes:       82
+```
+
+The independent readback therefore matches the workflow artifact exactly.
+
+---
+
+## 8. Idempotent rerun behavior
 
 The database unique identity prevents more than one non-null row for the same `problem_signature`.
 
-The runner also checks before calling the write RPC:
+The runner checks before calling the write RPC:
 
 ```text
 0 matching rows → one governed create RPC allowed
@@ -177,7 +287,7 @@ Thus a manual workflow rerun cannot intentionally create another copy of the sam
 
 ---
 
-## 7. Runner boundary
+## 9. Runner boundary
 
 Runner:
 
@@ -215,19 +325,9 @@ public feed rows for draft = 0
 
 ---
 
-## 8. Privacy and artifact boundary
+## 10. Privacy and artifact boundary
 
-The one-day aggregate artifact may contain:
-
-```text
-problem_signature
-source_count / incident_count
-status
-database counts
-write RPC count
-Evidence count
-public-feed count
-```
+The one-day aggregate artifact contains only governed metadata and counts.
 
 It does not emit:
 
@@ -239,9 +339,9 @@ full source bodies
 
 ---
 
-## 9. Explicit exclusions
+## 11. Explicit exclusions
 
-Phase 15.8R does not authorize or perform:
+Phase 15.8R did not authorize or perform:
 
 ```text
 Public Evidence persistence
@@ -252,24 +352,33 @@ status transition to published
 publication
 ```
 
-After successful draft persistence, a later phase must separately establish publication-grade Evidence lineage before the draft can even become structurally publishable.
+The persisted row is a draft only.
+
+A later phase must separately establish publication-grade Evidence lineage before the draft can even become structurally publishable.
 
 ---
 
-## 10. Release flow
+## 12. Closeout
+
+The temporary live branch trigger is removed in the closeout changeset.
+
+Retained workflow trigger:
 
 ```text
-implementation PR
-→ exact-head CI / PIE
-→ merge main
-→ merged-main CI
-→ apply migration 036
-→ privilege + identity preflight
-→ authoritative one-shot live run
-→ independent DB readback
-→ closeout removes temporary trigger
-→ closeout CI / PIE
-→ merge
-→ merged-main CI
-→ Phase 15.8R CLOSED
+workflow_dispatch only
+```
+
+Closeout condition:
+
+```text
+closeout exact-head CI = SUCCESS
+PIE = SUCCESS
+closeout merge = SUCCESS
+merged-main CI = SUCCESS
+```
+
+When those conditions hold:
+
+```text
+Phase 15.8R = CLOSED
 ```
