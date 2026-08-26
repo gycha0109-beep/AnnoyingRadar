@@ -110,10 +110,11 @@ test("15.8R runner permits at most one governed write RPC and no Evidence/public
   assert.match(script, /publication_count: 0/);
 });
 
-test("15.8R workflow is authoritative-main and temporarily one-shot triggerable", async () => {
+test("15.8R workflow is authoritative-main and manual-only after closeout", async () => {
   const workflow = await read(".github/workflows/source-canonical-draft-persistence-15-8r.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8r-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8r-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_CANONICAL_DRAFT_PERSISTENCE: "true"/);
