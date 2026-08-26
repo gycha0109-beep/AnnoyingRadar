@@ -136,12 +136,14 @@ The gate must return:
 
 ```text
 draft_state       = ready
-reason_codes      = []
+reason_codes      = [draft_supported_by_independent_incidents]
 source_count      = 2
 incident_count    = 2
 persistence_state = not_persisted
 publication_state = not_published
 ```
+
+The positive reason code is part of the existing Phase 15.6C gate contract; ready does not mean the reason list is empty.
 
 Any missing Incident, duplicate Source identity, changed Incident key, or drift in the existing published lodging Problem fails closed.
 
