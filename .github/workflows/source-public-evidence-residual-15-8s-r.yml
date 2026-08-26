@@ -2,9 +2,6 @@ name: Source Public Evidence Residual 15.8S-R
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8s-r-live-execution
 
 permissions:
   contents: read
