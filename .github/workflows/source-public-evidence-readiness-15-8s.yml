@@ -2,9 +2,6 @@ name: Source Public Evidence Readiness 15.8S
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8s-live-execution
 
 permissions:
   contents: read

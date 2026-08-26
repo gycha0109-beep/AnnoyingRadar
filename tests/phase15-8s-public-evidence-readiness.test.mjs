@@ -176,10 +176,11 @@ test("15.8S runner is structurally read-only and hides identity/full-body data f
   assert.match(script, /assertSafeArtifactItem/);
 });
 
-test("15.8S workflow checks out authoritative main and only temporary live branch can auto-trigger it", async () => {
+test("15.8S workflow is authoritative-main and manual-only after closeout", async () => {
   const workflow = await read(".github/workflows/source-public-evidence-readiness-15-8s.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8s-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8s-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PAID_PUBLIC_EVIDENCE_READINESS: "true"/);
