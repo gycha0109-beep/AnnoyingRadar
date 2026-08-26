@@ -3,24 +3,63 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  assertStableCanonicalContexts,
   buildCombinedEvidenceReadiness,
   createResidualBudgetFetch,
-  PHASE15_8S_R_EXPECTED_CONTEXT_HASH,
+  PHASE15_8S_R_CONTEXT_STABILITY_FETCHES,
   PHASE15_8S_R_EXPECTED_SOURCE_KEY_SHA256,
   PHASE15_8S_R_INCIDENT_KEY,
   PHASE15_8S_R_MAX_OUTPUT_TOKENS,
   PHASE15_8S_R_PRIOR_READY,
+  PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH,
+  PHASE15_8S_R_VERSION,
 } from "../lib/sources/public-evidence-residual.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("15.8S-R targets exactly the one provider-incomplete residual authority", () => {
+function canonicalContext(overrides = {}) {
+  const contentText = "예약 완료 안내를 받았지만 실제 숙소 예약은 확인되지 않았습니다.";
+  return {
+    version: "source-full-context-fetch-v0.2",
+    status: "resolved",
+    content_scope: "full_post",
+    truncated: false,
+    content_text: contentText,
+    content_hash: "a".repeat(64),
+    original_char_count: contentText.length,
+    title: "예약 누락 후기",
+    ...overrides,
+  };
+}
+
+test("15.8S-R v0.2 targets exactly the one provider-incomplete residual authority", () => {
+  assert.equal(PHASE15_8S_R_VERSION, "phase15.8s-r-evidence-residual-v0.2");
   assert.equal(PHASE15_8S_R_INCIDENT_KEY, "yeogieottae_reservation_fulfillment_gap_case");
-  assert.equal(PHASE15_8S_R_EXPECTED_CONTEXT_HASH, "8c9db5684507752f2e9d77af3de5968ff25622a4ad6c923630acac5af8ad640f");
+  assert.equal(PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH, "8c9db5684507752f2e9d77af3de5968ff25622a4ad6c923630acac5af8ad640f");
   assert.equal(PHASE15_8S_R_EXPECTED_SOURCE_KEY_SHA256, "5b8e2799dfad399118f6a644d064fbd91e55a1870661721f910c7278b0e0616c");
+  assert.equal(PHASE15_8S_R_CONTEXT_STABILITY_FETCHES, 2);
   assert.equal(PHASE15_8S_R_PRIOR_READY.incident_key, "agoda_reservation_fulfillment_gap_case");
   assert.equal(PHASE15_8S_R_PRIOR_READY.excerpt_length, 83);
   assert.equal(PHASE15_8S_R_PRIOR_READY.excerpt_sha256, "1cc568874a8e42fe1d690d132176fb994fbc74bcdca4852f9949ee7f926790aa");
+});
+
+test("15.8S-R accepts only two byte-identical current canonical contexts", () => {
+  const first = canonicalContext();
+  const second = canonicalContext();
+  assert.equal(assertStableCanonicalContexts(first, second), first);
+
+  assert.throws(
+    () => assertStableCanonicalContexts(first, canonicalContext({ content_hash: "b".repeat(64) })),
+    /stable across two independent fetches/,
+  );
+  assert.throws(
+    () => assertStableCanonicalContexts(first, canonicalContext({ content_text: `${first.content_text} 수정` })),
+    /byte-identical/,
+  );
+  assert.throws(
+    () => assertStableCanonicalContexts(first, canonicalContext({ version: "source-full-context-fetch-v0.1" })),
+    /current fetch authority/,
+  );
 });
 
 test("15.8S-R changes only the completion budget on the original observer request", async () => {
@@ -71,14 +110,20 @@ test("combined readiness remains blocked until the residual item is exact-ready"
   assert.equal(ready.would_meet_current_publication_cardinality_if_exact_plans_were_persisted, true);
 });
 
-test("15.8S-R runner is one-item, one-call, read-only, and artifact-safe", async () => {
+test("15.8S-R runner is one-item, two-context-fetch, one-semantic-call, read-only, and artifact-safe", async () => {
   const script = await read("scripts/run-public-evidence-residual-15-8s-r.mjs");
   assert.match(script, /PHASE15_8S_R_INCIDENT_KEY/);
-  assert.match(script, /PHASE15_8S_R_EXPECTED_CONTEXT_HASH/);
-  assert.match(script, /PHASE15_8S_R_EXPECTED_SOURCE_KEY_SHA256/);
+  assert.match(script, /PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH/);
+  assert.match(script, /PHASE15_8S_R_CONTEXT_STABILITY_FETCHES/);
+  assert.match(script, /assertStableCanonicalContexts/);
+  assert.match(script, /canonicalContexts\.push\(await fetchSourceFullContext\(pair\.source\)\)/);
+  assert.match(script, /canonicalContexts\.length, 2/);
   assert.match(script, /maxSemanticAttempts: 1/);
   assert.match(script, /residual_attempt_count: 1/);
   assert.match(script, /prior_phase_attempt_count: 2/);
+  assert.match(script, /context_stability_fetch_count/);
+  assert.match(script, /stable_context: true/);
+  assert.doesNotMatch(script, /item\.context_hash, PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH/);
   assert.doesNotMatch(script, /\.rpc\(/);
   assert.doesNotMatch(script, /\.insert\(/);
   assert.doesNotMatch(script, /\.upsert\(/);
