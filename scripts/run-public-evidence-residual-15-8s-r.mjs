@@ -10,12 +10,14 @@ import {
   resolvePublicEvidenceReadiness,
 } from "../lib/sources/public-evidence-readiness.mjs";
 import {
+  assertStableCanonicalContexts,
   buildCombinedEvidenceReadiness,
   createResidualEvidenceJudge,
-  PHASE15_8S_R_EXPECTED_CONTEXT_HASH,
+  PHASE15_8S_R_CONTEXT_STABILITY_FETCHES,
   PHASE15_8S_R_EXPECTED_SOURCE_KEY_SHA256,
   PHASE15_8S_R_INCIDENT_KEY,
   PHASE15_8S_R_MAX_OUTPUT_TOKENS,
+  PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH,
   PHASE15_8S_R_VERSION,
 } from "../lib/sources/public-evidence-residual.mjs";
 
@@ -126,6 +128,7 @@ function safeResidualItem({ result, source }) {
     excerpt_sha256: excerpt ? sha256(excerpt) : null,
     source_key_sha256: sha256(source.canonical_url),
     source_observed_at: source.published_at ?? null,
+    context_fetch_version: result.full_context?.version ?? null,
     context_hash: result.full_context?.content_hash ?? null,
     context_char_count: result.full_context?.original_char_count ?? null,
     context_scope: result.full_context?.content_scope ?? null,
@@ -174,9 +177,9 @@ async function main() {
       status: "ESTIMATE_ONLY",
       version: PHASE15_8S_R_VERSION,
       residual_incident_key: PHASE15_8S_R_INCIDENT_KEY,
-      expected_context_hash: PHASE15_8S_R_EXPECTED_CONTEXT_HASH,
+      historical_prior_context_hash: PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH,
       completion_budget: PHASE15_8S_R_MAX_OUTPUT_TOKENS,
-      max_full_context_fetches: 1,
+      canonical_context_stability_fetches: PHASE15_8S_R_CONTEXT_STABILITY_FETCHES,
       max_paid_semantic_calls: 1,
       database_write_statements: 0,
     }, null, 2));
@@ -186,12 +189,12 @@ async function main() {
   assert.equal(process.env.ALLOW_PAID_PUBLIC_EVIDENCE_RESIDUAL, "true",
     "live 15.8S-R requires ALLOW_PAID_PUBLIC_EVIDENCE_RESIDUAL=true");
 
-  const fullContext = await fetchSourceFullContext(pair.source);
-  assert.equal(fullContext.status, "resolved", "residual full context must resolve");
-  assert.equal(fullContext.content_scope, "full_post", "residual Evidence requires full_post context");
-  assert.equal(fullContext.truncated, false, "residual full_post must be untruncated");
-  assert.equal(fullContext.content_hash, PHASE15_8S_R_EXPECTED_CONTEXT_HASH,
-    "15.8S-R residual full context drifted from authoritative 15.8S artifact");
+  const canonicalContexts = [];
+  for (let index = 0; index < PHASE15_8S_R_CONTEXT_STABILITY_FETCHES; index += 1) {
+    canonicalContexts.push(await fetchSourceFullContext(pair.source));
+  }
+  assert.equal(canonicalContexts.length, 2, "15.8S-R requires exactly two canonical stability fetches");
+  const fullContext = assertStableCanonicalContexts(canonicalContexts[0], canonicalContexts[1]);
 
   const provider = getPublicEvidenceProviderConfig(process.env);
   const judgeContext = createResidualEvidenceJudge({
@@ -205,7 +208,8 @@ async function main() {
   });
   const item = safeResidualItem({ result, source: pair.source });
   assertSafeArtifact(item);
-  assert.equal(item.context_hash, PHASE15_8S_R_EXPECTED_CONTEXT_HASH);
+  assert.equal(item.context_hash, fullContext.content_hash);
+  assert.equal(item.context_char_count, fullContext.original_char_count);
   assert.equal(item.source_key_sha256, PHASE15_8S_R_EXPECTED_SOURCE_KEY_SHA256);
 
   const combined = buildCombinedEvidenceReadiness(item);
@@ -224,9 +228,18 @@ async function main() {
     problem_signature: draft.problem_signature,
     provider: { name: "openai", model: provider.model },
     prior_phase_reason: "public_evidence_provider_incomplete",
-    residual_strategy: "same_observer_single_higher_completion_budget",
+    residual_strategy: "stable_canonical_context_same_observer_single_higher_completion_budget",
     original_completion_budget: 800,
     residual_completion_budget: PHASE15_8S_R_MAX_OUTPUT_TOKENS,
+    context_provenance: {
+      historical_prior_fetch_version: "source-full-context-fetch-v0.1",
+      historical_prior_context_hash: PHASE15_8S_R_PRIOR_V01_CONTEXT_HASH,
+      canonical_fetch_version: fullContext.version,
+      canonical_context_hash: fullContext.content_hash,
+      canonical_context_char_count: fullContext.original_char_count,
+      context_stability_fetch_count: canonicalContexts.length,
+      stable_context: true,
+    },
     item,
     combined_readiness: combined,
     database_before: before,
@@ -249,6 +262,9 @@ async function main() {
 
   console.log(JSON.stringify({
     status: "LIVE_RESIDUAL_EVIDENCE_COMPLETION_COMPLETE",
+    canonical_context_hash: fullContext.content_hash,
+    context_stability_fetch_count: canonicalContexts.length,
+    stable_context: true,
     residual_state: item.evidence_state,
     residual_ready: item.ready,
     combined_ready_count: combined.ready_count,
