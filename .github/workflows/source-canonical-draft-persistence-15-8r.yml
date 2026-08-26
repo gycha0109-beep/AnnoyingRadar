@@ -2,9 +2,6 @@ name: Source Canonical Draft Persistence 15.8R
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8r-live-execution
 
 permissions:
   contents: read
