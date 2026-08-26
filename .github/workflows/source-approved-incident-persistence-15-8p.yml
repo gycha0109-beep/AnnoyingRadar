@@ -1,0 +1,59 @@
+name: Source Approved Incident Persistence 15.8P
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-8p-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-approved-incident-persistence-15-8p
+  cancel-in-progress: false
+
+jobs:
+  approved-incident-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required Supabase secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Persist exactly two curator-approved lodging Incidents atomically
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ALLOW_APPROVED_INCIDENT_PERSISTENCE: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-approved-incident-persistence-15-8p.mjs --live --output=phase15-8p-approved-incident-persistence.json 2>&1 | tee phase15-8p-approved-incident-persistence.log
+      - name: Upload Phase 15.8P aggregate readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-approved-incident-persistence-15-8p
+          path: |
+            phase15-8p-approved-incident-persistence.log
+            phase15-8p-approved-incident-persistence.json
+          if-no-files-found: ignore
+          retention-days: 1
