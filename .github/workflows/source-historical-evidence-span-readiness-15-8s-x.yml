@@ -1,0 +1,63 @@
+name: Source Historical Evidence Span Readiness 15.8S-X
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-8s-x-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-historical-evidence-span-readiness-15-8s-x
+  cancel-in-progress: false
+
+jobs:
+  historical-evidence-span:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$OPENAI_API_KEY"
+      - name: Reconstruct and classify one historical exact Evidence span
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_PUBLIC_EVIDENCE_MODEL: ${{ secrets.OPENAI_PUBLIC_EVIDENCE_MODEL || secrets.OPENAI_SOURCE_FORMATION_MODEL || secrets.OPENAI_SOURCE_FULL_CONTEXT_MODEL || 'gpt-5-mini-2025-08-07' }}
+          ALLOW_PAID_HISTORICAL_EVIDENCE_SPAN_READINESS: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-historical-evidence-span-readiness-15-8s-x.mjs --live --output=phase15-8s-x-historical-evidence-span-readiness.json 2>&1 | tee phase15-8s-x-historical-evidence-span-readiness.log
+      - name: Upload disposable Phase 15.8S-X artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-historical-evidence-span-readiness-15-8s-x
+          path: |
+            phase15-8s-x-historical-evidence-span-readiness.log
+            phase15-8s-x-historical-evidence-span-readiness.json
+          if-no-files-found: ignore
+          retention-days: 1
