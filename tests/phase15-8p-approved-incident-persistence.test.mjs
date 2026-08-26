@@ -92,6 +92,18 @@ test("15.8P live runner writes only through the approved atomic Incident RPC", a
   assert.match(script, /repeat_eligible, true/);
 });
 
+test("15.8P workflow is authoritative-main, explicitly gated, and temporarily one-shot triggerable", async () => {
+  const workflow = await read(".github/workflows/source-approved-incident-persistence-15-8p.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /agent\/phase15-8p-live-execution/);
+  assert.match(workflow, /Checkout authoritative main/);
+  assert.match(workflow, /ref: main/);
+  assert.match(workflow, /ALLOW_APPROVED_INCIDENT_PERSISTENCE: "true"/);
+  assert.match(workflow, /run-approved-incident-persistence-15-8p\.mjs --live/);
+  assert.match(workflow, /retention-days: 1/);
+  assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
+});
+
 test("helper refuses to infer approval from arbitrary Candidate rows", () => {
   assert.throws(() => buildPhase15_8PApprovedPersistencePlan(fakeCandidateRows()), /exactly two lodging Sources/);
 });
