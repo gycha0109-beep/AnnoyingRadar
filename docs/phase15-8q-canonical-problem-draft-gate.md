@@ -2,13 +2,13 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE READ-ONLY VERIFICATION NOT YET RUN**
+**CLOSED — 2026-08-26**
 
-Phase 15.8Q consumes the two curator-approved and persisted Phase 15.8P lodging Incidents and evaluates their approved repeated mechanism through the existing Phase 15.6C Canonical Problem Draft Gate.
+Phase 15.8Q consumed the two curator-approved and persisted Phase 15.8P lodging Incidents and evaluated their approved repeated mechanism through the existing Phase 15.6C Canonical Problem Draft Gate.
 
-This phase is deliberately read-only.
+The authoritative live verification succeeded and performed zero database mutations.
 
-It does not persist a Canonical Problem, add Public Evidence, mutate either existing published Problem, or publish anything.
+No Canonical Problem was persisted. No Public Evidence was added. Neither existing published Problem was mutated. Nothing was published.
 
 ---
 
@@ -35,7 +35,7 @@ agoda_reservation_fulfillment_gap_case
 yeogieottae_reservation_fulfillment_gap_case
 ```
 
-The public repository does not embed the underlying Source Signal UUIDs in the 15.8Q authority. They are resolved from the persisted Incident links at runtime.
+The public repository does not embed the underlying Source Signal UUIDs in the 15.8Q authority. They are resolved from persisted Incident links at runtime.
 
 ---
 
@@ -46,13 +46,13 @@ Phase 15.8N full-context audit established two independent first-hand lodging ep
 - one booking intermediary presented a booking that had not actually been secured, followed by replacement-handling friction;
 - in the other episode, the traveler reached the property and the reservation was absent, followed by support/refund/compensation friction.
 
-Phase 15.8P subsequently made those two episodes curator-authoritative independent Incidents and approved one shared mechanism:
+Phase 15.8P subsequently made those episodes curator-authoritative independent Incidents and approved the shared mechanism:
 
 ```text
 lodging_reservation_fulfillment_gap
 ```
 
-The existing published lodging Problem is different:
+The existing published lodging Problem remains:
 
 ```text
 숙소 예외 취소·환불은 플랫폼과 숙소 사이의 반복 확인을 사용자에게 요구할 수 있다
@@ -64,7 +64,7 @@ The new mechanism begins earlier in the booking lifecycle: a platform-confirmed 
 
 Refund/support remediation can overlap, but remediation overlap does not collapse the two causal mechanisms into one Problem.
 
-15.8Q therefore freezes the relationship as:
+Authoritative relationship:
 
 ```text
 relation = distinct_adjacent_problem
@@ -74,7 +74,7 @@ existing_problem_mutation_authorized = false
 
 ---
 
-## 3. Canonical Problem proposal
+## 3. Canonical Problem draft authority
 
 Problem signature:
 
@@ -112,27 +112,20 @@ Category:
 travel_booking
 ```
 
-This wording keeps the canonical claim at the repeated mechanism actually supported by the two independent incidents. Refund and compensation are downstream consequences, not the canonical root mechanism.
+The wording keeps the canonical claim at the repeated mechanism supported by the two independent incidents. Refund and compensation are downstream consequences, not the canonical root mechanism.
 
 ---
 
-## 4. Reused gate
+## 4. Reused gate result
 
-15.8Q introduces no replacement formation logic.
-
-It reuses:
+15.8Q introduced no replacement formation logic. It reused:
 
 ```text
 canonical-problem-draft-v0.1
-```
-
-through:
-
-```text
 evaluateCanonicalProblemDraft()
 ```
 
-The gate must return:
+Authoritative live result:
 
 ```text
 draft_state       = ready
@@ -143,33 +136,110 @@ persistence_state = not_persisted
 publication_state = not_published
 ```
 
-The positive reason code is part of the existing Phase 15.6C gate contract; ready does not mean the reason list is empty.
-
-Any missing Incident, duplicate Source identity, changed Incident key, or drift in the existing published lodging Problem fails closed.
+The positive reason code is part of the existing gate contract; a ready draft does not imply an empty reason list.
 
 ---
 
-## 5. Live runner boundary
+## 5. Implementation verification
 
-Runner:
+Implementation PR:
 
 ```text
-scripts/run-canonical-problem-draft-gate-15-8q.mjs
+PR #105
+corrected exact head:
+be565854bd5d57043e820290b36207551c84275a
+
+CI #399:  SUCCESS
+PIE #76: SUCCESS
 ```
 
-The runner:
+An earlier CI attempt exposed a contract-test error in 15.8Q: the new helper had incorrectly assumed a ready draft returned no reason codes. The existing gate actually returns `draft_supported_by_independent_incidents`. The helper, tests, and documentation were corrected to the existing authority before merge.
 
-1. reads the two approved persisted Incident identities;
-2. reads their Source links;
-3. requires exactly one Source per Incident and two distinct Sources total;
-4. reconstructs the approved repeated cluster;
-5. runs the existing Canonical Draft Gate;
-6. reads existing Public Problems and verifies the published exception-refund lodging Problem still exists exactly once;
-7. asserts the new draft remains a distinct adjacent Problem;
-8. snapshots protected database counts before and after;
-9. requires exact zero mutation.
+Implementation merge:
 
-The runner contains no:
+```text
+main:
+b6868992e4c3210c18ed8b91a1b2e74b349c2288
+
+merged-main CI #400: SUCCESS
+```
+
+---
+
+## 6. Authoritative live read-only verification
+
+Workflow run:
+
+```text
+32918063078
+SUCCESS
+```
+
+Artifact:
+
+```text
+id: 9588863600
+digest:
+sha256:f309270d80a6c39ac825a8ad88b2f7a1db127fae3b6b43a96638441ec04011ba
+```
+
+Artifact result:
+
+```text
+authority: canonical_problem_draft_gate_read_only
+version: phase15.8q-canonical-draft-gate-v0.1
+problem_signature: lodging_reservation_fulfillment_gap
+draft_state: ready
+reason: draft_supported_by_independent_incidents
+source_count: 2
+incident_count: 2
+relationship: distinct_adjacent_problem
+source_signal_ids_emitted: false
+database_mutations: 0
+canonical_problem_created: false
+public_evidence_created: false
+existing_problem_mutated: false
+publication_performed: false
+```
+
+Source identity fingerprint:
+
+```text
+5efd98e64bc7e0f2ed64e18b079793f55c2a919d2664a6c555fee4c6b5066aea
+```
+
+The artifact emitted no raw Source Signal UUIDs and no full source bodies.
+
+---
+
+## 7. Independent database readback
+
+The workflow snapshot and an independent Supabase query agreed exactly:
+
+```text
+Source Signals:          3245 → 3245
+Source Observations:     3537 → 3537
+Source Ingestion Runs:    132 → 132
+Raw Inputs:                10 → 10
+Pain Evidences:            27 → 27
+Public Problems:            2 → 2
+Public Evidence:            5 → 5
+Source Incidents:           6 → 6
+Source→Incident links:      7 → 7
+Full-context Outcomes:     82 → 82
+```
+
+Therefore:
+
+```text
+DB mutations = 0
+```
+
+---
+
+## 8. Runtime boundary
+
+The 15.8Q runner contains no:
 
 ```text
 rpc()
@@ -181,81 +251,50 @@ delete()
 
 It performs no model calls and requires no OpenAI key.
 
----
-
-## 6. Protected database state
-
-The live read-only verification compares exact counts for:
-
-```text
-ar_source_signals
-ar_source_signal_observations
-ar_source_ingestion_runs
-ar_raw_inputs
-ar_pain_evidences
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_source_incidents
-ar_source_incident_links
-ar_source_full_context_resolution_outcomes
-```
-
-Every count must remain identical before and after 15.8Q.
+Any missing Incident, duplicate Source identity, changed Incident key, or drift in the existing published lodging Problem fails closed.
 
 ---
 
-## 7. Privacy boundary
+## 9. Workflow closeout
 
-The disposable artifact may contain:
-
-```text
-problem_signature
-draft metadata
-Incident keys
-aggregate source/incident counts
-SHA-256 Source-identity fingerprint
-relationship to the existing lodging Problem
-protected DB counts
-```
-
-It does not emit raw Source Signal UUIDs or full source bodies.
-
-Artifact retention is one day.
-
----
-
-## 8. Workflow
+Workflow:
 
 ```text
 .github/workflows/source-canonical-draft-gate-15-8q.yml
 ```
 
-Temporary authoritative live trigger:
+The temporary push trigger:
 
 ```text
 agent/phase15-8q-live-execution
 ```
 
-The workflow always checks out `main` explicitly.
+was used only for the authoritative run and removed during closeout.
 
-After the one authoritative live read-only run, the temporary push trigger must be removed. The retained trigger is `workflow_dispatch` only.
+Retained trigger:
+
+```text
+workflow_dispatch
+```
+
+The workflow remains read-only and always checks out authoritative `main`.
 
 ---
 
-## 9. Phase boundary
+## 10. Phase boundary
 
-A successful 15.8Q establishes only:
+Phase 15.8Q establishes:
 
 ```text
-approved repeated cluster
+2 curator-approved independent lodging Incidents
+→ approved repeated mechanism
 → existing canonical draft gate
 → ready Canonical Problem draft authority
 ```
 
-It does not authorize:
+It does **not** authorize:
 
 ```text
-ar_create_public_problem(...)
 Canonical Problem DB persistence
 Public Evidence persistence
 editing the existing published lodging Problem
@@ -263,4 +302,4 @@ merging the new mechanism into the existing lodging Problem
 publication
 ```
 
-A later governed persistence phase must separately decide whether and how to create the draft Problem and bind publication-grade Evidence without weakening the incident-aware publication contract.
+The next governed phase must examine draft persistence and evidence-lineage requirements separately before any write is permitted.
