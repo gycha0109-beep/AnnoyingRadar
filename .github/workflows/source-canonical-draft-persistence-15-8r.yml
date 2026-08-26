@@ -1,0 +1,59 @@
+name: Source Canonical Draft Persistence 15.8R
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-8r-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-canonical-draft-persistence-15-8r
+  cancel-in-progress: false
+
+jobs:
+  canonical-draft-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required Supabase secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Persist one governed Canonical Problem draft
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ALLOW_CANONICAL_DRAFT_PERSISTENCE: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-canonical-draft-persistence-15-8r.mjs --live --output=phase15-8r-canonical-draft-persistence.json 2>&1 | tee phase15-8r-canonical-draft-persistence.log
+      - name: Upload Phase 15.8R aggregate readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-canonical-draft-persistence-15-8r
+          path: |
+            phase15-8r-canonical-draft-persistence.log
+            phase15-8r-canonical-draft-persistence.json
+          if-no-files-found: ignore
+          retention-days: 1
