@@ -119,6 +119,14 @@ async function countDraftPublicFeedRows(client, problemId) {
   return count ?? 0;
 }
 
+function normalizeRpcRow(data) {
+  if (Array.isArray(data)) {
+    assert.equal(data.length, 1, "canonical draft RPC must return exactly one row");
+    return data[0];
+  }
+  return data;
+}
+
 function assertProtectedCounts({ before, after, created }) {
   const expected = { ...before };
   if (created) expected.public_problems += 1;
@@ -157,7 +165,7 @@ async function main() {
     });
     writeRpcCalls += 1;
     if (error) throw error;
-    persistedRow = data;
+    persistedRow = normalizeRpcRow(data);
     created = true;
     assertPersistedCanonicalDraftMatchesPlan({ row: persistedRow, plan });
   }
