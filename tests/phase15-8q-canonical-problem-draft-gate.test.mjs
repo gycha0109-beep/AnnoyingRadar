@@ -132,10 +132,11 @@ test("15.8Q runner is structurally read-only", async () => {
   assert.match(script, /publication_performed: false/);
 });
 
-test("15.8Q workflow checks out authoritative main and has only temporary read-only live trigger", async () => {
+test("15.8Q workflow is manual-only after authoritative live closeout", async () => {
   const workflow = await read(".github/workflows/source-canonical-draft-gate-15-8q.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8q-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8q-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-canonical-problem-draft-gate-15-8q\.mjs/);
