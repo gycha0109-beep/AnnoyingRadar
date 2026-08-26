@@ -2,9 +2,6 @@ name: Source Approved Incident Persistence 15.8P
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8p-live-execution
 
 permissions:
   contents: read
