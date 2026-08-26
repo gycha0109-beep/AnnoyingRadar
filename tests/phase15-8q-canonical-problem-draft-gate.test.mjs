@@ -7,6 +7,7 @@ import {
   PHASE15_8Q_EXISTING_LODGING_TITLE,
   PHASE15_8Q_INCIDENT_KEYS,
   PHASE15_8Q_PROPOSAL,
+  PHASE15_8Q_READY_REASON_CODE,
   PHASE15_8Q_VERSION,
 } from "../lib/sources/approved-canonical-problem-draft.mjs";
 import { PHASE15_8P_PROBLEM_SIGNATURE } from "../lib/sources/source-approved-incident-persistence.mjs";
@@ -44,7 +45,7 @@ test("15.8Q turns exactly two approved persisted Incidents into one ready non-pe
   assert.equal(result.draft_result.draft.incident_count, 2);
   assert.equal(result.draft_result.draft.persistence_state, "not_persisted");
   assert.equal(result.draft_result.draft.publication_state, "not_published");
-  assert.deepEqual(result.draft_result.reason_codes, []);
+  assert.deepEqual(result.draft_result.reason_codes, [PHASE15_8Q_READY_REASON_CODE]);
 });
 
 test("15.8Q proposal describes reservation fulfillment rather than exception cancellation", () => {
