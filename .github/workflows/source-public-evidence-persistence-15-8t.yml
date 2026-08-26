@@ -1,0 +1,59 @@
+name: Source Public Evidence Persistence 15.8T
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-8t-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-public-evidence-persistence-15-8t
+  cancel-in-progress: false
+
+jobs:
+  evidence-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Persist exact incident-bound Evidence pair
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ALLOW_PUBLIC_EVIDENCE_PAIR_PERSISTENCE: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-public-evidence-persistence-15-8t.mjs --live --output=phase15-8t-public-evidence-persistence.json 2>&1 | tee phase15-8t-public-evidence-persistence.log
+      - name: Upload disposable Phase 15.8T artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-public-evidence-persistence-15-8t
+          path: |
+            phase15-8t-public-evidence-persistence.log
+            phase15-8t-public-evidence-persistence.json
+          if-no-files-found: ignore
+          retention-days: 1
