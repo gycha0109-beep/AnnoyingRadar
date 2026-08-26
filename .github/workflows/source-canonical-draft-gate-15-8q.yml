@@ -2,9 +2,6 @@ name: Source Canonical Draft Gate 15.8Q
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8q-live-execution
 
 permissions:
   contents: read
