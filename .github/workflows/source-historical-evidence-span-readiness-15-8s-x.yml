@@ -2,9 +2,6 @@ name: Source Historical Evidence Span Readiness 15.8S-X
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8s-x-live-execution
 
 permissions:
   contents: read
