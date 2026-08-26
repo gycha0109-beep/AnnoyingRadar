@@ -1,0 +1,55 @@
+name: Source Public Evidence Context Diagnosis 15.8S-R
+
+on:
+  push:
+    branches:
+      - agent/phase15-8s-r-context-diagnosis
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-public-evidence-context-diagnosis-15-8s-r
+  cancel-in-progress: false
+
+jobs:
+  context-diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase15-8s-r-context-diagnosis
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Diagnose Naver full-context stability
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          node scripts/diagnose-naver-context-stability-15-8s-r.mjs --output=phase15-8s-r-context-diagnosis.json
+      - name: Upload disposable diagnosis artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-public-evidence-context-diagnosis-15-8s-r
+          path: phase15-8s-r-context-diagnosis.json
+          if-no-files-found: error
+          retention-days: 1
