@@ -152,10 +152,11 @@ test("15.8S-X repository files retain historical span text privacy", async () =>
   }
 });
 
-test("15.8S-X workflow has one temporary live trigger and checks out authoritative main", async () => {
+test("15.8S-X closeout workflow is manual-only and checks out authoritative main", async () => {
   const workflow = await read(".github/workflows/source-historical-evidence-span-readiness-15-8s-x.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8s-x-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8s-x-live-execution/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PAID_HISTORICAL_EVIDENCE_SPAN_READINESS: "true"/);
