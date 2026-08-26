@@ -130,6 +130,11 @@ begin
     raise exception 'Evidence pair persistence did not process exactly two items' using errcode = '40001';
   end if;
 
+  -- Structural publication readiness is checked inside this same transaction.
+  -- This validates cardinality and Source->Incident lineage only; it does not
+  -- mutate Public Problem status or make the problem public.
+  perform public.ar_assert_public_problem_publishable(p_problem_id);
+
   return v_results;
 end;
 $$;
