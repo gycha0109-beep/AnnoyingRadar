@@ -137,10 +137,11 @@ test("15.8S-R runner is one-item, two-context-fetch, one-semantic-call, read-onl
   assert.match(script, /assertSafeArtifact/);
 });
 
-test("15.8S-R workflow is authoritative-main with one temporary live branch", async () => {
+test("15.8S-R closeout workflow is manual-only and retains authoritative-main safeguards", async () => {
   const workflow = await read(".github/workflows/source-public-evidence-residual-15-8s-r.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8s-r-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8s-r-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PAID_PUBLIC_EVIDENCE_RESIDUAL: "true"/);
