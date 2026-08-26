@@ -2,13 +2,22 @@
 
 ## Status
 
-**V0.2 CANONICALIZATION CORRECTION IMPLEMENTED / AUTHORITATIVE LIVE RE-RUN NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
-Phase 15.8S-R is a bounded residual recovery for the single Phase 15.8S Evidence item that ended in `public_evidence_provider_incomplete` after two semantic attempts.
+Phase 15.8S-R was a bounded read-only recovery for the single Phase 15.8S Evidence item that ended in `public_evidence_provider_incomplete` after two semantic attempts.
 
-It is not a generic retry product and does not reopen the already-ready Evidence item.
+The phase is complete at the live-result level. The residual item did **not** become publication-grade Public Evidence.
 
-The first v0.1 residual live attempts failed closed before any semantic call because the Naver full-context parser included nondeterministic platform metadata after the actual post container. That parser boundary defect is corrected before the residual observer is allowed to run again.
+Final combined readiness remains:
+
+```text
+required Evidence plans: 2
+ready:                   1
+residual review:         1
+all_evidence_ready:      false
+```
+
+Public Evidence persistence and publication remain **NOT AUTHORIZED**.
 
 ---
 
@@ -23,36 +32,31 @@ review:  1
 blocked: 0
 ```
 
-Ready authority:
+Existing ready authority:
 
 ```text
-incident_key:  agoda_reservation_fulfillment_gap_case
+incident_key: agoda_reservation_fulfillment_gap_case
 excerpt_length: 83
 excerpt_sha256: 1cc568874a8e42fe1d690d132176fb994fbc74bcdca4852f9949ee7f926790aa
 source_key_sha256: 9b3f68381755c64084d18df11e07c9a8248f31e518dda28533f18bfc20715e99
 ```
 
-Residual authority:
+Residual authority entering 15.8S-R:
 
 ```text
 incident_key: yeogieottae_reservation_fulfillment_gap_case
 reason: public_evidence_provider_incomplete
 prior semantic attempts: 2
-context_scope: full_post
-context_truncated: false
-historical v0.1 context_hash: 8c9db5684507752f2e9d77af3de5968ff25622a4ad6c923630acac5af8ad640f
+historical fetch version: source-full-context-fetch-v0.1
+historical context hash: 8c9db5684507752f2e9d77af3de5968ff25622a4ad6c923630acac5af8ad640f
 source_key_sha256: 5b8e2799dfad399118f6a644d064fbd91e55a1870661721f910c7278b0e0616c
 ```
 
-The residual item was not judged unsupported. The provider failed to complete the semantic observation.
-
-The historical v0.1 context hash remains provenance only. It is not a valid equality gate for the corrected v0.2 parser because v0.1 included text outside the actual Naver post container.
-
 ---
 
-## 2. First v0.1 live attempts — fail closed
+## 2. Initial v0.1 live attempts failed closed
 
-Implementation authority before the correction:
+Original S-R implementation:
 
 ```text
 PR #111
@@ -63,21 +67,19 @@ merged main: 1a7b3f9aa6ebfc7ba719c8152f191d47186f2f7e
 merged-main CI #413: SUCCESS
 ```
 
-Authoritative residual workflow run:
+Workflow run:
 
 ```text
-run: 32922302987
+32922302987
 ```
 
-First attempt failed before the OpenAI call because the fetched v0.1 hash was:
+The first attempt failed before any semantic call because the fetched v0.1 hash was:
 
 ```text
 f5333967da13305042d3be63f01599be12bce0baefc3e73dbe55ce2a8b4ded94
 ```
 
-instead of the historical 15.8S v0.1 hash.
-
-A controlled re-run of the same exact main failed at the same guard with another hash:
+A controlled re-run of the same exact main failed at the same guard with:
 
 ```text
 89b50a4a6b5e951cbf6bb985e8c7b672d90ba27dc53950816bf2bd5f9226f52f
@@ -93,7 +95,7 @@ re-run artifact: 9591050209
 re-run digest: sha256:faa7ad1a75596a6bc75c602e097532fec0ebc0e6344c45bdad9a4e031ecc9534
 ```
 
-Both attempts:
+Both attempts had:
 
 ```text
 paid semantic calls: 0
@@ -103,31 +105,30 @@ status transitions: 0
 publication mutations: 0
 ```
 
-The guard therefore prevented the parser instability from being silently treated as source drift or Evidence authority.
-
 ---
 
-## 3. Context-stability diagnosis
+## 3. Parser-boundary diagnosis
 
-A disposable read-only diagnostic fetched the exact same Naver Source four times without an OpenAI secret.
+Disposable read-only diagnostic:
 
 ```text
-workflow run: 32924871316
+run: 32924871316
 artifact: 9591131170
 digest: sha256:6ded4e98a92c66a2914af0410784d8ebefd9a8162991303010cc7ceeff35e9f6
 ```
 
-All four fetches had:
+Four independent fetches had:
 
 ```text
 char_count: 4170
 line_count: 209
 identical title hash
+unique content hashes: 3
 ```
 
-but produced three distinct content hashes.
+The first 4,075 characters were identical. Only roughly 80 trailing characters changed, consisting of Naver platform metadata whose JSON key ordering varied between requests.
 
-The first 4,075 characters were identical. The changing region was only about 80 characters near the tail and consisted of the same Naver platform metadata keys in different JSON ordering, including:
+Observed varying keys included:
 
 ```text
 smartEditorVersion
@@ -138,209 +139,148 @@ lineDisplay
 cafeDisplay
 ```
 
-Therefore:
+Conclusion:
 
 ```text
 source-author content drift: not demonstrated
-parser boundary defect: demonstrated
+source-full-context-fetch-v0.1 parser overflow: demonstrated
 ```
 
-`source-full-context-fetch-v0.1` located the opening `se-main-container` but did not stop at its matching closing tag, allowing post-container platform metadata to enter `content_text` and therefore the content hash.
+The v0.1 parser located the opening `se-main-container` but did not stop at its matching closing tag.
 
 ---
 
-## 4. Full-context canonicalization v0.2
+## 4. Canonicalization correction
 
-`source-full-context-fetch-v0.2` changes the Naver parser boundary, not the Evidence semantics.
-
-For the selected post body container it now:
-
-1. locates the selected opening element;
-2. tracks nested elements of the same tag name;
-3. ignores comments and script/style bodies during depth scanning;
-4. stops exactly at the matching closing element;
-5. excludes Naver metadata after that closing element;
-6. retains the previous footer-marker behavior only as a malformed-HTML fallback.
-
-Regression tests freeze that two HTML responses with identical visible post content but different trailing metadata key order produce:
+Correction PR:
 
 ```text
-identical content_text
-identical content_hash
+PR #112
+exact head: 5071a625db95e3c542d5815e3463b614351a6826
+CI #414: SUCCESS
+PIE #84: SUCCESS
+merged main: 264e3d1cd44a209cf087952dff5f1e8857acdd6c
+merged-main CI #415: SUCCESS
 ```
 
-This is a source-context authority correction. It does not change Source Admission, Incident, Canonical Problem, Evidence, or publication authority.
+`source-full-context-fetch-v0.2` now extracts the selected Naver post body to its matching closing element using balanced nesting.
+
+Post-container platform metadata is excluded from canonical `content_text` and therefore from the canonical hash.
+
+Regression tests freeze that identical post bodies with different trailing metadata key order produce identical text and hash.
+
+The Evidence semantics were not relaxed.
 
 ---
 
-## 5. Residual recovery strategy v0.2
+## 5. v0.2 residual authority
 
-The original 15.8S observer request used:
-
-```text
-max_output_tokens = 800
-```
-
-15.8S-R still reuses the exact same observer, prompt, JSON schema, exact-substring validator, model selection, and Source identity.
-
-The only semantic-request shape change remains:
+Phase authority version:
 
 ```text
-max_output_tokens = 4000
+phase15.8s-r-evidence-residual-v0.2
 ```
 
-The wrapper asserts that the request entering the residual boundary still has the original 800-token value before applying the bounded override.
+Before the paid semantic call the runner requires exactly two independent current canonical context fetches and exact equality for:
 
-No prompt relaxation, alternate Evidence rule, alternate source, or generic retry loop is introduced.
+```text
+fetch authority version
+status = resolved
+content_scope = full_post
+truncated = false
+content hash
+original character count
+title
+canonical content_text
+```
+
+The historical v0.1 hash remains provenance only and is not compared to the corrected v0.2 hash.
+
+The residual observer otherwise preserves the original 15.8S contract.
+
+The only semantic-request change is:
+
+```text
+max_output_tokens: 800 -> 4000
+```
+
+Exactly one new semantic attempt is authorized.
 
 ---
 
-## 6. Current canonical stability gate
+## 6. Authoritative v0.2 live result
 
-15.8S-R resolves only:
-
-```text
-yeogieottae_reservation_fulfillment_gap_case
-```
-
-Before the paid semantic call it must verify:
+Workflow:
 
 ```text
-source platform = naver_blog
-current source_key SHA-256 = authoritative 15.8S source-key hash
-
-canonical fetch #1:
-  version = source-full-context-fetch-v0.2
-  status = resolved
-  content_scope = full_post
-  truncated = false
-
-canonical fetch #2:
-  version = source-full-context-fetch-v0.2
-  status = resolved
-  content_scope = full_post
-  truncated = false
-
-fetch #1 == fetch #2 for:
-  content hash
-  original character count
-  title
-  exact canonical content_text
+Source Public Evidence Residual 15.8S-R
 ```
 
-Any current instability fails closed before the model call.
+Authoritative run:
 
-The historical v0.1 hash is recorded in the artifact as provenance but is not compared to the corrected v0.2 hash.
+```text
+run: 32925560405
+head: 264e3d1cd44a209cf087952dff5f1e8857acdd6c
+result: SUCCESS
+```
+
+Artifact:
+
+```text
+id: 9591376560
+digest: sha256:edfc3e0fb39fad937e926cda027cc90ef2e31326d2ad8e70aafe0ce653e47ed9
+```
+
+Canonical context:
+
+```text
+fetch version: source-full-context-fetch-v0.2
+stability fetches: 2
+stable_context: true
+canonical_context_hash: dce258f3c6191bcd46372f7da29f637dfaf4c110f59ac414f5ae79381409f8ec
+canonical_context_char_count: 3823
+content_scope: full_post
+truncated: false
+```
+
+Residual semantic result:
+
+```text
+evidence_state: review
+ready: false
+reason: public_evidence_invalid_exact_excerpt
+support_level: null
+excerpt_length: 0
+excerpt_sha256: null
+```
+
+The provider-incomplete condition was therefore no longer the terminal failure. The semantic response completed, but the candidate excerpt failed the deterministic exact-contiguous-substring validator.
+
+The phase does not authorize another semantic retry or excerpt repair.
 
 ---
 
-## 7. Attempt budget
-
-This phase permits exactly one new semantic attempt after the v0.2 stability gate passes.
+## 7. Final combined readiness
 
 ```text
-Phase 15.8S semantic attempts:   2
-failed v0.1 S-R semantic calls:  0
-Phase 15.8S-R v0.2 attempts:     1 maximum
-maximum semantic total:          3
+total_required: 2
+ready_count: 1
+all_evidence_ready: false
+distinct_source_key_fingerprints: 2
+distinct_incident_keys: 2
+residual_ready: false
+would_meet_current_publication_cardinality_if_exact_plans_were_persisted: false
 ```
 
-`maxSemanticAttempts` inside the residual runner remains `1`.
+The second Incident/Source identity is independent, but it does not have an authorized publication-grade exact Evidence excerpt.
 
-If the provider remains incomplete, or if the result is partial/unclear/none, no further automatic recovery is authorized by this phase.
+Therefore the existing one ready Evidence plan cannot be persisted as a partial publication set for this draft under the current governed flow.
 
 ---
 
-## 8. Readiness contract
+## 8. Database zero-mutation proof
 
-The exact 15.8S contract remains unchanged:
-
-```text
-support_level = direct
-+ exact contiguous source excerpt
-+ excerpt length <= 600
-→ ready
-```
-
-Partial/unclear/none remain review or blocked under the existing deterministic gate.
-
-The residual phase cannot reinterpret a non-direct result as ready.
-
----
-
-## 9. Artifact/privacy boundary
-
-15.8S-R does not persist the candidate excerpt text in its artifact.
-
-It may persist only:
-
-```text
-incident key
-readiness state
-reason codes
-support level
-excerpt length
-excerpt SHA-256
-source-key SHA-256
-source observed time
-historical v0.1 context hash
-current v0.2 canonical context hash/count/version
-context stability fetch count
-completion budget metadata
-combined readiness aggregates
-```
-
-It must not persist:
-
-```text
-Source Signal UUID
-Incident UUID
-Public Problem UUID
-canonical URL
-fetched URL
-raw text
-full source body
-provider request ID
-exact excerpt text
-```
-
----
-
-## 10. Combined readiness
-
-The Phase 15.8S ready item is carried forward by hash/length authority only.
-
-If the residual item becomes ready, the combined state may become:
-
-```text
-ready_count = 2
-all_evidence_ready = true
-distinct source-key fingerprints = 2
-distinct Incident keys = 2
-would_meet_current_publication_cardinality_if_exact_plans_were_persisted = true
-```
-
-This remains a simulation. It is not Evidence persistence or publication authority.
-
----
-
-## 11. Database boundary
-
-15.8S-R remains read-only.
-
-Expected mutation:
-
-```text
-0 database write statements
-0 Public Evidence rows
-0 Problem mutations
-0 status transitions
-0 publication mutations
-```
-
-The runner snapshots all protected counts before/after and requires exact equality. Target Evidence must remain zero and the target draft must remain absent from the public feed.
-
-The independent Supabase readback after the failed v0.1 live attempts remained:
+Artifact before/after counts were identical:
 
 ```text
 source_signals: 3245
@@ -354,29 +294,72 @@ public_feed: 2
 source_incidents: 6
 source_incident_links: 7
 full_context_outcomes: 82
+```
+
+Independent Supabase post-readback matched:
+
+```text
 target active draft: 1
 target Evidence: 0
 target public feed: 0
 ```
 
----
-
-## 12. Corrected release flow
+Downstream mutations:
 
 ```text
-v0.2 canonicalization correction PR
-→ exact-head CI / PIE
-→ merge main
-→ merged-main CI
-→ fast-forward the existing one-shot residual live trigger branch
-→ authoritative v0.2 residual live run
-→ artifact + independent DB verification
-→ remove temporary live trigger
-→ closeout PR / CI / PIE
-→ merge
-→ merged-main CI
+database write statements: 0
+Public Evidence rows written: 0
+existing Problem mutations: 0
+status transitions: 0
+publication mutations: 0
+full source bodies persisted: 0
+exact excerpt persisted in artifact: false
 ```
 
-Only if the residual item becomes exact-ready may a later Phase 15.8T design deterministic Evidence persistence from the two hash/length authorities.
+---
 
-Public Evidence persistence and publication remain NOT AUTHORIZED in 15.8S-R.
+## 9. Final authority boundary
+
+Phase 15.8S-R establishes:
+
+```text
+one publication-grade Evidence plan: YES
+second publication-grade Evidence plan: NO
+combined Evidence readiness 2/2: NO
+```
+
+It does not authorize:
+
+```text
+Public Evidence INSERT
+partial one-row Evidence persistence for the target draft
+Canonical Problem edits
+status transition
+publication
+additional automatic semantic retry for this residual item
+model-generated excerpt repair
+```
+
+The next governed step must obtain a second publication-grade Evidence authority through a separate source/evidence path or explicitly redesign the Evidence acquisition authority. It must not treat the rejected model excerpt as Evidence.
+
+---
+
+## 10. Closeout condition
+
+Closeout requires:
+
+```text
+remove temporary agent/phase15-8s-r-live-execution push trigger
+retain workflow_dispatch only
+closeout exact-head CI / PIE SUCCESS
+merge closeout changeset
+merged-main CI SUCCESS
+```
+
+After those conditions are satisfied:
+
+```text
+Phase 15.8S-R = CLOSED
+Public Evidence persistence = NOT AUTHORIZED
+Publication = NOT AUTHORIZED
+```
