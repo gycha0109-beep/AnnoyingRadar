@@ -2,163 +2,224 @@
 
 ## Status
 
-**IMPLEMENTED — pending PR / CI / PIE / one-shot live reproduction**
+**CLOSED**
 
-Phase 15.9K follows closed Phase 15.9J.
+Phase 15.9K reproduced the Phase 15.9J Formation provider-incomplete issue on the two frozen-context targets and tested one bounded output-budget recovery without changing Formation policy or granting downstream authority.
 
-Phase 15.9J left exactly two Sources with unchanged frozen context but unresolved Problem Formation semantics:
+Final empirical conclusion:
 
 ```text
-ordinal 9  -> source_formation_provider_incomplete after 2 attempts
-ordinal 16 -> source_formation_provider_incomplete after 2 attempts
+formation_provider_incomplete_recoverable_with_bounded_output_budget
 ```
 
-Ordinal 4 is intentionally excluded because its current body hash drifted from the frozen H/I authority. Current-context revalidation for ordinal 4 is a separate governed problem.
-
-Phase 15.9K asks only:
-
-> Is the Formation provider-incomplete result reproducible, and is it recoverable with a bounded output-budget retry while preserving the same Formation prompt/policy and frozen source context?
-
-It does not create Incident authority.
+This conclusion means the provider completion failure was recoverable for at least one target under the bounded diagnostic retry. It does **not** mean any Source became Formation eligible or Incident-authorized.
 
 ## 1. Closed baseline
-
-Required main:
 
 ```text
 Phase 15.9J final main = 6a7bfb80cfa9e0281d7daf473d6193e538599524
 merged-main CI #484 = SUCCESS
 full-context outcomes = 85
 Phase 15.9I durable Candidate batch rows = 3
+target ordinals = 9, 16
 ```
 
-Target ordinals:
+Ordinal 4 remained excluded because its current body hash had drifted from frozen H/I authority.
+
+## 2. Implementation release lineage
+
+Implementation PR:
 
 ```text
-9, 16
+PR #143
+exact head = 22838cf5d98e2df3f23ac62bdf76488cdffa445c
+CI #485 = SUCCESS
+PIE #126 = SUCCESS
+implementation main = 75ebfc331cbc5712c7a7bc788c6e98ef614385e1
+merged-main CI #486 = SUCCESS
 ```
 
-Both targets must still match their exact Phase 15.9H/I frozen context authority before any Formation provider request is made.
+No production Formation policy was modified.
 
-## 2. Blind / downstream boundary
-
-Before canonical URL or body reads Phase 15.9K must prove:
+The phase-local diagnostic recovery contract remained:
 
 ```text
-Blind overlap = 0
+attempt 1:
+  max_output_tokens = 1200
+  existing source-problem-formation-semantic-v0.1 prompt/schema
+
+attempt 2 only after retryable source_formation_provider_incomplete:
+  max_output_tokens = 2400
+  same source body/title/origin/schema/policy
+  + concise recovery instruction
 ```
 
-It also requires no existing target assignment in:
+No invalid-quote retry or other terminal-error retry was authorized.
+
+## 3. Authoritative live reproduction
 
 ```text
-ar_source_incident_links
-ar_public_problem_evidence_snapshots
+workflow = Source Formation Provider Recovery 15.9K
+run #1 = 33046626749
+execution SHA = 75ebfc331cbc5712c7a7bc788c6e98ef614385e1
+result = SUCCESS
+artifact = 9635910441
+artifact digest = sha256:49b6c19fb3b29274f23ce55890ffc05ff2df40949a8ece570c5b7b411291274b
 ```
 
-Only after these checks may URL/body fields be loaded.
-
-## 3. Context-integrity gate
-
-Each target is fetched twice using:
+Global execution:
 
 ```text
-SOURCE_FULL_CONTEXT_EXTERNAL_POLICY = bounded_public_html
+targets = 2
+Blind overlap before URL/body read = 0
+context integrity passed = 2
+context drift = 0
+source network requests = 4 / max 16
+model calls = 3 / max 4
+database writes = 0
+actual semantic source platform = external_web
 ```
 
-The pair must be stable and match the frozen H/I authority on:
+Summary:
 
 ```text
-status = resolved
-truncated = false
-content_scope = full_post
-content SHA-256
-original char count
-body length
-extraction scope
-title SHA-256
+baseline_resolved = 1
+provider_recovery_attempted = 1
+provider_recovered_after_budgeted_retry = 1
+provider_recovery_exhausted = 0
+eligible = 0
+provenance_review = 0
+review = 1
+reject = 1
+unresolved = 1
 ```
 
-A target that drifts receives no Formation model call and cannot contribute to provider-recovery conclusions.
-
-## 4. Why Phase 15.9K exists
-
-The existing Formation observer uses:
+Observed provider incomplete detail:
 
 ```text
-max_output_tokens = 1200
+max_output_tokens = 1 occurrence
 ```
 
-Its built-in recovery retries `source_formation_provider_incomplete` once, but the second request uses the same output budget and essentially the same request.
+## 4. Ordinal 9 — provider output-budget failure reproduced and recovered
 
-Phase 15.9H established a narrower precedent for full-context semantic recovery: provider-incomplete may receive one bounded retry with a larger output budget and a concise recovery instruction, without changing deterministic policy.
-
-Phase 15.9K applies the same diagnostic principle to Formation only.
-
-## 5. Recovery contract
-
-### Attempt 1 — exact current Formation request
+Prior snippet rejection stratum:
 
 ```text
-max_output_tokens = 1200
-prompt version = source-problem-formation-semantic-v0.1
-actual source platform = external_web
+title_truncated_no_complaint_signal
 ```
 
-No recovery instruction is injected.
+Frozen context integrity remained exact H/I authority.
 
-### Attempt 2 — only after retryable provider-incomplete
-
-Authorized trigger:
+Attempt 1:
 
 ```text
-source_formation_provider_incomplete
+requested max_output_tokens = 1200
+HTTP status = 200
+provider status = incomplete
+incomplete_details.reason = max_output_tokens
+output_tokens = 1152
+reasoning_tokens = 1152
 ```
 
-Recovery request:
+This directly identifies the provider-incomplete mechanism observed in this run as output-budget exhaustion.
+
+Bounded recovery attempt:
 
 ```text
-max_output_tokens = 2400
-same semantic schema
-same deterministic Formation policy
-same source body
-same title
-same source origin
-+ concise recovery instruction only
+requested max_output_tokens = 2400
+HTTP status = 200
+provider status = completed
+output_tokens = 1308
+reasoning_tokens = 1088
+recovery = SUCCESS
 ```
 
-The recovery instruction asks the provider to return only the required structured fields, keep proposals concise, and avoid unnecessary reasoning/explanation.
-
-No policy fact, eligibility rule, provenance rule, responsibility rule, or evidence-quote rule changes.
-
-## 6. Explicitly forbidden retries
-
-No retry is authorized for:
+Recovered semantic facts were grounded by the same frozen full context and existing Formation authority:
 
 ```text
-source_formation_invalid_evidence_quote
-source_formation_provider_invalid_json
-semantic review/reject
-any deterministic Formation result
-other terminal errors
+problem_claim = yes
+experience_actor = self
+friction_specificity = concrete
+pain_centrality = incidental
+content_kind = organic
+source_origin = original
+friction_responsibility = external_process_or_policy
+evidence quote grounded = true
 ```
 
-Quote repair remains disabled.
-
-Maximum attempts:
+Existing deterministic Formation result:
 
 ```text
-2 per target
+formation_state = reject
+resolved = true
+reason = formation_incidental_friction
 ```
 
-Maximum model calls:
+Therefore ordinal 9 is **not** a Formation-eligible Source. The provider failure had hidden a deterministic Formation reject.
+
+## 5. Ordinal 16 — provider failure did not reproduce on the fresh baseline call
+
+Prior snippet rejection stratum:
 
 ```text
-2 targets x 2 = 4
+title_information_or_guide
 ```
 
-## 7. Provider diagnostics
+Frozen context integrity remained exact H/I authority.
 
-The phase-local instrumented fetch records only privacy-safe provider completion metadata:
+Fresh attempt:
+
+```text
+requested max_output_tokens = 1200
+HTTP status = 200
+provider status = completed
+output_tokens = 1118
+reasoning_tokens = 896
+recovery attempted = false
+```
+
+Thus the Phase 15.9J provider-incomplete outcome was not reproduced for ordinal 16 on this run.
+
+Observed semantic facts:
+
+```text
+problem_claim = yes
+experience_actor = self
+friction_specificity = concrete
+pain_centrality = central
+content_kind = organic
+source_origin = original
+friction_responsibility = mixed
+evidence quote grounded = true
+```
+
+Existing deterministic Formation result:
+
+```text
+formation_state = review
+resolved = false
+reason = formation_semantic_uncertain
+```
+
+Ordinal 16 remains unresolved, but the remaining issue is now semantic Formation uncertainty rather than a provider completion failure in this run.
+
+## 6. Provider reliability finding
+
+Phase 15.9K supports the following bounded conclusion:
+
+```text
+The existing 1200-token Formation response budget can produce
+source_formation_provider_incomplete via max_output_tokens exhaustion.
+A one-shot 2400-token recovery completed the same structured task for ordinal 9.
+```
+
+It does not establish that every historical provider-incomplete result was caused by the same mechanism.
+
+It also does not automatically authorize changing the production observer. A separate implementation/policy-promotion phase is required before the 2400-token recovery behavior can become runtime authority.
+
+## 7. Privacy / artifact boundary
+
+The artifact stores privacy-safe provider metadata only:
 
 ```text
 attempt number
@@ -166,130 +227,94 @@ recovery boolean
 requested max_output_tokens
 HTTP status
 provider status
-incomplete_details.reason
+incomplete reason
 output token count
 reasoning token count
+semantic category fields
+hashed evidence-quote metadata
 ```
 
-It does not persist or emit provider request bodies, provider response text, request IDs, source body, source URL, or exact evidence quote.
-
-This allows Phase 15.9K to distinguish, for example, a provider `max_output_tokens` exhaustion from an unspecified incomplete status without weakening source privacy boundaries.
-
-## 8. Formation result boundary
-
-If a semantic response completes, the existing deterministic resolver remains authoritative:
+It does not emit:
 
 ```text
-resolveProblemFormationSemantic()
+Source UUID
+canonical URL
+fetched URL
+raw snippet
+full source body
+provider request body
+provider response text
+provider request ID
+exact evidence quote
 ```
 
-Possible states remain:
+## 8. Independent production DB readback
+
+Artifact before/after and independent Supabase readback agree:
 
 ```text
-eligible
-provenance_review
-review
-reject
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 85
+Phase 15.9I batch rows = 3
 ```
 
-The artifact may record semantic category fields and hashed evidence-quote metadata, but never the exact quote.
+All protected domains remained unchanged.
 
-Even `eligible` in this phase grants no Incident authority.
-
-## 9. Cost / network bounds
+Authorized DB writes:
 
 ```text
-targets = 2
-body acquisitions = 4
-maximum source HTTP requests including redirects = 16
-maximum model calls = 4
-DB writes = 0
+0
 ```
 
-## 10. Database boundary
+## 9. Closed authority boundary
 
-All before/after counts must remain identical for:
+Phase 15.9K establishes only:
 
 ```text
-ar_source_signals
-ar_source_signal_observations
-ar_source_ingestion_runs
-ar_raw_inputs
-ar_pain_evidences
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_public_problem_feed
-ar_source_incidents
-ar_source_incident_links
-ar_source_full_context_resolution_outcomes
+ordinal 9:
+  provider incomplete cause observed = max_output_tokens
+  bounded 2400 recovery = successful
+  final Formation = reject / formation_incidental_friction
+
+ordinal 16:
+  fresh 1200 provider call = completed
+  final Formation = review / formation_semantic_uncertain
 ```
 
-Forbidden:
+It does **not** establish:
 
 ```text
-Source mutation
-full-context outcome mutation
-Incident creation
+Formation eligibility for any target
+Incident identity
+Incident persistence
 Source -> Incident linking
-problem_signature assignment
-Canonical/Public Problem creation
-Public Evidence persistence
+problem_signature
+Canonical/Public Problem
+Public Evidence
 publication
+current-context replacement for ordinal 4
+production activation of the 2400-token recovery policy
 ```
 
-## 11. Possible conclusions
+## 10. Next governed work
 
-```text
-formation_provider_incomplete_recoverable_with_bounded_output_budget
-formation_provider_incomplete_not_reproduced
-formation_provider_incomplete_persists_after_bounded_recovery
-formation_provider_reproduction_blocked_by_context_drift
-formation_provider_recovery_inconclusive
-```
+No curator/Incident phase is justified because `eligible = 0`.
 
-A successful workflow run is not itself a claim that provider recovery succeeded. The artifact conclusion and per-target attempt metadata are authoritative.
+The remaining work is now split cleanly:
 
-## 12. Workflow
+1. **Formation recovery-policy promotion decision** — whether the empirically successful provider-incomplete-only 1200→2400 retry should become reusable runtime Formation recovery authority.
+2. **Ordinal 16 semantic uncertainty** — determine whether `friction_responsibility = mixed` should remain review or can be resolved by an existing deterministic/curator authority without changing policy.
+3. **Ordinal 4 current-context revalidation** — separate because its current body no longer matches frozen H/I authority.
 
-```text
-.github/workflows/source-formation-provider-recovery-15-9k.yml
-```
+These must not be collapsed into Incident creation.
 
-Temporary one-shot live branch:
-
-```text
-agent/phase15-9k-live-execution
-```
-
-The workflow always checks out authoritative `main`.
-
-The temporary push trigger must be removed during closeout.
-
-## 13. Close criterion
-
-Phase 15.9K may close only after:
-
-1. implementation diff review;
-2. exact-head CI success;
-3. exact-head PIE success;
-4. expected-head merge;
-5. merged-main CI success;
-6. one-shot live run from exact merged main;
-7. exact ordinal 9/16 durable authority reconstruction;
-8. Blind overlap 0 before URL/body reads;
-9. no pre-existing Incident/Public Evidence assignment;
-10. both current contexts accounted for by exact integrity gate;
-11. baseline attempt remains 1200 tokens;
-12. retry occurs only after retryable provider-incomplete;
-13. retry budget is exactly 2400 tokens;
-14. provider incomplete metadata is captured without raw provider/source payload;
-15. DB writes remain 0;
-16. artifact inspection and independent DB readback;
-17. temporary push trigger removal;
-18. closeout exact-head CI/PIE and merged-main CI success.
-
-## 14. Next governed work
-
-If bounded recovery resolves one or both targets, the result can justify a later Formation recovery-policy promotion or curator-facing Formation decision phase, but Phase 15.9K itself does not activate either.
-
-If provider-incomplete persists even at the bounded recovery budget, further provider/model/output-schema diagnosis remains separate from Incident formation.
+The Phase 15.9K workflow is manual-only after closeout.
