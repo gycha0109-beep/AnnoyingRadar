@@ -2,9 +2,6 @@ name: Source Durable Candidate Formation Audit 15.9J
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9j-live-execution
 
 permissions:
   contents: read
