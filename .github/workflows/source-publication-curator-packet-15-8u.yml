@@ -2,9 +2,6 @@ name: Source Publication Curator Packet 15.8U
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8u-live-execution
 
 permissions:
   contents: read
