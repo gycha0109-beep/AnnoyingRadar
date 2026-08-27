@@ -163,8 +163,8 @@ async function main() {
   assert.equal(result.authority, "durable_formation_assessment_not_incident_authority");
   assert.equal(result.persisted.assessment_schema_version, SOURCE_FORMATION_ASSESSMENT_SCHEMA_VERSION);
   assert.equal(result.persisted.assessment_batch_version, ASSESSMENT_BATCH_VERSION);
-  assert.equal(result.persisted.context_content_sha256, target.context_content_sha256);
-  assert.equal(result.persisted.context_char_count, target.context_char_count);
+  assert.equal(result.persisted.context_content_sha256, target.h_authority.context_hash);
+  assert.equal(result.persisted.context_char_count, target.h_authority.context_chars);
   assert.equal(result.downstream_authority.incident_identity_assigned, false);
   assert.equal(result.downstream_authority.public_evidence_created, false);
 
