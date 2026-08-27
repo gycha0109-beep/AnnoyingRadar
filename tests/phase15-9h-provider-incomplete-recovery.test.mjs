@@ -98,9 +98,9 @@ test("15.9H runner preserves external origin, read-only bounds, and provider-onl
   assert.match(script, /source_admission_recovery_authorized: false/);
   assert.match(script, /provider_recovery_product_activation: false/);
   assert.match(script, /assert\.deepEqual\(after, before/);
-  assert.doesNotMatch(script, /\.insert\(/);
-  assert.doesNotMatch(script, /\.update\(/);
-  assert.doesNotMatch(script, /\.upsert\(/);
-  assert.doesNotMatch(script, /\.delete\(/);
-  assert.doesNotMatch(script, /\.rpc\(/);
+
+  // Guard the Supabase write surface specifically. Generic `.update(` is not a
+  // valid mutation detector because Node's crypto hash API legitimately uses it.
+  assert.doesNotMatch(script, /\.from\([^)]*\)\s*\.(?:insert|update|upsert|delete)\(/);
+  assert.doesNotMatch(script, /\bclient\s*\.rpc\(/);
 });
