@@ -74,10 +74,11 @@ test("15.9B artifact uses safe Source fingerprints and excludes raw lineage/loca
   }
 });
 
-test("15.9B workflow is bounded and one-shot", async () => {
+test("15.9B workflow is manual-only after authoritative live closeout", async () => {
   const workflow = await read(".github/workflows/source-targeted-telecom-acquisition-15-9b.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9b-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9b-live-execution/);
   assert.match(workflow, /ALLOW_PHASE15_9B_TARGETED_ACQUISITION: "true"/);
   assert.match(workflow, /run-targeted-telecom-acquisition-15-9b\.mjs --live/);
   assert.match(workflow, /retention-days: 1/);

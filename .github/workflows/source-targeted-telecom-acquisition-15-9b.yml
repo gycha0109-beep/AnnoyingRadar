@@ -2,9 +2,6 @@ name: Source Targeted Telecom Acquisition 15.9B
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9b-live-execution
 
 permissions:
   contents: read
