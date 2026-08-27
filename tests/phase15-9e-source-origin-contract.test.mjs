@@ -151,8 +151,8 @@ test("15.9E verification remains read-only and blind-safe", async () => {
   assert.match(script, /blind_overlap/);
   assert.match(script, /classifySourceOrigin/);
   assert.match(script, /database_writes: 0/);
-  assert.match(script, /expected_naver_blog: 5/);
-  assert.match(script, /expected_external_web: 308/);
+  assert.match(script, /EXPECTED_NAVER_BLOG = 5/);
+  assert.match(script, /EXPECTED_EXTERNAL_WEB = 308/);
   assert.doesNotMatch(script, /\.insert\(/);
   assert.doesNotMatch(script, /\.upsert\(/);
   assert.doesNotMatch(script, /\.delete\(/);
