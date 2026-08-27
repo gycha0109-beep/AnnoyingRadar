@@ -2,9 +2,6 @@ name: Source External Semantic Rejection Diagnostics 15.9G
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9g-live-execution
 
 permissions:
   contents: read
