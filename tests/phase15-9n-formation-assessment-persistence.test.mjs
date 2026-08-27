@@ -144,9 +144,18 @@ test("15.9N can persist an unresolved provider assessment while retaining exact 
   assert.equal(row.recovery_attempt_count, 2);
 });
 
-test("15.9N fails closed on context drift or truncation", () => {
+test("15.9N fails closed on fetch hash mismatch, Admission drift, or truncation", () => {
+  const driftedText = `${FULL_TEXT} drift`;
   assert.throws(
-    () => validateFormationContextAgainstAdmission(admission(), fullContext({ content_text: `${FULL_TEXT} drift` })),
+    () => validateFormationContextAgainstAdmission(admission(), fullContext({ content_text: driftedText })),
+    /fetch content_hash does not match the exact fetched text/,
+  );
+  assert.throws(
+    () => validateFormationContextAgainstAdmission(admission(), fullContext({
+      content_text: driftedText,
+      content_hash: sha256(driftedText),
+      original_char_count: driftedText.length,
+    })),
     /drifted from durable Source Admission authority/,
   );
   assert.throws(
