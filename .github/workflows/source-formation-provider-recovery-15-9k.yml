@@ -2,9 +2,6 @@ name: Source Formation Provider Recovery 15.9K
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9k-live-execution
 
 permissions:
   contents: read
