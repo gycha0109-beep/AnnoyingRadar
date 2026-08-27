@@ -2,7 +2,7 @@
 
 ## Status
 
-**AUTHORITATIVE LIVE SUCCESS / CLOSEOUT PENDING**
+**CLOSED — 2026-08-27**
 
 Phase 15.8V executed the explicit curator approval received after Phase 15.8U.
 
@@ -57,8 +57,6 @@ Normalized approval:
 
 ## 2. Implementation authority
 
-Implementation PR:
-
 ```text
 PR #120
 exact head = 473cc35b0a23c767acd304918a5ae8c659983e82
@@ -75,7 +73,7 @@ merged-main CI #431 = SUCCESS
 
 No new migration was required.
 
-The live runner uses only the existing curator-gated function:
+The live runner used only the existing curator-gated function:
 
 ```text
 ar_set_public_problem_status(problem_id, curator_user_id, 'published')
@@ -83,7 +81,7 @@ ar_set_public_problem_status(problem_id, curator_user_id, 'published')
 
 The existing RPC reruns `ar_assert_public_problem_publishable(...)` before the status mutation.
 
-Current function privileges independently verified before execution:
+Function privileges were independently verified before execution:
 
 ```text
 service_role = true
@@ -95,15 +93,11 @@ authenticated = false
 
 ## 3. Exact pre-publication guards
 
-Before the state-changing RPC, the runner required exact agreement with the previously approved authorities:
+Before the state-changing RPC, the runner required exact agreement with:
 
 ```text
 problem_signature
-Phase 15.8Q title
-Phase 15.8Q summary
-Phase 15.8Q target_user
-Phase 15.8Q situation
-Phase 15.8Q category
+Phase 15.8Q title / summary / target_user / situation / category
 Phase 15.8T Evidence fingerprints
 Phase 15.8T Incident identities
 exact Source→Incident lineage
@@ -124,31 +118,14 @@ No metadata or Evidence changes were authorized or performed.
 
 ## 4. Authoritative live publication
 
-One-shot branch:
-
 ```text
-agent/phase15-8v-live-execution
-```
-
-Authoritative main checked out by the workflow:
-
-```text
-f7e11fd9631a603821f193e274665bb92711f388
-```
-
-Live run:
-
-```text
+one-shot branch = agent/phase15-8v-live-execution
+authoritative main = f7e11fd9631a603821f193e274665bb92711f388
 run = 33028360345
 result = SUCCESS
 artifact = 9629272947
 digest = sha256:202675babdd6710b1843c6bcf3dd3b0736ce4fd41e646f6ac85e8e5dc4bcf0c5
-```
-
-Artifact authority:
-
-```text
-explicit_curator_approved_publication_execution
+authority = explicit_curator_approved_publication_execution
 ```
 
 Live transition:
@@ -181,7 +158,6 @@ Public Feed                   2 → 3
 Source Incidents              6 → 6
 Source→Incident links         7 → 7
 Full-context Outcomes        82 → 82
-
 published Problems            2 → 3
 draft Problems                1 → 0
 target feed rows               0 → 1
@@ -203,8 +179,6 @@ public feed = 3
 ---
 
 ## 6. Evidence integrity after publication
-
-Independent DB readback confirmed the durable Evidence pair remained unchanged.
 
 ```text
 order 0
@@ -232,16 +206,19 @@ No Evidence or Source lineage mutation accompanied publication.
 
 ---
 
-## 7. Closeout boundary
+## 7. Closeout authority
 
-The temporary live push trigger is removed in the closeout branch. The workflow remains manual-only through `workflow_dispatch`.
-
-Closeout is complete only after:
+Closeout PR:
 
 ```text
-closeout PR exact-head CI / PIE
-→ merge
-→ merged-main CI
+PR #121
+initial closeout validation:
+CI #432 = SUCCESS
+PIE #93 = SUCCESS
 ```
 
-No further publication mutation is part of Phase 15.8V.
+The temporary `agent/phase15-8v-live-execution` push trigger was removed. The publication workflow is now `workflow_dispatch` only.
+
+The final closeout commit is required to pass exact-head CI / PIE before merge, followed by merged-main CI. Those immutable run and merge identifiers are recorded on PR #121 and the completion report rather than recursively embedded into the commit they validate.
+
+Phase 15.8V has no remaining authorized mutation.
