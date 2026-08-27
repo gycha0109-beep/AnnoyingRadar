@@ -2,24 +2,39 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE PILOT NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
-Phase 15.9F follows the closed Phase 15.9E Source Origin Contract Repair.
+Phase 15.9F follows the closed Phase 15.9E Source Origin Contract Repair and establishes a bounded, explicit opt-in acquisition path for actual `external_web` Sources.
 
-15.9E established that the Phase 15.9C newly inserted telecom cohort contains:
-
-```text
-313 Sources total
-actual Naver Blog origin = 5
-actual external web origin = 308
-blind-120 overlap = 0
-```
-
-15.9F does not rerun semantic rejection diagnostics yet. It establishes a bounded acquisition authority for external public HTML pages first.
+It does **not** authorize semantic Source Admission judgement or any governed-data mutation.
 
 ---
 
-## 1. Authority
+## 1. Frozen implementation authority
+
+Implementation PR:
+
+```text
+PR #132
+exact final head = ba81cf81ed67ad42dde4d436860e89cc02e72869
+CI #460 = SUCCESS
+PIE #112 = SUCCESS
+```
+
+The first PR CI attempt exposed a test-only false positive: a static mutation guard interpreted `createHash(...).update(...)` as a database `.update()` call. The guard was narrowed to Supabase mutation shapes and the final exact head passed the complete CI contract.
+
+Merged implementation main:
+
+```text
+a9696fba33f5f898539c15efefbf199d74d084ab
+merged-main CI #461 = SUCCESS
+```
+
+No migration is part of Phase 15.9F.
+
+---
+
+## 2. Acquisition contract
 
 The existing Naver full-context implementation remains:
 
@@ -27,41 +42,37 @@ The existing Naver full-context implementation remains:
 source-full-context-fetch-v0.2
 ```
 
-External web acquisition is added separately as:
+External web acquisition is separate:
 
 ```text
 external-web-full-context-fetch-v0.1
 ```
 
-Dispatch becomes:
+Dispatcher authority:
 
 ```text
 source-origin-dispatch-v0.2
 ```
 
-External acquisition is not enabled by default.
-
-A caller must explicitly pass:
+External acquisition remains fail-closed by default. It is enabled only when a caller explicitly supplies:
 
 ```text
 bounded_public_html
 ```
 
-through the dispatcher policy. Without that explicit policy, existing behavior remains:
+Without that policy:
 
 ```text
 external_web -> full_context_origin_unsupported
 ```
 
-This prevents Phase 15.9F from silently changing all historical full-context callers.
+Therefore 15.9F does not silently alter historical callers.
 
 ---
 
-## 2. External fetch safety contract
+## 3. External fetch safety contract
 
-The external fetcher is deliberately conservative.
-
-Before every request and every redirect it requires:
+Before every request and redirect the fetcher requires:
 
 ```text
 HTTP(S) only
@@ -69,7 +80,7 @@ no URL credentials
 no non-default ports
 no localhost / .local / .internal / .home / .lan
 no private / loopback / link-local / CGNAT / documentation / multicast / reserved literal IP
-DNS resolution must return only public Internet addresses
+DNS resolution must contain only public Internet addresses
 same normalized host across redirects
 maximum 3 redirects
 ```
@@ -79,18 +90,16 @@ Response acceptance requires:
 ```text
 text/html or application/xhtml+xml when Content-Type is present
 maximum response bytes = 2 MiB
-maximum canonical context chars = existing 60,000-char bound
+maximum canonical context chars = 60,000
 ```
 
-15.9F does not claim that a DNS preflight is a universal network sandbox. It is a fail-closed application guard for the bounded public-source workflow. The workflow itself runs without internal network credentials beyond the required Supabase read credential.
+The DNS preflight is a fail-closed application guard for this bounded public-source workflow; it is not claimed as a universal network sandbox.
 
 ---
 
-## 3. Extraction contract
+## 4. Extraction contract
 
-15.9F does not accept arbitrary body text as a full post.
-
-High-confidence extraction targets are limited to:
+Only high-confidence page regions are accepted:
 
 ```text
 <article>
@@ -98,7 +107,7 @@ known post/article content containers
 <main>
 ```
 
-Page chrome inside the selected container is stripped for:
+Page chrome is stripped for:
 
 ```text
 script
@@ -114,23 +123,54 @@ aside
 form
 ```
 
-A selected context must contain at least 120 readable characters.
+Minimum readable context length:
 
-If no high-confidence container exists, the result is:
+```text
+120 characters
+```
+
+There is no generic `<body>` fallback.
+
+A page without an accepted body container returns:
 
 ```text
 full_context_external_body_not_found
 ```
 
-There is intentionally no generic `<body>` fallback in 15.9F.
+---
 
-This protects the later semantic diagnostic from treating menus, related-post modules, navigation, or site chrome as user-authored complaint context.
+## 5. Frozen live pilot authority
+
+One-shot live branch:
+
+```text
+agent/phase15-9f-live-execution
+```
+
+Authoritative run:
+
+```text
+run = 33038468135
+head = a9696fba33f5f898539c15efefbf199d74d084ab
+status = SUCCESS
+```
+
+Disposable artifact:
+
+```text
+artifact id = 9632937597
+name = source-external-web-full-context-pilot-15-9f
+digest = sha256:2b2c835de8d54fe971f5c843129d4d31d978f971e5260f3cc24ddf50245b8e0d
+retention = 1 day
+```
+
+The workflow checked out authoritative `main`, validated only the Supabase credential needed for read access, and carried no model credential.
 
 ---
 
-## 4. Bounded pilot cohort
+## 6. Cohort and blind protection
 
-The live pilot reconstructs the exact Phase 15.9C campaign:
+The live pilot reconstructed the exact Phase 15.9C campaign:
 
 ```text
 8 completed ingestion runs
@@ -138,20 +178,20 @@ The live pilot reconstructs the exact Phase 15.9C campaign:
 313 newly inserted Sources
 ```
 
-Before canonical URLs are read, it loads blind evaluation IDs and requires:
+Blind protection occurred before canonical URL read:
 
 ```text
 blind overlap = 0
 ```
 
-Only then are canonical URLs loaded and the 15.9E origin authority is reproduced:
+The Phase 15.9E origin authority reproduced exactly:
 
 ```text
 naver_blog = 5
 external_web = 308
 ```
 
-The pilot selects exactly 16 external-web Sources:
+The deterministic pilot sample contained exactly 16 external-web Sources:
 
 ```text
 4 x title_no_complaint_signal
@@ -160,60 +200,93 @@ The pilot selects exactly 16 external-web Sources:
 4 x title_information_or_guide
 ```
 
-Selection is deterministic and external-only.
+---
+
+## 7. Live acquisition result
+
+All sixteen sampled Sources resolved successfully:
+
+```text
+total = 16
+resolved = 16
+unavailable = 0
+truncated = 0
+```
+
+Extraction scopes:
+
+```text
+content_container = 8
+article_element = 7
+main_element = 1
+```
+
+Network budget:
+
+```text
+actual requests = 16
+maximum authorized requests = 64
+redirects = 0 for all sampled Sources
+```
+
+Every resolved item reported HTTP 200 and a non-null full-context hash and character count.
+
+This establishes that the failure observed in Phase 15.9D was an acquisition-contract limitation for this deterministic sample, not evidence that the source bodies were inaccessible.
+
+It does **not** establish that any of the sixteen are semantic false negatives. That question remains unjudged in 15.9F.
 
 ---
 
-## 5. Live pilot limits
+## 8. Durable-state invariance
 
-The live pilot permits:
-
-```text
-sampled public HTML fetches only
-maximum network requests = 64 including redirects
-sequential acquisition
-12-second per-source dispatcher timeout
-```
-
-It forbids:
+The live artifact reported identical before/after counts, and an independent Supabase readback reproduced the same authority:
 
 ```text
-LLM/model calls
-Source Admission mutation
-full-context outcome persistence
-historical origin backfill
-Incident creation
-Source→Incident linking
-problem_signature assignment
-Canonical Problem creation
-Public Evidence persistence
-publication
+source_signals          3562
+source_observations     3892
+source_ingestion_runs    144
+raw_inputs                10
+pain_evidences            27
+public_problems             3
+public_evidence             7
+public_feed                 3
+source_incidents            6
+source_incident_links        7
+full_context_outcomes       82
+explicit_origin_rows         0
 ```
 
-Database writes must remain exactly zero.
+Therefore:
+
+```text
+database writes = 0
+full-context outcome persistence = 0
+historical origin backfill = 0
+model calls = 0
+```
 
 ---
 
-## 6. Artifact privacy
+## 9. Artifact privacy
 
-The disposable one-day artifact may contain only safe acquisition diagnostics such as:
+The disposable artifact contains only bounded acquisition diagnostics:
 
 ```text
 rejection stratum
-existing external identity hash
-existing content hash
+external identity hash
+source content hash
 origin host SHA-256
 fetch status/error code
 fetch/dispatch version
 extraction scope
-context hash/character count
+full-context hash/character count
 truncation flag
 redirect count
 HTTP status
 aggregate DB counts
 ```
 
-It must not contain:
+It contains no:
 
 ```text
 Source Signal UUID
@@ -228,29 +301,54 @@ Public Problem UUID
 
 ---
 
-## 7. Success interpretation
+## 10. Not authorized
 
-15.9F answers only:
+Phase 15.9F does not authorize:
 
-> Can a conservative, bounded external-web acquisition path recover semantically usable-looking post bodies from a deterministic sample without changing governed data?
-
-It does not answer whether the recovered Sources are actual false negatives.
-
-That semantic question belongs to a later Phase 15.9G rejection-diagnostic rerun after 15.9F is closed.
+```text
+default external-web dispatch enablement
+semantic Source Admission judgement
+Source Admission mutation
+full-context outcome persistence
+historical Source origin backfill
+Incident creation
+Source→Incident linking
+problem_signature assignment
+Canonical Problem creation
+Public Evidence persistence
+publication
+```
 
 ---
 
-## 8. Release sequence
+## 11. Next governed phase
+
+After Phase 15.9F closeout, the appropriate next phase is a read-only semantic rejection diagnostic over the **15.9F-resolved contexts**.
+
+That future phase may determine whether the four rejection strata contain actual Source Admission false negatives, but it must preserve:
 
 ```text
-implementation PR
--> exact-head CI / PIE
--> merge main
--> merged-main CI
--> one-shot bounded live pilot
--> artifact inspection
--> independent DB readback
--> remove temporary push trigger
+blind protection
+frozen deterministic cohort
+no Source Admission mutation
+no Incident/problem/publication mutation
+```
+
+until separate authority is established.
+
+---
+
+## 12. Closeout sequence
+
+```text
+implementation PR #132
+-> exact-head CI #460 / PIE #112 SUCCESS
+-> merge main a9696fba33f5f898539c15efefbf199d74d084ab
+-> merged-main CI #461 SUCCESS
+-> one-shot live run 33038468135 SUCCESS
+-> artifact 9632937597 inspected
+-> independent DB readback matched
+-> temporary push trigger removed
 -> closeout PR
 -> merged-main CI
 ```
