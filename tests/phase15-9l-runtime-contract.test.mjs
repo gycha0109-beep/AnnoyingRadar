@@ -37,11 +37,11 @@ test("15.9L disposable artifact strips raw source and routing identity", async (
   assert.match(script, /ordinal_4_current_context_replacement: false/);
 });
 
-test("15.9L live workflow is bounded to temporary branch plus manual dispatch before closeout", async () => {
+test("15.9L closeout leaves the live workflow manual-only", async () => {
   const workflow = await read(".github/workflows/source-formation-recovery-promotion-15-9l.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /push:/);
-  assert.match(workflow, /agent\/phase15-9l-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9l-live-execution/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PHASE15_9L_FORMATION_RECOVERY_PROMOTION: "true"/);
@@ -51,12 +51,13 @@ test("15.9L live workflow is bounded to temporary branch plus manual dispatch be
 
 test("15.9L documentation preserves semantic policy and downstream authority boundaries", async () => {
   const doc = await read("docs/phase15-9l-formation-recovery-promotion.md");
+  assert.match(doc, /\*\*CLOSED\*\*/);
   assert.match(doc, /source-problem-formation-observer-v0\.2/);
   assert.match(doc, /source-problem-formation-semantic-v0\.1/);
   assert.match(doc, /source-problem-formation-provider-recovery-v0\.1/);
   assert.match(doc, /max_output_tokens = 1200/);
   assert.match(doc, /max_output_tokens = 2400/);
-  assert.match(doc, /Only retryable `source_formation_provider_incomplete`/);
+  assert.match(doc, /source_formation_provider_incomplete/);
   assert.match(doc, /deterministic `resolveProblemFormationSemantic\(\)` authority are unchanged/);
   assert.match(doc, /Incident identity or persistence/);
   assert.match(doc, /Public Evidence creation/);
