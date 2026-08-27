@@ -2,11 +2,11 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE NOT YET RUN**
+**AUTHORITATIVE LIVE SUCCESS / CLOSEOUT PENDING**
 
-Phase 15.8V executes the explicit curator approval received after Phase 15.8U.
+Phase 15.8V executed the explicit curator approval received after Phase 15.8U.
 
-The approved action is exactly:
+Approved action:
 
 ```text
 publication_decision = approve
@@ -15,7 +15,7 @@ Evidence edits = none
 draft → published = authorized
 ```
 
-The approval applies only to the exact Phase 15.8U packet for:
+Target:
 
 ```text
 problem_signature = lodging_reservation_fulfillment_gap
@@ -23,31 +23,25 @@ problem_signature = lodging_reservation_fulfillment_gap
 
 ---
 
-## 1. Upstream authority
+## 1. Approval and upstream authority
 
-Phase 15.8U closed with:
-
-```text
-status = draft
-Evidence = 2
-distinct Sources = 2
-distinct Incidents = 2
-exact Source→Incident lineage = true
-ar_assert_public_problem_publishable() = PASS
-public feed rows = 0
-```
-
-Authoritative 15.8U packet:
+Phase 15.8U packet:
 
 ```text
 run = 33026457657
 artifact = 9628577829
 digest = sha256:9e01579973fb1823c79628ad18177cc08b8d9b740055c3db3b237b415b3f4ba7
+Evidence = 2
+distinct Sources = 2
+distinct Incidents = 2
+publishability guard = PASS
+status = draft
+public feed rows = 0
 ```
 
-After that packet was explained to the curator, explicit publication approval was given on 2026-08-27 KST with no requested copy or Evidence edits.
+Explicit curator publication approval was then given on 2026-08-27 KST with no requested copy or Evidence edits.
 
-Normalized authority:
+Normalized approval:
 
 ```json
 {
@@ -61,64 +55,35 @@ Normalized authority:
 
 ---
 
-## 2. Exact publication target
+## 2. Implementation authority
 
-Phase 15.8V refuses execution if any approved Canonical Problem field has drifted from the Phase 15.8Q authority:
-
-```text
-title
-summary
-target_user
-situation
-category
-problem_signature
-```
-
-It also revalidates the exact two durable Evidence rows against the frozen Phase 15.8T fingerprints and Incident identities.
-
-The target must still be:
+Implementation PR:
 
 ```text
-status = draft
-published_at = null
-archived_at = null
-public feed rows = 0
+PR #120
+exact head = 473cc35b0a23c767acd304918a5ae8c659983e82
+CI #430 = SUCCESS
+PIE #92 = SUCCESS
 ```
 
----
-
-## 3. Existing publication authority
-
-No new migration is required.
-
-Phase 15.8V uses the existing curator-gated function:
+Merged implementation main:
 
 ```text
-ar_set_public_problem_status(
-  p_problem_id uuid,
-  p_curator_user_id uuid,
-  p_status text
-)
+f7e11fd9631a603821f193e274665bb92711f388
+merged-main CI #431 = SUCCESS
 ```
 
-with:
+No new migration was required.
+
+The live runner uses only the existing curator-gated function:
 
 ```text
-p_status = published
+ar_set_public_problem_status(problem_id, curator_user_id, 'published')
 ```
 
-The existing function:
+The existing RPC reruns `ar_assert_public_problem_publishable(...)` before the status mutation.
 
-1. requires a Radar curator,
-2. locks the target Problem,
-3. validates the `draft → published` transition,
-4. calls `ar_assert_public_problem_publishable(...)`,
-5. sets `status = published`,
-6. sets `published_at = now()`,
-7. clears `archived_at`,
-8. records the curator in `updated_by_user_id`.
-
-Current execute privilege remains:
+Current function privileges independently verified before execution:
 
 ```text
 service_role = true
@@ -128,132 +93,155 @@ authenticated = false
 
 ---
 
-## 4. Write boundary
+## 3. Exact pre-publication guards
 
-The live runner is allowed exactly one state-changing RPC call:
-
-```text
-ar_set_public_problem_status(..., 'published')
-```
-
-It does not perform direct:
+Before the state-changing RPC, the runner required exact agreement with the previously approved authorities:
 
 ```text
-insert
-upsert
-update
-delete
+problem_signature
+Phase 15.8Q title
+Phase 15.8Q summary
+Phase 15.8Q target_user
+Phase 15.8Q situation
+Phase 15.8Q category
+Phase 15.8T Evidence fingerprints
+Phase 15.8T Incident identities
+exact Source→Incident lineage
 ```
 
-and does not mutate Canonical Problem copy or Evidence.
-
-External model calls:
+The target also had to remain:
 
 ```text
-0
+status = draft
+published_at = null
+archived_at = null
+public feed rows = 0
 ```
+
+No metadata or Evidence changes were authorized or performed.
 
 ---
 
-## 5. Expected database transition
+## 4. Authoritative live publication
 
-Expected target transition:
+One-shot branch:
+
+```text
+agent/phase15-8v-live-execution
+```
+
+Authoritative main checked out by the workflow:
+
+```text
+f7e11fd9631a603821f193e274665bb92711f388
+```
+
+Live run:
+
+```text
+run = 33028360345
+result = SUCCESS
+artifact = 9629272947
+digest = sha256:202675babdd6710b1843c6bcf3dd3b0736ce4fd41e646f6ac85e8e5dc4bcf0c5
+```
+
+Artifact authority:
+
+```text
+explicit_curator_approved_publication_execution
+```
+
+Live transition:
 
 ```text
 status: draft → published
-published_at: null → timestamp
-target public feed rows: 0 → 1
-```
-
-Expected aggregate transition:
-
-```text
-published Problems: 2 → 3
-draft Problems: 1 → 0
-public feed rows: 2 → 3
-```
-
-Expected unchanged row counts:
-
-```text
-Source Signals = 3245
-Source Observations = 3537
-Source Ingestion Runs = 132
-Raw Inputs = 10
-Pain Evidences = 27
-Public Problems = 3
-Public Evidence = 7
-Source Incidents = 6
-Source→Incident links = 7
-Full-context Outcomes = 82
-```
-
-`ar_public_problem_feed` is a publication projection, so its row count is expected to increase by exactly one when the existing Problem becomes published.
-
----
-
-## 6. Post-publication verification
-
-The authoritative live run must independently reload:
-
-```text
-same problem_signature
-same title / summary / target_user / situation / category
-status = published
-published_at != null
-archived_at = null
-same exact 2 Evidence rows
-same exact Incident identities
-same exact Source→Incident lineage
-target public feed rows = 1
-```
-
-Aggregate counts must show only the expected publication projection change.
-
----
-
-## 7. Artifact privacy
-
-The disposable one-day artifact may contain:
-
-```text
-problem signature and public copy
-normalized curator approval
-status before/after
-published_at
-Evidence hashes/lengths and Incident keys
-aggregate DB counts
-public-feed counts
-```
-
-It must not contain raw internal:
-
-```text
-Source Signal UUID
-Incident UUID
-Public Problem UUID
-Evidence excerpt text
-source URLs / source_key literals
-full source bodies
+published_at: null → 2026-08-27T00:54:33.63144+00:00
+target public feed: 0 → 1
+status RPC calls: 1
+metadata edits: 0
+Evidence edits: 0
+external model calls: 0
 ```
 
 ---
 
-## 8. Release flow
+## 5. Verified database transition
+
+Workflow before/after:
 
 ```text
-implementation PR
-→ exact-head CI / PIE
-→ merge main
-→ merged-main CI
-→ one-shot agent/phase15-8v-live-execution branch
-→ authoritative publication RPC
-→ artifact inspection
-→ independent Supabase readback
-→ remove temporary live trigger
-→ closeout PR / CI / PIE
+Source Signals             3245 → 3245
+Source Observations        3537 → 3537
+Source Ingestion Runs       132 → 132
+Raw Inputs                   10 → 10
+Pain Evidences               27 → 27
+Public Problems               3 → 3
+Public Evidence               7 → 7
+Public Feed                   2 → 3
+Source Incidents              6 → 6
+Source→Incident links         7 → 7
+Full-context Outcomes        82 → 82
+
+published Problems            2 → 3
+draft Problems                1 → 0
+target feed rows               0 → 1
+```
+
+Independent Supabase post-readback matched:
+
+```text
+target status = published
+target published_at = 2026-08-27 00:54:33.63144+00
+target archived_at = null
+target Evidence = 2
+target public feed = 1
+published Problems = 3
+draft Problems = 0
+public feed = 3
+```
+
+---
+
+## 6. Evidence integrity after publication
+
+Independent DB readback confirmed the durable Evidence pair remained unchanged.
+
+```text
+order 0
+incident = agoda_reservation_fulfillment_gap_case
+excerpt length = 83
+excerpt SHA-256 = 1cc568874a8e42fe1d690d132176fb994fbc74bcdca4852f9949ee7f926790aa
+source-key SHA-256 = 9b3f68381755c64084d18df11e07c9a8248f31e518dda28533f18bfc20715e99
+publication_basis = external_public
+source_type = naver_blog
+exact Source→Incident lineage = true
+```
+
+```text
+order 1
+incident = yeogieottae_reservation_fulfillment_gap_case
+excerpt length = 19
+excerpt SHA-256 = 78e79d58584bafe49d78183c010985ba41d1fc691bdd02e599eed8832108959b
+source-key SHA-256 = 5b8e2799dfad399118f6a644d064fbd91e55a1870661721f910c7278b0e0616c
+publication_basis = external_public
+source_type = naver_blog
+exact Source→Incident lineage = true
+```
+
+No Evidence or Source lineage mutation accompanied publication.
+
+---
+
+## 7. Closeout boundary
+
+The temporary live push trigger is removed in the closeout branch. The workflow remains manual-only through `workflow_dispatch`.
+
+Closeout is complete only after:
+
+```text
+closeout PR exact-head CI / PIE
 → merge
 → merged-main CI
 ```
 
-Phase 15.8V is complete only after the final merged-main CI and independent live readback both pass.
+No further publication mutation is part of Phase 15.8V.
