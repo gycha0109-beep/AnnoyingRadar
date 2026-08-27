@@ -55,10 +55,11 @@ test("15.8U packet builder enforces zero mutation and blank publication decision
   assert.doesNotMatch(lib, /ar_set_public_problem_status/);
 });
 
-test("15.8U workflow has no model dependency and only one temporary live trigger", async () => {
+test("15.8U workflow is manual-only after authoritative live closeout", async () => {
   const workflow = await read(".github/workflows/source-publication-curator-packet-15-8u.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8u-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8u-live-execution/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /run-publication-curator-packet-15-8u\.mjs/);
