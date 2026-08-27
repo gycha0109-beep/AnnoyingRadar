@@ -1,0 +1,63 @@
+name: Source Formation Recovery Promotion 15.9L
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9l-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-formation-recovery-promotion-15-9l
+  cancel-in-progress: false
+
+jobs:
+  recovery-promotion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$OPENAI_API_KEY"
+      - name: Verify promoted Formation provider recovery policy
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SOURCE_FORMATION_MODEL: ${{ secrets.OPENAI_SOURCE_FORMATION_MODEL || secrets.OPENAI_SOURCE_FULL_CONTEXT_MODEL || 'gpt-5-mini-2025-08-07' }}
+          ALLOW_PHASE15_9L_FORMATION_RECOVERY_PROMOTION: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-formation-recovery-promotion-15-9l.mjs --live --output=phase15-9l-formation-recovery-promotion.json 2>&1 | tee phase15-9l-formation-recovery-promotion.log
+      - name: Upload disposable Phase 15.9L verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-formation-recovery-promotion-15-9l
+          path: |
+            phase15-9l-formation-recovery-promotion.log
+            phase15-9l-formation-recovery-promotion.json
+          if-no-files-found: ignore
+          retention-days: 1
