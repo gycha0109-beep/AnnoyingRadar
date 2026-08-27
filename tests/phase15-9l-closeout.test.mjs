@@ -28,8 +28,8 @@ test("15.9L closeout freezes the two real max-output recoveries", async () => {
   assert.match(doc, /provider recovery recovered = 2/);
   assert.match(doc, /provider recovery exhausted = 0/);
   assert.match(doc, /max_output_tokens = 2/);
-  assert.match(doc, /ordinal 9[\s\S]*provider status = incomplete[\s\S]*incomplete reason = max_output_tokens[\s\S]*provider status = completed/);
-  assert.match(doc, /ordinal 16[\s\S]*provider status = incomplete[\s\S]*incomplete reason = max_output_tokens[\s\S]*provider status = completed/);
+  assert.match(doc, /Ordinal 9[\s\S]*provider status = incomplete[\s\S]*incomplete reason = max_output_tokens[\s\S]*provider status = completed/);
+  assert.match(doc, /Ordinal 16[\s\S]*provider status = incomplete[\s\S]*incomplete reason = max_output_tokens[\s\S]*provider status = completed/);
   assert.match(doc, /reject[\s\S]*reason = formation_incidental_friction/);
   assert.match(doc, /reject[\s\S]*reason = formation_non_evidence_content/);
 });
