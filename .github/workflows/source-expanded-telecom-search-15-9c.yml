@@ -2,9 +2,6 @@ name: Source Expanded Telecom Search 15.9C
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9c-live-execution
 
 permissions:
   contents: read
