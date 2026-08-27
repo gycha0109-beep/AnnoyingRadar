@@ -7,6 +7,7 @@ import {
   SourceFormationAssessmentError,
   SOURCE_FORMATION_ASSESSMENT_VERSION,
 } from "../lib/sources/source-formation-service.mjs";
+import { HUMAN_EVALUATION_VERSION } from "../lib/sources/semantic-contracts.mjs";
 
 const SIGNAL_ID = "11111111-1111-4111-8111-111111111111";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -14,6 +15,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 function candidateOutcome(overrides = {}) {
   return {
     id: "outcome-1",
+    source_signal_id: SIGNAL_ID,
     outcome_schema_version: "source-full-context-outcome-v0.1",
     batch_version: "test-batch-v0.1",
     status: "resolved",
@@ -81,7 +83,7 @@ function createFakeClient({
   const trace = [];
   const tableData = {
     ar_source_signals: [source],
-    ar_source_signal_evaluation_samples: blind ? [{ source_signal_id: SIGNAL_ID }] : [],
+    ar_source_signal_evaluation_samples: blind ? [{ evaluation_version: HUMAN_EVALUATION_VERSION, source_signal_id: SIGNAL_ID }] : [],
     ar_source_full_context_resolution_outcomes: outcomes,
     ar_source_incident_links: incidentLinked ? [{ source_signal_id: SIGNAL_ID }] : [],
     ar_public_problem_evidence_snapshots: publicEvidenceLinked ? [{ source_signal_id: SIGNAL_ID }] : [],
