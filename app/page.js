@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 import PersonalWorkspace from "./components/personal-workspace.js";
+import {
+  matchesPublicCategory,
+  PUBLIC_CATEGORY_CHIPS,
+  publicCategoryLabel,
+} from "../lib/radar/public-category.mjs";
 import { listPublishedPublicProblems } from "../lib/radar/service.mjs";
 import { createServerSupabaseClient } from "../lib/supabase/server.js";
 
 export const dynamic = "force-dynamic";
-
-const CATEGORIES = ["배달", "취업", "운동", "금융", "쇼핑", "여행"];
 
 function firstValue(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -31,10 +34,12 @@ export default async function HomePage({ searchParams }) {
     const supabase = await createServerSupabaseClient();
     const [{ data: authData }, loadedProblems] = await Promise.all([
       supabase.auth.getUser(),
-      listPublishedPublicProblems(supabase, { q, category, limit: 30 }),
+      listPublishedPublicProblems(supabase, { q, limit: category ? 100 : 30 }),
     ]);
     user = authData.user ?? null;
-    problems = loadedProblems;
+    problems = category
+      ? loadedProblems.filter((problem) => matchesPublicCategory(problem, category)).slice(0, 30)
+      : loadedProblems;
   }
 
   if (process.env.AR_LIVE_E2E_WORKSPACE_HOME === "1" && user) {
@@ -82,7 +87,7 @@ export default async function HomePage({ searchParams }) {
 
         <div className="radar-categories" aria-label="분야별 탐색">
           <Link className={!category ? "radar-chip is-active" : "radar-chip"} href={q ? `/?q=${encodeURIComponent(q)}` : "/"}>전체</Link>
-          {CATEGORIES.map((item) => {
+          {PUBLIC_CATEGORY_CHIPS.map((item) => {
             const href = q
               ? `/?q=${encodeURIComponent(q)}&category=${encodeURIComponent(item)}`
               : `/?category=${encodeURIComponent(item)}`;
@@ -108,20 +113,23 @@ export default async function HomePage({ searchParams }) {
 
         {problems.length > 0 ? (
           <div className="radar-problem-list">
-            {problems.map((problem) => (
-              <Link className="radar-problem-card" href={`/radar/problems/${problem.id}`} key={problem.id}>
-                <div className="radar-problem-main">
-                  <div className="radar-problem-meta">
-                    {problem.category ? <span>{problem.category}</span> : null}
-                    <span>{problem.evidence_count}건의 공개 근거</span>
-                    {problem.published_at ? <span>{formatPublishedAt(problem.published_at)}</span> : null}
+            {problems.map((problem) => {
+              const categoryLabel = publicCategoryLabel(problem);
+              return (
+                <Link className="radar-problem-card" href={`/radar/problems/${problem.id}`} key={problem.id}>
+                  <div className="radar-problem-main">
+                    <div className="radar-problem-meta">
+                      {categoryLabel ? <span>{categoryLabel}</span> : null}
+                      <span>{problem.evidence_count}건의 공개 근거</span>
+                      {problem.published_at ? <span>{formatPublishedAt(problem.published_at)}</span> : null}
+                    </div>
+                    <h3>{problem.title}</h3>
+                    <p>{problem.summary}</p>
                   </div>
-                  <h3>{problem.title}</h3>
-                  <p>{problem.summary}</p>
-                </div>
-                <span className="radar-problem-arrow" aria-hidden="true">→</span>
-              </Link>
-            ))}
+                  <span className="radar-problem-arrow" aria-hidden="true">→</span>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="radar-empty-state">
