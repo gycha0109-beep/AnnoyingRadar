@@ -209,7 +209,8 @@ test("15.9N remains a controlled server-side primitive with no new runtime write
   const runner = await read("scripts/run-formation-assessment-persistence-15-9n.mjs");
   const mRoute = await read("app/api/radar/admin/source-signals/[signalId]/formation/route.js");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9n-live-execution/);
+  assert.doesNotMatch(workflow, /^\s*push:\s*$/m);
+  assert.doesNotMatch(workflow, /agent\/phase15-9n-live-execution/);
   assert.match(workflow, /ref:\s*main/);
   assert.match(workflow, /retention-days:\s*1/);
   assert.match(runner, /database_write_statements:\s*1/);
