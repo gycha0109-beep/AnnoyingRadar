@@ -2,9 +2,6 @@ name: Source Publication Execution 15.8V
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8v-live-execution
 
 permissions:
   contents: read

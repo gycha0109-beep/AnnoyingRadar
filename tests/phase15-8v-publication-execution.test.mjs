@@ -52,10 +52,11 @@ test("15.8V guards exact approved copy, Evidence authority, and public projectio
   assert.match(script, /draftAfter, draftBefore - 1/);
 });
 
-test("15.8V workflow is one-shot, model-free, and checks out authoritative main", async () => {
+test("15.8V workflow is manual-only after authoritative publication closeout", async () => {
   const workflow = await read(".github/workflows/source-publication-execution-15-8v.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8v-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8v-live-execution/);
+  assert.doesNotMatch(workflow, /\npush:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PUBLIC_PROBLEM_PUBLICATION: "true"/);
