@@ -2,164 +2,166 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE NOT YET RUN**
+**CLOSED**
 
-Phase 15.9A begins the repeatable-problem-production track after Phase 15.8V successfully published the third Public Problem.
+Phase 15.9A begins the repeatable-problem-production track after Phase 15.8V published the third Public Problem.
 
-This phase has two goals:
+It completed two tasks:
 
-1. verify that the newly published Problem can actually be consumed through the Public Radar reading surface;
-2. identify the safest already-curated singleton from which to start the next repeated-mechanism acquisition campaign.
+1. verified the newly published Problem through the actual Next.js Public Radar reading surface against the hosted public projection;
+2. froze the previously curator-accepted Gogo Mobile singleton as the primary next targeted acquisition seed.
 
-No new Incident, problem signature, Canonical Problem, Evidence row, or publication is authorized here.
+No Incident, problem signature, Canonical Problem, Public Evidence, or publication mutation was performed.
 
 ---
 
-## 1. Upstream publication authority
-
-Phase 15.8V closed with:
+## 1. Implementation authority
 
 ```text
-current main = da211507a24f24b24b551226f75bc4eef0ae588c
-published Problems = 3
-drafts = 0
-Public Evidence = 7
-public feed = 3
-```
-
-Target publication:
-
-```text
-problem_signature = lodging_reservation_fulfillment_gap
-status = published
-Evidence = 2
-public feed rows = 1
+PR #122
+exact head = b49ded22dd4003b58fd751f4262f9daf166b6082
+CI #435 = SUCCESS
+PIE #95 = SUCCESS
+implementation main = aa2f1380993df6dc125b5887bb0071475793a5fe
+merged-main CI #436 = SUCCESS
 ```
 
 ---
 
-## 2. Surface audit finding
+## 2. Public surface defect found and corrected
 
-Phase 15.2 froze the public category chips as UI vocabulary:
+Phase 15.2 defined the public chips as UI vocabulary:
 
 ```text
 배달 / 취업 / 운동 / 금융 / 쇼핑 / 여행
 ```
 
-and explicitly stated that this vocabulary does not constrain the DB category contract.
+but did not define those labels as the DB category enum.
 
-The first real post-publication audit exposed a mismatch in the implementation:
-
-```text
-UI chip      DB category
-여행         travel_booking / travel_refund
-운동         consumer_refund for the current gym Problem
-```
-
-The home page previously passed the UI label directly to:
+The first real post-publication audit found that the implementation treated them as exact DB values. Current published categories include:
 
 ```text
-.eq("category", category)
+travel_booking
+travel_refund
+consumer_refund
 ```
 
-so the newly published lodging Problem was visible in the unfiltered feed but disappeared when the user selected `여행`.
+Therefore the newly published lodging Problem was visible in the unfiltered feed but disappeared under the `여행` chip. Internal strings such as `travel_booking` were also displayed directly on cards/details.
 
-The page and detail also displayed internal category strings such as `travel_booking` directly.
+15.9A added a thin public-vocabulary adapter. It does not rewrite published Problem metadata.
 
-### 15.9A correction
-
-A thin public-vocabulary adapter now separates:
+Verified behavior now includes:
 
 ```text
-internal classification
-≠
-public browsing vocabulary
+travel_* → 여행
+current gym-language Problem → 운동
+internal category hidden from card/detail
+Detail → same public vocabulary category
 ```
-
-The adapter:
-
-- maps `travel_*` / lodging text to `여행`;
-- maps current gym language to `운동` without mutating the stored Problem row;
-- preserves the six Phase 15.2 chips;
-- hides internal category strings from the rendered Problem card/detail;
-- returns from detail to the public vocabulary filter rather than the internal DB value.
-
-This is a UI/read-path correction only. No published Problem metadata is rewritten.
 
 ---
 
-## 3. Surface verification contract
-
-The authoritative live smoke must run the current `main` Next.js application locally against the hosted Public Radar projection using a publishable/anon Supabase client.
-
-It verifies:
+## 3. Authoritative live audit
 
 ```text
-/ Explore renders
-new lodging Problem is visible
-2 public Evidence count is visible
-여행 chip retains the lodging Problem
-/radar/problems/{id} renders
-2 Evidence cards render
-2 HTTP(S) source links are present
-여행 문제 더 보기 is present
-internal category / lineage tokens are absent
+run = 33031021638
+result = SUCCESS
+artifact = 9630235775
+digest = sha256:47e1585dc8dc42c1d0d27a86fc5e2521630616381f92a6dd56a5353caca7cd16
+head = aa2f1380993df6dc125b5887bb0071475793a5fe
+```
+
+The run used the hosted Supabase public projection with a publishable/anon client and rendered the current `main` Next.js application locally.
+
+This distinction matters: connected Vercel inspection found no AnnoyingRadar Vercel project, so this phase does **not** claim an internet production deployment exists.
+
+### Surface result
+
+```text
+Explore target visible = true
+public Evidence count visible = 2
+여행 chip retains target = true
+Problem Detail visible = true
+Evidence cards = 2
+HTTP(S) source links = 2
+internal category hidden = true
+internal lineage hidden = true
 browser page errors = 0
+database writes = 0
 ```
-
-This is intentionally distinguished from internet hosting/deployment status.
-
-Connected Vercel inspection at the start of 15.9A found no AnnoyingRadar Vercel project. Therefore 15.9A does not claim that an internet production deployment exists; it verifies the real application surface against the hosted public data projection.
 
 ---
 
-## 4. Primary next-problem seed
+## 4. Independent DB readback
+
+Post-run independent Supabase readback:
+
+```text
+published Problems = 3
+drafts = 0
+public feed = 3
+Public Evidence = 7
+lodging target feed rows = 1
+lodging target Evidence rows = 2
+Gogo singleton Incident links = 0
+```
+
+This matches the live artifact and confirms that 15.9A did not mutate governed DB state.
+
+---
+
+## 5. Primary next-problem seed
 
 Phase 15.8P already froze the curator decision:
 
 ```text
 고고모바일 번호이동 제한
-  evidence_decision = accept
-  incident persistence = hold as singleton
+evidence_decision = accept
+incident persistence = hold as singleton
 ```
 
-15.9A does not reinterpret that decision.
-
-The seed is resolved at runtime through hash-only authority and must still satisfy:
+15.9A re-resolved that Source through hash-only authority and confirmed:
 
 ```text
-Source Admission / full-context outcome = Candidate
+Source Admission/full-context outcome = Candidate
 problem_claim = yes
 experience_actor = self
 friction_cause = external_service_or_product
 friction_specificity = concrete
 pain_centrality = central
 content_kind = organic
-full_post / untruncated
+context_scope = full_post
+context_truncated = false
 Incident link count = 0
 ```
 
-Therefore its current state remains:
+Current state:
 
 ```text
 accepted Evidence
 + independent actual friction
-+ no persisted Incident because singleton
++ Incident persistence intentionally held because singleton
+```
+
+It is **not repeat-ready** yet.
+
+Missing requirement:
+
+```text
+one independent same-mechanism incident
 ```
 
 ---
 
-## 5. Next acquisition focus
+## 6. Phase 15.9B acquisition authority
 
-15.9A authorizes only targeted Source acquisition around the held singleton.
-
-Search focus:
+15.9A authorizes the next phase only for targeted Source acquisition around this search focus:
 
 ```text
 mobile carrier number-transfer / port-out restriction
 ```
 
-Initial Korean query family:
+Initial query family:
 
 ```text
 알뜰폰 번호이동 제한 강제
@@ -168,21 +170,19 @@ Initial Korean query family:
 통신사 번호이동 막힘 피해
 ```
 
-Important:
+This is explicitly:
 
 ```text
 search focus ≠ problem_signature
 ```
 
-A second source must still pass Source Admission and full-context review. A later curator gate decides whether it is an independent Incident and whether it shares the same problem mechanism.
+15.9B may discover, ingest, deduplicate, and run Source Admission/full-context evaluation according to existing source authorities. It may not create an Incident or assign a problem signature.
 
 ---
 
-## 6. Authority boundary
+## 7. Closed authority boundary
 
-Phase 15.9A is read-only with respect to the governed source/problem domains.
-
-Not authorized:
+Not authorized by 15.9A:
 
 ```text
 Incident creation
@@ -193,27 +193,10 @@ Public Evidence persistence
 publication
 ```
 
-Authorized:
+Authorized next step:
 
 ```text
-Public UI/read-path category adapter
-read-only hosted DB audit
-read-only rendered surface smoke
-targeted acquisition plan for 15.9B
+Phase 15.9B — targeted same-mechanism Source acquisition
 ```
 
----
-
-## 7. Expected live result
-
-```text
-published target feed rows = 1
-published target Evidence rows = 2
-primary singleton Incident links = 0
-surface smoke = PASS
-travel chip target visible = true
-next authority = targeted_source_acquisition_only
-database writes = 0
-```
-
-After closeout, Phase 15.9B may acquire new candidate Sources for the same-mechanism search focus. It still may not create an Incident without a new curator decision.
+The 15.9A workflow is returned to `workflow_dispatch` only; its temporary live push trigger is retired.

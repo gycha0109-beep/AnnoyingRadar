@@ -58,3 +58,10 @@ test("15.9A public surface smoke checks Explore, category, detail, Evidence and 
   assert.match(smoke, /source_signal_id/);
   assert.match(smoke, /browser_page_errors: 0/);
 });
+
+test("15.9A closeout leaves the live audit workflow manual-only", async () => {
+  const workflow = await read(".github/workflows/source-post-publication-seed-audit-15-9a.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9a-live-execution/);
+  assert.doesNotMatch(workflow, /^\s*push:/m);
+});

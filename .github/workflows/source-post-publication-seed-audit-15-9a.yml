@@ -2,9 +2,6 @@ name: Source Post-Publication Seed Audit 15.9A
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9a-live-execution
 
 permissions:
   contents: read
