@@ -2,9 +2,6 @@ name: Source Confirmed False-Negative Outcome Persistence 15.9I
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9i-live-execution
 
 permissions:
   contents: read
