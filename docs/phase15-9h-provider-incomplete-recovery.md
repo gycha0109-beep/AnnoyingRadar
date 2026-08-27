@@ -2,80 +2,84 @@
 
 ## Status
 
-**IMPLEMENTED — pending PR / CI / PIE / one-shot live reproduction**
+**CLOSED**
 
-Phase 15.9H follows the closed Phase 15.9G read-only semantic rejection diagnostic.
+Phase 15.9H followed the closed Phase 15.9G read-only semantic rejection diagnostic.
 
-15.9G established:
+15.9G left eight semantic-unavailable Sources inside the deterministic sixteen-Source external-web sample:
 
 ```text
-sample = 16 deterministic external-web Sources
-stable double-fetch = 16/16
-semantic reject / policy_consistent = 8
-semantic unavailable = 8
-  source_full_context_provider_incomplete = 6
-  source_full_context_invalid_evidence_quote = 2
-candidate = 0
+source_full_context_provider_incomplete = 6
+source_full_context_invalid_evidence_quote = 2
+```
+
+15.9H reused the already validated provider-incomplete-only recovery authority from Phase 15.8L and asked whether a fresh semantic attempt plus at most one provider-incomplete recovery attempt would resolve those eight Sources without quote recovery or any durable Source Admission mutation.
+
+The answer exposed confirmed false negatives:
+
+```text
+targets = 8
+stable body pairs = 8/8
+candidate = 3
+reject = 4
 review = 0
-DB writes = 0
+unavailable = 1
+
+false_negative_confirmed = 3
+false_negative_possible = 0
+policy_consistent = 4
 ```
 
-The acquisition layer is therefore not the remaining gap. Phase 15.9H asks only whether the already-validated provider-incomplete bounded recovery mechanism can reduce the semantic unavailable remainder without enabling quote recovery or changing Source Admission authority.
+Phase 15.9H therefore closes with:
+
+```text
+diagnostic_conclusion = source_admission_false_negative_detected
+```
+
+The three Candidate findings remain diagnostic findings only. Phase 15.9H did not durably recover them.
 
 ---
 
-## 1. Existing authority reused
+## 1. Release authority
 
-Phase 15.9H does not invent a retry policy.
-
-It reuses:
+Implementation:
 
 ```text
-source-full-context-recovery-v0.1
-runSourceFullContextJudgeWithRecovery()
-createSourceFullContextRecoveryFetch()
+PR #136
+initial implementation head = 275ff9cf3a7f3ff8e40ec0a69d68f1b2e82582b4
+CI #469 = FAILURE
+  cause = closeout/static test false-positive on Node crypto createHash().update()
+  implementation mutation boundary itself was not violated
+PIE #117 = SUCCESS
+
+corrected exact implementation head = f6412dce56590e40f1bf49faaca203b493a4f636
+CI #470 = SUCCESS
+PIE #118 = SUCCESS
+merge/main = 9e997ba6d46b07207be4c517cf7b23ecb951602c
+merged-main CI #471 = SUCCESS
 ```
 
-The provider-incomplete-only scope was already isolated and live-tested in Phase 15.8L.
+The failed CI #469 was caused by an overly broad test regex matching `createHash("sha256").update(...)` as though it were a database mutation. The test was narrowed to the Supabase mutation surface. The recovery runner itself was unchanged by that correction.
 
-15.8L authority:
+One-shot live reproduction:
 
 ```text
-fresh provider-incomplete reproduced = 4
-provider recovery attempted = 4
-provider recovered after retry = 3
-provider recovery exhausted = 1
-conditional recovery efficacy = 3/4 = 75%
-quote recovery attempted = 0
+workflow = Source Provider-Incomplete Recovery 15.9H
+run #1
+Actions run id = 33041740366
+execution head = 9e997ba6d46b07207be4c517cf7b23ecb951602c
+result = SUCCESS
+artifact id = 9634167089
+artifact retention = 1 day
 ```
 
-15.9H therefore explicitly narrows recovery eligibility to:
-
-```text
-source_full_context_provider_incomplete
-```
-
-It does not authorize retry for:
-
-```text
-source_full_context_invalid_evidence_quote
-source_full_context_provider_timeout
-source_full_context_provider_network_error
-source_full_context_provider_rejected
-source_full_context_provider_invalid_json
-source_full_context_provider_missing_output
-full_context fetch failures
-semantic uncertainty
-any other reason code
-```
-
-The underlying generic recovery helper remains unchanged.
+The temporary `agent/phase15-9h-live-execution` push trigger is removed by the Phase 15.9H closeout. The workflow remains manual-only through `workflow_dispatch`.
 
 ---
 
-## 2. Baseline reconstruction
+## 2. Baseline reconstruction authority
 
-Phase 15.9H reconstructs the same Phase 15.9C campaign and exact Phase 15.9G deterministic sample.
+Phase 15.9H reconstructed the same Phase 15.9C campaign and exact Phase 15.9G deterministic external-web sample.
 
 Frozen campaign authority:
 
@@ -94,7 +98,7 @@ sample size = 16
 sample fingerprint = 2a96219b35056ebd9b8947363477cb59615833890ab10636cf7e151b4c17218e
 ```
 
-The fingerprint is an aggregate SHA-256 over the already privacy-safe external identity values in the deterministic sample. Individual identities are not emitted as Phase 15.9H repository authority.
+The fingerprint was independently recomputed from the retained Phase 15.9G live artifact and matched the frozen Phase 15.9H authority exactly.
 
 Phase 15.9G unresolved sample ordinals:
 
@@ -109,22 +113,57 @@ source_full_context_provider_incomplete = 6
 source_full_context_invalid_evidence_quote = 2
 ```
 
-Phase 15.9H intentionally freezes the unresolved ordinals and aggregate reason counts, not a permanent identity→reason mapping.
-
-This matters because semantic-provider behavior is transient. A Source that returned provider-incomplete in 15.9G may resolve on a fresh first attempt in 15.9H.
+Phase 15.9H intentionally froze unresolved ordinals and aggregate reason counts rather than asserting a permanent identity-to-reason mapping, because provider behavior is not deterministic across runs.
 
 ---
 
-## 3. Stable body gate remains mandatory
+## 3. Recovery authority reused
 
-For each of the eight targets:
+Phase 15.9H did not create a retry policy.
+
+It reused:
 
 ```text
-external body fetch #1
-external body fetch #2
+source-full-context-recovery-v0.1
+runSourceFullContextJudgeWithRecovery()
+createSourceFullContextRecoveryFetch()
 ```
 
-Semantic work is allowed only when both are:
+and narrowed recovery eligibility to exactly:
+
+```text
+source_full_context_provider_incomplete
+```
+
+Provider recovery retained the existing contract:
+
+```text
+maximum semantic attempts per stable target = 2
+recovery max_output_tokens = 1600
+structured schema = unchanged
+semantic prompt/version = unchanged
+store = false
+semantic decision mapping = unchanged
+```
+
+Explicitly not retry-eligible in Phase 15.9H:
+
+```text
+source_full_context_invalid_evidence_quote
+provider timeout/network/rejected errors
+invalid JSON / missing output
+full-context acquisition failures
+semantic uncertainty
+all other reason codes
+```
+
+---
+
+## 4. Stable-body gate
+
+Each of the eight targets was fetched twice under the closed external-web acquisition contract.
+
+Semantic work was allowed only when both acquisitions were:
 
 ```text
 resolved
@@ -135,272 +174,262 @@ same extraction_scope
 same title
 ```
 
-If the pair is unavailable or changed:
+Live result:
 
 ```text
-semantic provider calls = 0 for that target
-result = unavailable
+fetch_pair_stable = 8
+fetch_pair_unstable = 0
+source_network_requests = 16
+maximum authorized = 64
 ```
 
-This preserves the Phase 15.9G acquisition-stability boundary.
+All eight targets therefore entered semantic evaluation on stable full context.
 
 ---
 
-## 4. Attempt semantics
+## 5. Fresh attempt versus recovery effect
 
-For each stable target:
-
-```text
-fresh semantic attempt
-  ↓
-resolved
-  → stop
-
-source_full_context_provider_incomplete
-  → exactly one bounded recovery attempt
-
-any other semantic error
-  → stop unavailable without retry
-```
-
-Provider recovery retains the existing authority:
+Live result:
 
 ```text
-maximum semantic attempts per target = 2
-recovery max_output_tokens = 1600
-structured schema = unchanged
-semantic prompt/version = unchanged
-store = false
-semantic decision mapping = unchanged
-```
-
-The recovery instruction only asks the provider to complete concisely and return the required structured fields.
-
-It does not alter the semantic facts being requested.
-
----
-
-## 5. Invalid quote boundary
-
-Phase 15.9H does not retry invalid evidence quotes.
-
-The semantic validator continues to require:
-
-```text
-evidence_quote is null
-OR
-evidence_quote is an exact contiguous substring of fetched source body
-```
-
-If a fresh attempt returns:
-
-```text
-source_full_context_invalid_evidence_quote
-```
-
-then:
-
-```text
-retry = false
-result = unavailable
-```
-
-A runtime assertion requires:
-
-```text
+fresh_first_attempt_resolved = 3
+provider_recovery_attempted = 5
+provider_recovered_after_retry = 4
+provider_recovery_exhausted = 1
 quote_recovery_attempted = 0
 ```
 
-Quote recovery, if ever reconsidered, requires separate authority.
+Conditional provider recovery efficacy for the fresh provider-incomplete reproductions was:
+
+```text
+4 / 5 = 80%
+```
+
+This value is distinct from the total eight-target resolution rate because fresh first-attempt resolution is not attributed to the retry mechanism.
+
+The five fresh attempts that reproduced provider-incomplete were baseline ordinals:
+
+```text
+1, 4, 7, 8, 10
+```
+
+Recovery outcomes:
+
+```text
+ordinal 1  -> recovered -> reject
+ordinal 4  -> recovered -> candidate
+ordinal 7  -> exhausted -> invalid evidence quote
+ordinal 8  -> recovered -> reject
+ordinal 10 -> recovered -> reject
+```
+
+The three targets that resolved on the fresh first attempt were:
+
+```text
+ordinal 5  -> reject
+ordinal 9  -> candidate
+ordinal 16 -> candidate
+```
+
+Thus two Candidate findings appeared without recovery intervention and one Candidate finding appeared after provider-incomplete recovery.
 
 ---
 
-## 6. Actual origin authority
+## 6. Final semantic result
 
-The semantic prompt continues to receive the actual content origin:
+Aggregate result:
+
+```text
+total = 8
+candidate = 3
+review = 0
+reject = 4
+unavailable = 1
+
+false_negative_confirmed = 3
+false_negative_possible = 0
+policy_consistent = 4
+unavailable = 1
+```
+
+Decision reasons:
+
+```text
+full_context_first_hand_external_friction = 3
+full_context_no_problem_claim = 3
+full_context_informational_content = 1
+source_full_context_invalid_evidence_quote = 1
+```
+
+Confirmed false-negative ordinals and original rejection strata:
+
+```text
+ordinal 4
+  original stratum = title_no_complaint_signal
+  full-context decision = candidate
+
+ordinal 9
+  original stratum = title_truncated_no_complaint_signal
+  full-context decision = candidate
+
+ordinal 16
+  original stratum = title_information_or_guide
+  full-context decision = candidate
+```
+
+The three confirmed false negatives span three different snippet-level rejection strata. The live evidence therefore does not support treating this as one isolated reject-reason defect.
+
+The remaining unavailable target is:
+
+```text
+ordinal 7
+terminal reason = source_full_context_invalid_evidence_quote
+```
+
+Phase 15.9H did not retry that terminal quote-validation failure.
+
+---
+
+## 7. Interpretation boundary
+
+Phase 15.9H supports the following claims:
+
+```text
+- full-context acquisition remained stable for all 8 targets
+- provider-incomplete reproduced on 5 fresh attempts
+- the existing bounded provider recovery resolved 4/5 reproductions
+- three current Source Admission rejects are confirmed semantic false negatives
+- two of the three false negatives resolve as Candidate without retry
+- one false negative required the existing provider-incomplete recovery attempt
+- four targets are policy-consistent rejects
+- one target remains semantically unavailable
+```
+
+Phase 15.9H does not authorize these claims/actions:
+
+```text
+- automatically rewrite Source Admission policy
+- automatically promote all Sources in the affected rejection strata
+- treat ordinal 7 as reject
+- enable quote recovery
+- activate provider recovery in the production admission path
+- create Incidents or public evidence from the three Candidate findings
+```
+
+The next governed work, if pursued, must distinguish exact confirmed-false-negative recovery from broader policy/product activation.
+
+---
+
+## 8. Actual origin authority
+
+The semantic prompt received actual content origin:
 
 ```text
 Source platform: external_web
 ```
 
-for these targets.
+Stored Source identity remained unchanged.
 
-The historical stored acquisition identity is not rewritten.
-
-```text
-stored Source identity = unchanged
-origin classification = read-only input to diagnostic
-```
+The three Candidate Source rows were independently resolved back to the production Source table after the live diagnostic to verify that the H ordinals correspond to real extant Sources. That readback did not mutate those rows and is not used to broaden the diagnostic sample.
 
 ---
 
-## 7. Interpretation
+## 9. Cost boundary
 
-Phase 15.9H distinguishes:
-
-```text
-fresh_first_attempt_resolved
-provider_recovery_attempted
-provider_recovered_after_retry
-provider_recovery_exhausted
-final unavailable
-```
-
-A Source resolving on the fresh first attempt is evidence of provider variability, not recovery efficacy.
-
-Only a Source that reproduces provider-incomplete on the fresh attempt and then resolves on attempt two counts as:
+Actual live use:
 
 ```text
-provider_recovered_after_retry
+targets = 8
+source-network requests = 16 / max 64
+semantic-provider calls = 13 / max 16
 ```
 
-Final semantic decisions remain diagnostic only:
-
-```text
-candidate -> false_negative_confirmed
-review    -> false_negative_possible
-reject    -> policy_consistent
-```
-
-Unavailable remains unavailable. It is never converted to reject.
+No replay beyond the exact eight unresolved Phase 15.9G ordinals occurred.
 
 ---
 
-## 8. Cost boundary
+## 10. Read-only boundary
 
-Target count:
-
-```text
-8
-```
-
-Maximum source-network requests:
+Artifact DB snapshots before and after were identical:
 
 ```text
-8 Sources
-x 2 body acquisitions
-x max 4 redirect/request hops
-= 64
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 82
 ```
 
-Maximum semantic-provider calls:
+An independent production Supabase readback after the live run returned the same counts.
+
+Therefore:
 
 ```text
-8 fresh attempts
-+ maximum 8 provider-incomplete recovery attempts
-= 16
+database writes = 0
+Blind writes = 0
+full source bodies persisted = 0
+full-context outcome persistence = 0
+Source Admission mutation = 0
+Source Admission recovery = 0
+Incident creation/linking = 0
+problem signature assignment = 0
+Public Problem creation = 0
+Public Evidence persistence = 0
+publication = 0
+provider recovery product activation = false
 ```
 
-No broader replay of the 16-Source sample or 308-source external cohort is authorized.
+Candidate findings remain diagnostic evidence only.
 
 ---
 
-## 9. Mutation / privacy boundary
+## 11. Artifact privacy
 
-Phase 15.9H is read-only.
+The disposable Phase 15.9H artifact contains ordinal-based diagnostic metadata, hashes, semantic categories, reason codes, recovery metadata, usage counts, and aggregate DB snapshots.
 
-Before and after live execution the runner snapshots:
-
-```text
-ar_source_signals
-ar_source_signal_observations
-ar_source_ingestion_runs
-ar_raw_inputs
-ar_pain_evidences
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_public_problem_feed
-ar_source_incidents
-ar_source_incident_links
-ar_source_full_context_resolution_outcomes
-```
-
-Exact equality is required.
-
-Not authorized:
+It excludes:
 
 ```text
-DB writes
-Blind writes
-full body persistence
-full-context outcome persistence
-Source Admission mutation
-Source Admission recovery
-Incident creation/linking
-problem signature assignment
-Canonical/Public Problem creation
-Public Evidence persistence
-publication
-provider recovery product activation
+Source UUID
+canonical URL
+author handle
+raw source body
+exact evidence quote
+provider request id
+Incident UUID
+Public Problem UUID
 ```
 
-Artifact output contains ordinal-based diagnostic metadata and hashes only. It excludes canonical URL, Source UUID, author handle, raw body, exact evidence quote, and provider request id.
+The closeout preserves the ordinal/result mapping needed for governed follow-up without promoting raw identity-bearing material into repository authority.
 
 ---
 
-## 10. Workflow
+## 12. Closeout
 
-Implementation workflow:
+Phase 15.9H is closed because its bounded reliability reproduction was implemented, exact-head gated, merged, executed once against authoritative main, inspected, independently read back, and verified read-only.
 
-```text
-.github/workflows/source-provider-incomplete-recovery-15-9h.yml
-```
-
-One-shot live execution supports the temporary branch:
+It closes with a substantive diagnostic finding:
 
 ```text
-agent/phase15-9h-live-execution
+PHASE 15.9H = CLOSED
+
+baseline unresolved = 8
+stable acquisition = 8/8
+fresh first-attempt resolved = 3
+provider retry attempted = 5
+provider recovered = 4
+provider recovery exhausted = 1
+quote recovery attempted = 0
+candidate / confirmed false negative = 3
+reject / policy consistent = 4
+unavailable = 1
+DB writes = 0
 ```
 
-The workflow always checks out authoritative `main` before DB reads, source fetches, or paid provider calls.
-
-The temporary push trigger must be removed in closeout.
-
----
-
-## 11. Close criterion
-
-Phase 15.9H may close after:
-
-1. implementation diff review passes;
-2. exact-head CI passes;
-3. PIE prospective shadow passes;
-4. implementation merges using expected-head protection;
-5. merged-main CI passes;
-6. exact 15.9G sample fingerprint reconstructs;
-7. exact eight baseline unresolved ordinals reconstruct;
-8. stable-body gate is applied before semantic work;
-9. one-shot bounded live reproduction completes;
-10. `quote_recovery_attempted = 0`;
-11. DB before/after is unchanged and independently read back;
-12. live artifact is inspected without converting unavailable into reject;
-13. temporary push trigger is removed;
-14. closeout PR exact-head CI/PIE and merged-main CI pass.
-
----
-
-## 12. Decision boundary
-
-Phase 15.9H is a reliability reproduction only.
-
-It does not activate retry behavior in the production Source Admission path.
-
-Possible interpretations after live execution:
-
-```text
-provider-incomplete reproduces and retry materially recovers
-→ recovery mechanism remains technically useful;
-  product activation still requires separate governed authority
-
-most targets resolve on fresh first attempt
-→ provider-incomplete is substantially transient;
-  do not misattribute fresh recovery to retry
-
-retry frequently exhausts
-→ do not activate;
-  inspect provider/schema/token behavior separately
-
-candidate/review appears
-→ false-negative diagnostic finding only;
-  no durable Source Admission recovery authority exists in 15.9H
-```
+The three Candidate findings require a separately governed recovery decision. Phase 15.9H itself does not grant that authority.
