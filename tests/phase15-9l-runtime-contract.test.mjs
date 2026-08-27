@@ -24,7 +24,9 @@ test("15.9L runner verifies production observer v0.2 directly and remains DB rea
 
 test("15.9L disposable artifact strips raw source and routing identity", async () => {
   const script = await read("scripts/run-formation-recovery-promotion-15-9l.mjs");
-  assert.match(script, /evidence_quote_sha256/);
+  const helper = await read("lib/sources/phase15-9l-formation-recovery-promotion.mjs");
+  assert.match(helper, /evidence_quote_sha256/);
+  assert.match(helper, /evidence_quote_grounded/);
   assert.match(script, /artifact_contains_raw_source_body: false/);
   assert.match(script, /"source_signal_id"/);
   assert.match(script, /"canonical_url"/);
