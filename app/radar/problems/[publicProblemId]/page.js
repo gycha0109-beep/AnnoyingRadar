@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { publicCategoryLabel } from "../../../../lib/radar/public-category.mjs";
 import { loadPublishedPublicProblemDetail } from "../../../../lib/radar/service.mjs";
 import { createServerSupabaseClient } from "../../../../lib/supabase/server.js";
 
@@ -35,6 +36,8 @@ export default async function PublicProblemDetailPage({ params }) {
 
   const { problem, evidence } = detail;
   const user = authData.user ?? null;
+  const categoryLabel = publicCategoryLabel(problem);
+  const categoryHref = categoryLabel ? `/?category=${encodeURIComponent(categoryLabel)}` : "/";
 
   return (
     <main className="radar-shell radar-detail-shell">
@@ -51,13 +54,13 @@ export default async function PublicProblemDetailPage({ params }) {
       </nav>
 
       <article className="radar-detail">
-        <Link className="radar-back-link" href={problem.category ? `/?category=${encodeURIComponent(problem.category)}` : "/"}>
+        <Link className="radar-back-link" href={categoryHref}>
           ← 문제 탐색으로 돌아가기
         </Link>
 
         <header className="radar-detail-header">
           <div className="radar-problem-meta">
-            {problem.category ? <span>{problem.category}</span> : null}
+            {categoryLabel ? <span>{categoryLabel}</span> : null}
             <span>{problem.evidence_count}건의 공개 근거에서 확인</span>
           </div>
           <h1>{problem.title}</h1>
@@ -116,8 +119,8 @@ export default async function PublicProblemDetailPage({ params }) {
             <p className="radar-section-label">Keep exploring</p>
             <h2>이 문제와 비슷한 불편을 더 찾아보세요.</h2>
           </div>
-          <Link className="radar-nav-link radar-nav-primary" href={problem.category ? `/?category=${encodeURIComponent(problem.category)}` : "/"}>
-            {problem.category ? `${problem.category} 문제 더 보기` : "다른 문제 보기"}
+          <Link className="radar-nav-link radar-nav-primary" href={categoryHref}>
+            {categoryLabel ? `${categoryLabel} 문제 더 보기` : "다른 문제 보기"}
           </Link>
         </section>
       </article>
