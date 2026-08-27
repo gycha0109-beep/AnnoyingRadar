@@ -2,9 +2,6 @@ name: Source Telecom Rejection Diagnostics 15.9D
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9d-live-execution
 
 permissions:
   contents: read
