@@ -1,0 +1,65 @@
+name: Source Expanded Telecom Search 15.9C
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9c-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-expanded-telecom-search-15-9c
+  cancel-in-progress: false
+
+jobs:
+  acquisition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$NAVER_CLIENT_ID"
+          test -n "$NAVER_CLIENT_SECRET"
+      - name: Run eight-query expanded telecom search
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          ALLOW_PHASE15_9C_EXPANDED_ACQUISITION: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-expanded-telecom-search-15-9c.mjs --live --output=phase15-9c-expanded-telecom-search.json 2>&1 | tee phase15-9c-expanded-telecom-search.log
+      - name: Upload disposable Phase 15.9C artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-expanded-telecom-search-15-9c
+          path: |
+            phase15-9c-expanded-telecom-search.json
+            phase15-9c-expanded-telecom-search.log
+          if-no-files-found: ignore
+          retention-days: 1
