@@ -1,0 +1,63 @@
+name: Source Provider-Incomplete Recovery 15.9H
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9h-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-provider-incomplete-recovery-15-9h
+  cancel-in-progress: false
+
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$OPENAI_API_KEY"
+      - name: Run bounded provider-incomplete recovery reproduction
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SOURCE_FULL_CONTEXT_MODEL: gpt-5-mini-2025-08-07
+          ALLOW_PHASE15_9H_PROVIDER_RECOVERY: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-provider-incomplete-recovery-15-9h.mjs --live --output=phase15-9h-provider-incomplete-recovery.json 2>&1 | tee phase15-9h-provider-incomplete-recovery.log
+      - name: Upload disposable Phase 15.9H artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-provider-incomplete-recovery-15-9h
+          path: |
+            phase15-9h-provider-incomplete-recovery.json
+            phase15-9h-provider-incomplete-recovery.log
+          if-no-files-found: ignore
+          retention-days: 1
