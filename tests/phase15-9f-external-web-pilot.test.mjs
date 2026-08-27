@@ -73,10 +73,11 @@ test("15.9F runner is read-only, blind-gated before URL load, and model-free", a
   assert.doesNotMatch(runner, /ar_register_source_incident|ar_set_public_problem_status/);
 });
 
-test("15.9F workflow is one-shot plus manual and carries no model credential", async () => {
+test("15.9F workflow is manual-only after closeout and carries no model credential", async () => {
   const workflow = await read(".github/workflows/source-external-web-full-context-pilot-15-9f.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9f-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9f-live-execution/);
   assert.match(workflow, /ALLOW_PHASE15_9F_EXTERNAL_WEB_FULL_CONTEXT/);
   assert.match(workflow, /retention-days: 1/);
   assert.doesNotMatch(workflow, /OPENAI_API_KEY|GOOGLE_API_KEY|ANTHROPIC_API_KEY/);

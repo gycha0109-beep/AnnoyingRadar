@@ -2,9 +2,6 @@ name: Source External Web Full-Context Pilot 15.9F
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9f-live-execution
 
 permissions:
   contents: read
