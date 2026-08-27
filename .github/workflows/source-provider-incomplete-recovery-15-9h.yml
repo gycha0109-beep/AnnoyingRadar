@@ -2,9 +2,6 @@ name: Source Provider-Incomplete Recovery 15.9H
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9h-live-execution
 
 permissions:
   contents: read
