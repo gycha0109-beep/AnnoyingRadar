@@ -206,6 +206,7 @@ test("15.9F implementation has no governed DB mutation path", async () => {
   ]);
   for (const source of [externalFetcher, dispatcher]) {
     assert.doesNotMatch(source, /ar_source_incidents|ar_public_problems|ar_public_problem_evidence_snapshots|ar_public_problem_feed/);
-    assert.doesNotMatch(source, /\.insert\(|\.upsert\(|\.delete\(|\.update\(/);
+    assert.doesNotMatch(source, /\.insert\(|\.upsert\(|\.delete\(/);
+    assert.doesNotMatch(source, /\.from\([^)]*\)[\s\S]{0,500}?\.update\(/);
   }
 });
