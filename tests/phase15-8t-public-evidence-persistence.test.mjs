@@ -90,10 +90,11 @@ test("15.8T runner performs four canonical fetches max, one atomic write RPC, an
   assert.doesNotMatch(script, /\.delete\(/);
 });
 
-test("15.8T workflow has no OpenAI dependency and only one temporary live branch", async () => {
+test("15.8T closeout workflow is manual-only and has no OpenAI dependency", async () => {
   const workflow = await read(".github/workflows/source-public-evidence-persistence-15-8t.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-8t-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-8t-live-execution/);
+  assert.doesNotMatch(workflow, /\n\s*push:/);
   assert.match(workflow, /Checkout authoritative main/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PUBLIC_EVIDENCE_PAIR_PERSISTENCE: "true"/);

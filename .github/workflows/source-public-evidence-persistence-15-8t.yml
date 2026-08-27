@@ -2,9 +2,6 @@ name: Source Public Evidence Persistence 15.8T
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-8t-live-execution
 
 permissions:
   contents: read
