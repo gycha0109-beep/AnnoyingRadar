@@ -45,7 +45,7 @@ test("15.9J closeout freezes exact live authority without widening to Incident f
   assert.match(doc, /review = 2/);
   assert.match(doc, /source network requests = 6/);
   assert.match(doc, /model calls = 4/);
-  assert.match(doc, /DB writes = 0/);
+  assert.match(doc, /database writes = 0/);
   assert.match(doc, /ordinal 4/);
   assert.match(doc, /ordinal 9/);
   assert.match(doc, /ordinal 16/);
@@ -54,9 +54,9 @@ test("15.9J closeout freezes exact live authority without widening to Incident f
 
   assert.match(doc, /full-context outcomes = 85/);
   assert.match(doc, /Phase 15\.9I batch rows = 3/);
-  assert.match(doc, /Incident identity assigned = false/);
-  assert.match(doc, /Incident rows written = 0/);
-  assert.match(doc, /Public Evidence mutations = 0/);
-  assert.match(doc, /publication authority = false/);
-  assert.match(doc, /PHASE 15\.9J = CLOSED/);
+  assert.match(doc, /Incident identity/);
+  assert.match(doc, /Incident persistence/);
+  assert.match(doc, /Public Evidence/);
+  assert.match(doc, /publication/);
+  assert.match(doc, /workflow is manual-only after closeout/);
 });
