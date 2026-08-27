@@ -95,10 +95,11 @@ test("15.9D artifact excludes raw source bodies and direct lineage identifiers",
   }
 });
 
-test("15.9D workflow is one-shot and uses the existing full-context model family", async () => {
+test("15.9D workflow is manual-only after authoritative live closeout", async () => {
   const workflow = await read(".github/workflows/source-telecom-rejection-diagnostics-15-9d.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9d-live-execution/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9d-live-execution/);
   assert.match(workflow, /OPENAI_API_KEY/);
   assert.match(workflow, /OPENAI_SOURCE_FULL_CONTEXT_MODEL: gpt-5-mini-2025-08-07/);
   assert.match(workflow, /ALLOW_PHASE15_9D_REJECTION_DIAGNOSTICS: "true"/);
