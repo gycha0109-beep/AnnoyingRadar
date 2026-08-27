@@ -32,6 +32,14 @@ test("15.9M route, service, and live runner remain mutation-free", async () => {
   }
 });
 
+test("15.9M service explicitly enables the bounded external-web full-context policy", async () => {
+  const service = await read("lib/sources/source-formation-service.mjs");
+  assert.match(service, /fetchSourceFullContext/);
+  assert.match(service, /SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
+  assert.match(service, /externalWebPolicy:\s*SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
+  assert.match(service, /fetchContext:\s*fetchContext\s*\?\?\s*fetchFormationFullContext/);
+});
+
 test("15.9M live artifact contract excludes transport identity and raw source content", async () => {
   const runner = await read("scripts/run-curator-formation-handoff-15-9m.mjs");
   for (const token of [
