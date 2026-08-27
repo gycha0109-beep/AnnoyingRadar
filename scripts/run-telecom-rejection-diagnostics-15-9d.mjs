@@ -157,6 +157,7 @@ async function diagnoseOne(record, providerConfig) {
       full_context_decision: null,
       decision_reason_codes: [full.error_code ?? "full_context_unavailable"],
       diagnostic_status: "unavailable",
+      model_call_attempted: false,
       model: null,
       usage: null,
     };
@@ -174,6 +175,7 @@ async function diagnoseOne(record, providerConfig) {
       full_context_decision: null,
       decision_reason_codes: ["full_context_truncated"],
       diagnostic_status: "unavailable",
+      model_call_attempted: false,
       model: null,
       usage: null,
     };
@@ -202,6 +204,7 @@ async function diagnoseOne(record, providerConfig) {
         : final.decision === "review"
           ? "false_negative_possible"
           : "policy_consistent",
+      model_call_attempted: true,
       model: semantic.model,
       usage: semantic.usage,
     };
@@ -217,6 +220,7 @@ async function diagnoseOne(record, providerConfig) {
       full_context_decision: null,
       decision_reason_codes: [typeof error?.code === "string" ? error.code : "full_context_judge_failed"],
       diagnostic_status: "unavailable",
+      model_call_attempted: true,
       model: null,
       usage: null,
     };
@@ -299,7 +303,7 @@ async function main() {
     database_after: after,
     database_writes: 0,
     full_source_body_fetch_attempts: sample.length,
-    external_model_call_attempts: results.filter((item) => item.semantic !== null || item.decision_reason_codes?.some((code) => String(code).includes("judge"))).length,
+    external_model_call_attempts: results.filter((item) => item.model_call_attempted).length,
     incident_creation_authorized: false,
     source_incident_link_authorized: false,
     problem_signature_authorized: false,
