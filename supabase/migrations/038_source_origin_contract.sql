@@ -20,7 +20,7 @@ alter table public.ar_source_signals
         and source_origin_host is not null
         and source_origin_classifier_version is not null
         and source_origin_host = lower(source_origin_host)
-        and source_origin_host !~ '^www\\.'
+        and source_origin_host not like 'www.%'
         and source_origin_host ~ '^[a-z0-9.-]{1,253}$'
         and length(btrim(source_origin_classifier_version)) between 1 and 120
       )
