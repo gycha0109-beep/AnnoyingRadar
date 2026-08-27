@@ -106,13 +106,14 @@ test("15.9I runner uses no semantic provider and fails closed before one final b
   assert.doesNotMatch(script, /\bclient\s*\.rpc\(/);
 });
 
-test("15.9I workflow has no model secret and keeps one-shot live execution isolated", async () => {
+test("15.9I workflow has no model secret and remains manual-only on authoritative main after closeout", async () => {
   const workflow = await read(".github/workflows/source-confirmed-fn-outcome-persistence-15-9i.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9i-live-execution/);
   assert.match(workflow, /ref: main/);
   assert.match(workflow, /ALLOW_PHASE15_9I_CONFIRMED_FN_OUTCOME_PERSISTENCE: "true"/);
   assert.match(workflow, /retention-days: 1/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9i-live-execution/);
+  assert.doesNotMatch(workflow, /\bpush:/);
   assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
   assert.doesNotMatch(workflow, /OPENAI_SOURCE_FULL_CONTEXT_MODEL/);
 });
