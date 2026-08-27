@@ -2,9 +2,6 @@ name: Source Formation Assessment Persistence 15.9N
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9n-live-execution
 
 permissions:
   contents: read
