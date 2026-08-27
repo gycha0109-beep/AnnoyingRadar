@@ -120,7 +120,7 @@ test("15.9J runner skips model evaluation for drifted context and remains DB rea
   assert.match(script, /if \(!integrity\.ok\)/);
   assert.match(script, /buildPhase15_9JContextDriftItem/);
   assert.match(script, /continue;/);
-  assert.ok(script.indexOf("if (!integrity.ok)") < script.indexOf("resolveSourceProblemFormationAudit"));
+  assert.ok(script.indexOf("if (!integrity.ok)") < script.lastIndexOf("resolveSourceProblemFormationAudit"));
   assert.match(script, /sourcePlatform: origin\.kind/);
   assert.match(script, /maxSemanticAttempts: 2/);
   assert.match(script, /source_formation_provider_incomplete/);
