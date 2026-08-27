@@ -58,10 +58,11 @@ test("15.9C runner keeps acquisition upstream of full-context and Incident ident
   assert.doesNotMatch(script, /ar_set_public_problem_status/);
 });
 
-test("15.9C workflow remains bounded one-shot before closeout", async () => {
+test("15.9C workflow is manual-only after authoritative live closeout", async () => {
   const workflow = await read(".github/workflows/source-expanded-telecom-search-15-9c.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9c-live-execution/);
+  assert.doesNotMatch(workflow, /push:/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9c-live-execution/);
   assert.match(workflow, /ALLOW_PHASE15_9C_EXPANDED_ACQUISITION: "true"/);
   assert.match(workflow, /run-expanded-telecom-search-15-9c\.mjs --live/);
   assert.match(workflow, /retention-days: 1/);
