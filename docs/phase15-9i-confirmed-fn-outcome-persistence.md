@@ -2,102 +2,79 @@
 
 ## Status
 
-**IMPLEMENTED — pending PR / CI / PIE / one-shot live persistence**
+**CLOSED**
 
 Phase 15.9I follows the closed Phase 15.9H provider-incomplete recovery reproduction.
 
-Phase 15.9H confirmed three current snippet-level Source Admission false negatives:
+Phase 15.9H confirmed three snippet-level Source Admission false negatives at deterministic sample ordinals 4, 9, and 16. Phase 15.9I preserved only those already-confirmed Candidate outcomes in the existing append-only full-context outcome table.
+
+The phase did **not** rerun the semantic provider and did **not** alter Source Admission, Incident, or Public Problem authority.
+
+Final result:
 
 ```text
-ordinal 4  -> candidate
-ordinal 9  -> candidate
-ordinal 16 -> candidate
+targets = 3
+context integrity verified = 3/3
+semantic-provider calls = 0
+DB write statements = 1 bulk INSERT
+outcome rows = 82 -> 85
+Phase 15.9I batch rows = 3
+all 3 = resolved / candidate
+protected domains = unchanged
 ```
-
-All three resolved under the existing `source-full-context-semantic-v0.1` authority as:
-
-```text
-problem_claim = yes
-experience_actor = self
-friction_cause = external_service_or_product
-friction_specificity = concrete
-pain_centrality = central
-content_kind = organic
-
-final decision = candidate
-reason = full_context_first_hand_external_friction
-```
-
-Phase 15.9H was intentionally read-only. Its Candidate identities therefore still have no durable full-context outcome row.
-
-Phase 15.9I performs the smallest authorized persistence step needed to preserve those already-confirmed Candidate outcomes without asking the semantic provider to decide them again.
 
 ---
 
-## 1. Why Phase 15.9I does not rerun the model
+## 1. Release authority
 
-A fresh semantic call would create an avoidable nondeterminism boundary:
-
-```text
-H already observed Candidate
-→ rerun provider in I
-→ provider may return a different structured result
-→ durable authority no longer corresponds to the H finding being preserved
-```
-
-Phase 15.9I therefore has:
+Implementation:
 
 ```text
-semantic-provider calls = 0
-OpenAI credential required = false
+PR #138
+exact implementation head = 7aa6d4d2c5d6342913a64ebd1b649da4e0e0bd3b
+CI #474 = SUCCESS
+PIE #120 = SUCCESS
+merge/main = 26f1db7eb5a2eed95724d6a08ad916824b3df7e8
+merged-main CI #475 = SUCCESS
 ```
 
-It freezes only privacy-safe Phase 15.9H observations needed by the existing durable outcome schema and revalidates the public context those observations were made against.
+One-shot live persistence:
+
+```text
+workflow = Source Confirmed False-Negative Outcome Persistence 15.9I
+run #1
+Actions run id = 33042653519
+execution head = 26f1db7eb5a2eed95724d6a08ad916824b3df7e8
+result = SUCCESS
+artifact id = 9634450429
+artifact retention = 1 day
+```
+
+The temporary `agent/phase15-9i-live-execution` push trigger is removed by the Phase 15.9I closeout. The workflow remains manual-only through `workflow_dispatch`.
 
 ---
 
 ## 2. Existing durable authority reused
 
-Phase 15.9I does not create a new table or persistence model.
+Phase 15.9I created no new table, schema, semantic policy, or retry policy.
 
-It reuses the closed Phase 15.8M authority:
+It reused:
 
 ```text
 ar_source_full_context_resolution_outcomes
 source-full-context-outcome-v0.1
 buildSourceFullContextOutcomeRow()
 persistSourceFullContextOutcomeRows()
+resolveFullContextSemantic()
 ```
 
-The table remains private and append-only at the service-role privilege boundary.
-
-Authority key:
-
-```text
-(batch_version, source_signal_id)
-```
-
-Phase 15.9I batch:
+Batch version:
 
 ```text
 phase15.9i-confirmed-false-negative-candidates-v0.1
 ```
 
-The live baseline before Phase 15.9I is:
-
-```text
-ar_source_full_context_resolution_outcomes = 82 rows
-```
-
-The three Phase 15.9H Candidate Sources currently have zero rows in this table.
-
-Expected successful poststate:
-
-```text
-82 + 3 = 85 rows
-```
-
-No existing row is updated or deleted.
+The existing outcome table remains the private append-only authority for full-context resolution results.
 
 ---
 
@@ -109,137 +86,13 @@ Exact Phase 15.9G/H deterministic sample fingerprint:
 2a96219b35056ebd9b8947363477cb59615833890ab10636cf7e151b4c17218e
 ```
 
-Candidate ordinals:
+Confirmed Candidate ordinals:
 
 ```text
 4, 9, 16
 ```
 
-### Ordinal 4
-
-```text
-original rejection stratum = title_no_complaint_signal
-context SHA-256 = 41f15cace5262a57cdd1fc439c2b61caf0b101b20d1b9595552c7c8802dcc1eb
-context chars = 5752
-extraction scope = main_element
-title SHA-256 = c75c730c0c0321bd7a3902bad30a9c28cbf335953f6b36cd4885ddb51537f9ff
-
-H recovery:
-  attempted = true
-  recovered = true
-  attempt_count = 2
-  trigger = source_full_context_provider_incomplete
-```
-
-### Ordinal 9
-
-```text
-original rejection stratum = title_truncated_no_complaint_signal
-context SHA-256 = 4be5eae3f5caf2bdd1de325427dfa34ad2a8b80e6b13e717797bc3f2d061e463
-context chars = 3407
-extraction scope = content_container
-title SHA-256 = 309927f9a8f9359310e90f53078eb5c2c178dc6a1c70ddd2eb8b112c15e22988
-
-H recovery:
-  attempted = false
-  recovered = false
-  attempt_count = 1
-```
-
-### Ordinal 16
-
-```text
-original rejection stratum = title_information_or_guide
-context SHA-256 = cff1a57a383f6a903e6828117bf5115a04d412d54241982bf463748b97dea53c
-context chars = 3149
-extraction scope = article_element
-title SHA-256 = cc886d2f25206da7d5269718779383532ff09b759b3eca34fc121d60232a2d9e
-
-H recovery:
-  attempted = false
-  recovered = false
-  attempt_count = 1
-```
-
-No Source UUID, canonical URL, author handle, body text, exact evidence quote, or provider request identifier is frozen in repository authority.
-
----
-
-## 4. Reconstruction boundary
-
-The live runner reconstructs the same Phase 15.9C campaign and Phase 15.9G/H deterministic sample.
-
-Required reconstruction:
-
-```text
-8 ingestion runs
-351 observations
-313 newly inserted Sources
-all 313 remain snippet-level reject under current Source Admission authority
-blind overlap = 0 before canonical URL/body reads
-origin authority = 5 naver_blog / 308 external_web
-sample size = 16
-sample fingerprint = exact H fingerprint
-```
-
-Only then are ordinals 4, 9, and 16 selected.
-
-The selected targets must still have:
-
-```text
-actual content origin = external_web
-original rejection strata = exact H strata
-Blind membership = false
-existing durable full-context outcomes = 0
-```
-
-Any mismatch fails closed before persistence.
-
----
-
-## 5. Context-integrity gate
-
-Each of the three targets is refetched twice under the closed external-web acquisition authority.
-
-The pair must first satisfy the Phase 15.9G stability contract:
-
-```text
-resolved
-not truncated
-same content_hash
-same original_char_count
-same extraction_scope
-same title
-```
-
-Then both acquisitions must match the exact Phase 15.9H observation:
-
-```text
-content_hash = frozen H context SHA-256
-original_char_count = frozen H count
-content_text.length = frozen H count
-content_scope = full_post
-extraction_scope = frozen H scope
-SHA-256(title) = frozen H title SHA-256
-```
-
-This is the critical authority bridge:
-
-```text
-same public Source identity
-+ same deterministic H sample position
-+ same fetched context bytes after extraction
-+ same title/scope
-→ H semantic observation may be persisted without a new semantic draw
-```
-
-If any one target fails integrity validation, no outcome row is written for any target.
-
----
-
-## 6. Frozen semantic facts
-
-For all three targets Phase 15.9H observed:
+All three frozen semantic observations were:
 
 ```text
 problem_claim = yes
@@ -250,114 +103,192 @@ pain_centrality = central
 content_kind = organic
 ```
 
-Before building durable rows, Phase 15.9I passes these frozen facts through the existing pure resolver:
-
-```text
-resolveFullContextSemantic()
-```
-
-Required result:
+The existing pure resolver continued to map each observation to:
 
 ```text
 decision = candidate
 reason = full_context_first_hand_external_friction
 ```
 
-This is not a model call and does not create a new policy.
+Original snippet-level rejection strata were:
 
-If the current resolver no longer maps the frozen H semantic facts to Candidate, Phase 15.9I fails closed rather than silently persisting a stale interpretation.
+```text
+ordinal 4  -> title_no_complaint_signal
+ordinal 9  -> title_truncated_no_complaint_signal
+ordinal 16 -> title_information_or_guide
+```
+
+Phase 15.9I did not place Source UUIDs, canonical URLs, author handles, raw bodies, exact evidence quotes, or provider request identifiers into repository authority.
 
 ---
 
-## 7. Persistence semantics
+## 4. No semantic redraw
 
-After all three targets pass reconstruction, Blind, origin, context-integrity, and resolver checks, the runner builds three safe rows in memory using:
+Phase 15.9I intentionally made no semantic-provider request.
 
 ```text
-buildSourceFullContextOutcomeRow()
+model_calls = 0
+OpenAI credential supplied to workflow = false
 ```
 
-No row is persisted while target validation is still in progress.
+The provider/model fields stored in the durable outcome rows describe the already-observed Phase 15.9H semantic authority. They are not evidence of a new model call in Phase 15.9I.
 
-Immediately before insertion, required state remains:
+Likewise, Phase 15.9I did not freeze or persist the exact Phase 15.9H `evidence_quote`. The durable Candidate authority consists of the six semantic facts, resolver result, context integrity metadata, prompt/provider/model metadata, and bounded recovery metadata allowed by the existing outcome schema.
+
+---
+
+## 5. Reconstruction boundary
+
+The live runner reconstructed the same Phase 15.9C campaign and exact Phase 15.9G/H sample before accessing target bodies.
+
+Verified live authority:
 
 ```text
-batch rows = 0
-outcome total = 82
-protected domains = unchanged
-all 3 safe rows built
+8 ingestion runs
+351 observations
+313 newly inserted Sources
+blind overlap before canonical URL/body read = 0
+origin authority = 5 naver_blog / 308 external_web
+sample fingerprint = exact Phase 15.9G/H fingerprint
+target ordinals = 4, 9, 16
+```
+
+All three selected targets remained:
+
+```text
+actual content origin = external_web
+Blind membership = false
+existing durable full-context outcomes before Phase 15.9I = 0
+```
+
+---
+
+## 6. Context-integrity bridge
+
+Each target was fetched twice under the closed external-web acquisition authority.
+
+All three pairs passed the existing Phase 15.9G stability contract and then matched the frozen Phase 15.9H context authority exactly on:
+
+```text
+content SHA-256
+original character count
+untruncated content length
+content_scope = full_post
+extraction scope
+title SHA-256
+```
+
+Live result:
+
+```text
+context_integrity_verified = true
+targets verified = 3/3
+successful source acquisitions = 6
+source_network_requests = 6
+maximum authorized = 24
+```
+
+Because all integrity checks completed before persistence, the durable rows refer to the same extracted public contexts on which Phase 15.9H made its Candidate observations.
+
+---
+
+## 7. Persistence result
+
+Immediately before persistence the runner required:
+
+```text
+Phase 15.9I batch rows = 0
+full-context outcome total = 82
+all 3 safe rows built in memory
 all 3 Source identities unique
+protected domains unchanged
 ```
 
-Then exactly one existing bulk persistence call is authorized:
+Exactly one existing bulk INSERT call was then used.
+
+Live result:
 
 ```text
-persistSourceFullContextOutcomeRows()
+database_write_statements = 1
+outcome_rows_before = 82
+outcome_rows_inserted = 3
+outcome_rows_after = 85
 ```
 
-with:
-
-```text
-expected batch version = phase15.9i-confirmed-false-negative-candidates-v0.1
-expected count = 3
-```
-
-Expected readback:
+Batch readback:
 
 ```text
 batch rows = 3
-all status = resolved
-all decision = candidate
-all reason = full_context_first_hand_external_friction
-outcome total = 85
+status = resolved for 3/3
+decision = candidate for 3/3
+reason = full_context_first_hand_external_friction for 3/3
+```
+
+The persisted semantic fields for all three rows are:
+
+```text
+problem_claim = yes
+experience_actor = self
+friction_cause = external_service_or_product
+friction_specificity = concrete
+pain_centrality = central
+content_kind = organic
+context_status = resolved
+context_scope = full_post
+context_truncated = false
+prompt_version = source-full-context-semantic-v0.1
+model_name = gpt-5-mini-2025-08-07
+```
+
+Recovery metadata also preserved the Phase 15.9H distinction:
+
+```text
+ordinal 4:
+  recovery_attempted = true
+  recovery_recovered = true
+  recovery_attempt_count = 2
+  trigger = source_full_context_provider_incomplete
+
+ordinals 9 and 16:
+  recovery_attempted = false
+  recovery_attempt_count = 1
 ```
 
 ---
 
-## 8. Durable fields
+## 8. Independent production DB readback
 
-The existing outcome schema may preserve:
-
-```text
-batch/source identity key
-resolution/recovery versions
-resolved/candidate/reason
-six semantic facts
-context SHA-256
-context char count
-full_post scope
-truncation flag
-prompt/provider/model metadata
-bounded H recovery metadata
-```
-
-It does not persist:
+After the workflow completed, an independent Supabase readback returned:
 
 ```text
-full source body
-raw search snippet
-canonical URL
-fetched URL
-author handle
-evidence quote
-provider request ID
-provider payload
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 85
+Phase 15.9I batch rows = 3
 ```
 
-Phase 15.9I does not weaken those constraints.
+The protected-domain counts are identical to the Phase 15.9H poststate. Only the authorized outcome table increased, by exactly three rows.
 
 ---
 
 ## 9. Mutation boundary
 
-The only authorized production mutation is:
+Authorized production mutation:
 
 ```text
 ar_source_full_context_resolution_outcomes
 + exactly 3 append-only rows
 ```
 
-The following domains must remain exactly unchanged:
+Not mutated:
 
 ```text
 ar_source_signals
@@ -372,7 +303,7 @@ ar_source_incidents
 ar_source_incident_links
 ```
 
-Not authorized:
+Not authorized or exercised:
 
 ```text
 Source row update
@@ -386,114 +317,80 @@ Public Evidence persistence
 publication
 ```
 
-A durable Candidate outcome still means only:
+A persisted Candidate means only:
 
 ```text
 Candidate under the exact full-context batch authority
 ```
 
-It does not mean an independent Incident or publishable Problem exists.
+It is not yet an Incident and is not automatically publishable evidence.
 
 ---
 
-## 10. Cost boundary
+## 10. Privacy boundary
 
-Targets:
+The durable outcome schema excludes:
 
 ```text
-3
+full source body
+raw search snippet
+canonical URL
+fetched URL
+author handle
+evidence quote
+provider request ID
+provider payload
 ```
 
-External source acquisitions:
+The disposable artifact likewise records only bounded ordinal/hash/semantic/recovery metadata needed to audit the persistence operation.
+
+---
+
+## 11. Closeout
+
+Phase 15.9I is closed because:
 
 ```text
-3 targets x 2 acquisitions = 6 successful page acquisitions
+implementation exact-head CI = SUCCESS
+PIE prospective shadow = SUCCESS
+implementation merged-main CI = SUCCESS
+exact H sample reconstruction = PASS
+Blind exclusion = PASS
+context integrity = 3/3 PASS
+model calls = 0
+one bulk INSERT = SUCCESS
+outcome rows = 82 -> 85
+protected domains = unchanged
+independent production DB readback = PASS
+live artifact inspection = PASS
+temporary live push trigger = removed
 ```
 
-Maximum HTTP request budget including redirects:
+Final authority:
 
 ```text
-3 x 2 x 4 = 24
-```
+PHASE 15.9I = CLOSED
 
-Semantic-provider calls:
-
-```text
-0
-```
-
-Maximum DB write statements:
-
-```text
-1 bulk INSERT
-```
-
-Maximum inserted rows:
-
-```text
-3
+durable confirmed false-negative Candidate outcomes = 3
+full_context_outcomes = 85
+Source Admission policy mutation = 0
+Incident mutations = 0
+publication mutations = 0
 ```
 
 ---
 
-## 11. One-shot workflow
+## 12. Next decision boundary
 
-Workflow:
+Phase 15.9I preserves the confirmed false-negative Candidate identities durably but deliberately leaves future policy unchanged.
 
-```text
-.github/workflows/source-confirmed-fn-outcome-persistence-15-9i.yml
-```
-
-Temporary live branch:
+A later governed phase may separately evaluate:
 
 ```text
-agent/phase15-9i-live-execution
+A. exact Candidate -> Incident formation for these three rows only
+B. broader calibration of the three affected snippet-level reject strata
+C. a selective external-web full-context rescue path for future Sources
+D. no activation until additional calibration exists
 ```
 
-The workflow always checks out authoritative `main`.
-
-Required secrets are Supabase credentials only. No OpenAI API key is provided to the job.
-
-The temporary push trigger must be removed during closeout.
-
----
-
-## 12. Close criterion
-
-Phase 15.9I may close only after:
-
-1. implementation diff review passes;
-2. exact-head CI passes;
-3. PIE prospective shadow passes;
-4. expected-head implementation merge succeeds;
-5. merged-main CI passes;
-6. exact Phase 15.9G/H sample reconstructs;
-7. candidate ordinals 4/9/16 reconstruct exactly;
-8. Blind overlap is zero before URL/body access;
-9. all six live fetches form three stable pairs;
-10. every context-integrity field matches the frozen H authority;
-11. model calls remain exactly zero;
-12. exactly one bulk INSERT persists exactly three rows;
-13. outcome total moves exactly 82 -> 85;
-14. all protected domains remain unchanged;
-15. independent production DB readback confirms the poststate;
-16. disposable artifact is inspected;
-17. temporary push trigger is removed;
-18. closeout exact-head CI/PIE and merged-main CI pass.
-
----
-
-## 13. Decision boundary after closeout
-
-Phase 15.9I preserves the confirmed false-negative Candidate identities durably without changing how future Sources are admitted.
-
-A later phase must separately decide whether to:
-
-```text
-A. form Incidents from only these three durable Candidates;
-B. investigate broader policy correction for the three affected snippet-reject strata;
-C. add a selective external-web full-context rescue path to production;
-D. do none of the above until broader calibration exists.
-```
-
-Those are separate authorities. Phase 15.9I grants none of them.
+Phase 15.9I itself grants none of those authorities.
