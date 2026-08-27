@@ -2,54 +2,49 @@
 
 ## Status
 
-**IMPLEMENTED / MIGRATION NOT YET APPLIED / LIVE VERIFICATION NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
-Phase 15.9E follows the closed Phase 15.9D diagnostic. The 15.9D bounded sample did not reach semantic judging because all 16 sampled Sources returned `full_context_url_invalid` before body fetch.
-
-Independent diagnosis of the frozen Phase 15.9C cohort established:
-
-```text
-newly inserted Sources = 313
-actual blog.naver.com origin = 5
-external blog/web origin = 308
-```
-
-The defect is a contract conflation:
+Phase 15.9E repairs the contract defect exposed by Phase 15.9D:
 
 ```text
 search provider/channel != actual content origin
 ```
 
-NAVER API HUB Blog Search is the discovery provider, but its result set can link to Naver Blog, Tistory, and independent web hosts. Historical normalization stored all of those results under the legacy `source_platform = naver_blog` identity namespace, while `source-full-context-fetch-v0.2` only parses actual Naver Blog pages.
+NAVER API HUB Blog Search is a discovery provider. Its results can point to Naver Blog, Tistory, or independent web hosts. Historical normalization used the legacy `source_platform = naver_blog` identity namespace for all of those results, while `source-full-context-fetch-v0.2` only supports actual Naver Blog pages.
+
+The frozen Phase 15.9C cohort proved the mismatch:
+
+```text
+newly inserted Sources = 313
+actual Naver Blog origin = 5
+external web origin = 308
+invalid origin = 0
+```
 
 ---
 
-## 1. Authority split
+## 1. Final authority split
 
-15.9E freezes three separate concepts.
+### Discovery provider
 
-### Discovery provider authority
-
-Provider belongs to the ingestion event/run:
+Provider remains ingestion-run authority:
 
 ```text
 ar_source_ingestion_runs.request_metadata.provider = naver_api_hub
 ar_source_ingestion_runs.request_metadata.resource = blog_search
 ```
 
-A Source can be rediscovered through another provider later, so provider is not Source identity.
+### Historical Source identity
 
-### Historical Source identity namespace
-
-The existing identity remains unchanged:
+Source identity remains unchanged:
 
 ```text
 source_platform + external_content_id
 ```
 
-15.9E does not re-key existing Sources and does not change the unique constraint or the historical `source_platform` values.
+15.9E does not re-key historical Sources and does not change the unique identity constraint.
 
-### Actual content origin authority
+### Actual content origin
 
 Migration 038 adds nullable Source-level fields:
 
@@ -59,13 +54,13 @@ source_origin_host
 source_origin_classifier_version
 ```
 
-The initial classifier is:
+Classifier:
 
 ```text
 source-origin-v0.1
 ```
 
-Current classifications used by NAVER Blog Search normalization:
+Classification:
 
 ```text
 blog.naver.com / m.blog.naver.com -> naver_blog
@@ -74,31 +69,51 @@ other valid HTTP(S) hosts          -> external_web
 
 ---
 
-## 2. Zero historical backfill
+## 2. Historical provenance protection
 
-Migration 038 is additive only.
+Migration 038 contains no `UPDATE ar_source_signals` and performs no backfill.
 
-It contains no update/backfill of `ar_source_signals`.
-
-Existing Sources therefore remain:
+Immediately after live migration:
 
 ```text
-source_origin_kind = null
-source_origin_host = null
-source_origin_classifier_version = null
+explicit origin rows = 0
+Source→Incident-linked Sources = 7
+linked Sources with all new origin columns null = 7
 ```
 
-until a separately governed operation explicitly persists origin data.
+The seven linked Sources infer from their canonical URLs as:
 
-This is intentional. Historical Source identity and provenance are not silently rewritten.
+```text
+naver_blog = 7
+external_web = 0
+invalid = 0
+```
 
-The seven durable Source rows participating in Source→Incident links were independently checked before implementation and all resolve from their canonical URLs to actual `blog.naver.com` origins. 15.9E still leaves their new origin columns null.
+Their durable historical identity/provenance was not rewritten.
+
+The historical platform constraint also remains:
+
+```text
+source_platform IN ('threads', 'naver_blog')
+```
+
+and identity uniqueness remains:
+
+```text
+UNIQUE (source_platform, external_content_id)
+```
 
 ---
 
 ## 3. New NAVER search normalization
 
-`naver-api-hub-blog-search-v3-origin-contract` keeps:
+Adapter authority:
+
+```text
+naver-api-hub-blog-search-v3-origin-contract
+```
+
+Newly normalized NAVER API HUB results retain:
 
 ```text
 source_platform = naver_blog
@@ -106,7 +121,7 @@ source_metadata.provider = naver_api_hub
 source_metadata.resource = blog_search
 ```
 
-and additionally records the actual origin classification for newly normalized results:
+and additionally carry:
 
 ```text
 source_origin_kind
@@ -114,105 +129,147 @@ source_origin_host
 source_origin_classifier_version
 ```
 
-The adapter identity namespace is therefore preserved while provider and origin become explicit orthogonal facts.
+This preserves the existing identity namespace while making actual content origin explicit.
 
 ---
 
 ## 4. Full-context dispatch repair
 
-The Naver body parser itself remains:
+The Naver body parser remains:
 
 ```text
 source-full-context-fetch-v0.2
 ```
 
-Its body extraction and canonical text/hash behavior are not changed by 15.9E.
+Its Naver body extraction and canonical text/hash behavior are unchanged.
 
-A new pre-fetch dispatch contract is added:
+New dispatch authority:
 
 ```text
 source-origin-dispatch-v0.1
 ```
 
-Dispatch now resolves actual origin first.
+Routing:
 
 ```text
 origin = naver_blog
   -> existing v0.2 Naver PostView fetch/parser
 
 origin = external_web
-  -> unavailable: full_context_origin_unsupported
-  -> no network request through the Naver parser
+  -> full_context_origin_unsupported
+  -> no Naver-parser network request
 
-legacy Source with null origin columns
+legacy Source with null origin fields
   -> infer origin ephemerally from canonical_url
-  -> do not persist the inference
+  -> do not persist inference
 ```
 
-This changes the previous misleading failure mode:
+The previous misleading path:
 
 ```text
-external origin mislabeled as naver_blog
+external web result
+-> source_platform naver_blog
 -> full_context_url_invalid
 ```
 
-into the correct contract result:
+is now separated from actual URL validity.
 
-```text
-external_web
--> full_context_origin_unsupported
-```
-
-Generic external-web full-context acquisition is not implemented in 15.9E.
+Generic external-web body acquisition is intentionally outside Phase 15.9E.
 
 ---
 
-## 5. Migration contract
+## 5. Implementation authority
+
+```text
+implementation PR = #130
+exact head = d08fe39df6421d5bdf4df305ae3d0361896575e1
+CI #454 = SUCCESS
+PIE #108 = SUCCESS
+implementation main = 6ced13c125c324c89eaeaa90785540d5a278f70b
+merged-main CI #455 = SUCCESS
+```
+
+Changed implementation surface:
+
+```text
+lib/sources/source-origin.mjs
+lib/sources/naver-blog-adapter.mjs
+lib/sources/source-full-context-fetch.mjs
+supabase/migrations/038_source_origin_contract.sql
+scripts/run-source-origin-contract-verification-15-9e.mjs
+.github/workflows/source-origin-contract-verification-15-9e.yml
+tests/phase15-9e-source-origin-contract.test.mjs
+docs/phase15-9e-source-origin-contract.md
+```
+
+---
+
+## 6. Live migration authority
 
 Repository migration:
 
 ```text
-supabase/migrations/038_source_origin_contract.sql
+038_source_origin_contract.sql
 ```
 
-It adds only nullable origin columns, completeness checks, and a partial origin index.
-
-It does not modify:
+Live Supabase migration:
 
 ```text
-source_platform CHECK
-(source_platform, external_content_id) identity uniqueness
-Source→Incident rows
-Incident rows
-Canonical Problems
-Public Evidence
-Public Feed
+20260827032611 source_origin_contract
 ```
 
-Migration backfill count must remain zero.
+Independent schema readback verified:
+
+```text
+source_origin_kind = text nullable
+source_origin_host = text nullable
+source_origin_classifier_version = text nullable
+explicit origin rows = 0
+linked origin-null rows = 7/7
+historical source_platform CHECK unchanged
+historical Source identity UNIQUE unchanged
+```
 
 ---
 
-## 6. Bounded live verification
+## 7. Authoritative live verification
 
-After implementation is merged and migration 038 is applied, the one-shot verifier reconstructs the exact Phase 15.9C campaign:
-
-```text
-8 ingestion runs
-351 observations
-313 newly inserted Sources
-```
-
-Blind protection occurs before reading canonical URLs:
+One-shot branch:
 
 ```text
-load blind-evaluation Source IDs only
-reconstruct cohort from IDs + first_seen_at
-assert blind overlap = 0
-only then read canonical URLs
+agent/phase15-9e-live-execution
 ```
 
-The verifier must reproduce:
+Run:
+
+```text
+run = 33036391945
+head = 6ced13c125c324c89eaeaa90785540d5a278f70b
+status = SUCCESS
+```
+
+Artifact:
+
+```text
+id = 9632154083
+name = source-origin-contract-verification-15-9e
+digest = sha256:2716c5972dd2d2b07a0dac7a8bbf8ac8489722883dce530478769ade197f0dc6
+retention = 1 day
+```
+
+Frozen campaign reconstruction:
+
+```text
+provider = naver_api_hub
+resource = blog_search
+runs = 8
+observations = 351
+newly inserted Sources = 313
+blind overlap = 0
+historical explicit origin rows = 0
+```
+
+In-memory origin classification:
 
 ```text
 naver_blog = 5
@@ -220,33 +277,66 @@ external_web = 308
 invalid = 0
 ```
 
-It also checks the seven Source→Incident-linked Sources:
+Durable Source→Incident lineage:
 
 ```text
-explicit origin columns = null
-inferred actual origin = naver_blog for 7/7
+linked Sources = 7
+historical explicit origin rows = 0
+naver_blog inferred = 7
+external_web inferred = 0
+invalid = 0
 ```
 
-The live verification is strictly read-only:
+Operational boundary:
 
 ```text
-database data writes = 0
+database writes = 0
 full-context body fetches = 0
 model calls = 0
 ```
 
-Only aggregate counts are written to the disposable artifact. No Source UUID, canonical URL, body, quote, author, Incident UUID, or evaluation label is exported.
+---
+
+## 8. Independent DB readback after live verification
+
+```text
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 82
+```
+
+These counts equal the live artifact before/after snapshots.
+
+Additional readback:
+
+```text
+explicit origin rows = 0
+linked Sources = 7
+linked origin-null rows = 7
+```
+
+No governed data mutation occurred during verification.
 
 ---
 
-## 7. Not authorized
+## 9. Closeout state
 
-Phase 15.9E does not authorize:
+The temporary live push trigger is retired in the closeout branch. The workflow returns to `workflow_dispatch` only.
+
+Phase 15.9E authorizes none of the following:
 
 ```text
 historical Source origin backfill
 source_platform re-keying
-external-web body acquisition
+generic external-web body acquisition
 Source Admission policy changes
 Incident creation
 Source→Incident linking
@@ -256,22 +346,4 @@ Public Evidence persistence
 publication
 ```
 
-The likely next phase after successful closeout is a bounded external-web full-context acquisition authority, followed by a rerun of rejection diagnostics. That next phase is not part of 15.9E.
-
----
-
-## 8. Release sequence
-
-```text
-implementation PR
--> exact-head CI / PIE
--> merge main
--> merged-main CI
--> apply migration 038
--> independent schema + zero-backfill readback
--> one-shot read-only origin verification
--> artifact inspection
--> independent DB readback
--> closeout PR
--> merged-main CI
-```
+The next governed phase should address bounded `external_web` full-context acquisition before the telecom rejection diagnostic is rerun.
