@@ -1,0 +1,86 @@
+name: Source Post-Publication Seed Audit 15.9A
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9a-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-post-publication-seed-audit-15-9a
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Validate managed environment
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Run read-only next-seed audit
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/run-post-publication-seed-audit-15-9a.mjs --output=phase15-9a-post-publication-seed-audit.json
+      - name: Start Public Radar against hosted projection
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          npm run dev -- --hostname 127.0.0.1 --port 3109 > phase15-9a-next.log 2>&1 &
+          echo $! > phase15-9a-next.pid
+          for i in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:3109/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat phase15-9a-next.log
+          exit 1
+      - name: Verify rendered Public Radar surface
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3109
+        run: node scripts/run-public-radar-post-publication-smoke-15-9a.mjs --output=phase15-9a-public-surface-smoke.json
+      - name: Stop Public Radar
+        if: always()
+        shell: bash
+        run: |
+          if test -f phase15-9a-next.pid; then kill "$(cat phase15-9a-next.pid)" 2>/dev/null || true; fi
+      - name: Upload disposable Phase 15.9A artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-post-publication-seed-audit-15-9a
+          path: |
+            phase15-9a-post-publication-seed-audit.json
+            phase15-9a-public-surface-smoke.json
+            phase15-9a-next.log
+          if-no-files-found: ignore
+          retention-days: 1
