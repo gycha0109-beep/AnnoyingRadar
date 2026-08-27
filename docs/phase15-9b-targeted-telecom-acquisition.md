@@ -2,55 +2,58 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE NOT YET RUN**
+**LIVE VERIFIED / CLOSEOUT READY**
 
-Phase 15.9B consumes only the next-step authority produced by Phase 15.9A:
+Phase 15.9B consumed the only authority produced by Phase 15.9A:
 
 ```text
-targeted same-mechanism Source acquisition
+targeted Source acquisition around the curator-held Gogo Mobile singleton
 ```
 
-The purpose is to look for a second independent real-world Source near the curator-held Gogo Mobile singleton.
-
-This phase does **not** decide that any newly discovered Source is the same Incident or the same problem mechanism.
+Its purpose was to look for a second independent real-world Source near the same search focus. It did **not** authorize Incident creation, same-mechanism adjudication, a `problem_signature`, Canonical Problem creation, Public Evidence persistence, or publication.
 
 ---
 
 ## 1. Upstream seed authority
 
-Phase 15.9A closed with the previously curated singleton still in this state:
+The frozen singleton remained:
 
 ```text
 Evidence decision = accept
 Incident persistence = hold as singleton
 Incident links = 0
 repeat_ready = false
-missing = one independent same-mechanism Incident
 ```
 
-The seed identity remains hash-only in repository authority.
+Repository authority stores only hash identities for the seed.
 
-15.9B refuses live execution if that Source no longer resolves uniquely, its frozen content hash has changed, or it has gained an Incident link outside a later curator decision.
+Live execution additionally required the seed to:
+
+```text
+resolve uniquely
+retain its frozen content hash
+retain Incident links = 0
+```
+
+Search rediscovery of the seed was excluded from persistence input, preventing the targeted campaign from rewriting the upstream singleton through generic Source upsert behavior.
 
 ---
 
-## 2. Search focus, not problem identity
+## 2. Search focus
 
-Search focus:
+The search focus remained descriptive only:
 
 ```text
 mobile carrier number-transfer / port-out restriction imposed by the service provider
 ```
 
-This is deliberately marked:
+Authority marker:
 
 ```text
 search_focus_not_problem_signature
 ```
 
-No `problem_signature` is created or inferred in this phase.
-
-The exact four queries are:
+Exact queries:
 
 ```text
 알뜰폰 번호이동 제한 강제
@@ -59,188 +62,238 @@ The exact four queries are:
 통신사 번호이동 막힘 피해
 ```
 
-Each query uses:
-
-```text
-provider = Naver API Hub blog search
-sort = date
-start = 1
-limit = 50
-```
-
 Bound:
 
 ```text
-4 requests
+4 Naver Blog requests
+50 maximum results per request
 200 maximum result opportunities
 ```
 
-The generic Phase 15.8 discovery allocation is intentionally not modified.
+No generic discovery allocation policy was changed.
 
 ---
 
-## 3. Source supply mutation boundary
+## 3. Implementation authority
 
-15.9B reuses existing governed discovery primitives:
+Implementation PR:
 
 ```text
-createSourceIngestionRun()
-searchNaverBlogPosts()
-persistDiscoveredSourceSignals()
+PR #124
+exact head:
+a04cd45abd212d0cbbabfede8c4e5fb3839edd28
 ```
 
-Allowed durable mutations are restricted to Source supply / provenance domains already owned by discovery:
+Verification:
 
 ```text
-ar_source_ingestion_runs
-ar_source_signals
-ar_source_signal_observations
+CI #440: SUCCESS
+PIE #99: SUCCESS
 ```
 
-Existing discovery prefilter and Source Admission policy remain authoritative.
-
-Protected downstream domains must retain exact row counts:
+Implementation merged to authoritative main:
 
 ```text
-ar_raw_inputs
-ar_pain_evidences
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_public_problem_feed
-ar_source_incidents
-ar_source_incident_links
-ar_source_full_context_resolution_outcomes
+6c7bda475af83685931bdcc55632b59d9b37cc0b
+```
+
+Merged-main verification:
+
+```text
+CI #441: SUCCESS
 ```
 
 ---
 
-## 4. New-source identity handling
+## 4. Authoritative live execution
 
-For each query, 15.9B checks which discovery-accepted Source identities existed before persistence.
-
-Only previously unseen identities are counted as the new cohort.
-
-The existing Gogo seed receives stronger protection than ordinary duplicate handling:
-
-- if a search response rediscoveres the seed, that hit is counted only in `seed_rediscovery_hits`;
-- the seed is removed from the persistence input before discovery upsert/observation handling;
-- the frozen seed content hash is asserted both before and after the campaign;
-- therefore the targeted campaign cannot rewrite the upstream singleton seed through generic Source upsert behavior;
-- the seed can never count as the required second independent Source;
-- a non-seed Source discovered by query 1 and then rediscovered by query 2 is counted new only once.
-
-Each new Source is recorded in the disposable artifact only as:
+Workflow:
 
 ```text
-source_platform
-source_identity_sha256
-source_content_sha256
-published_at
-admission_decision
-admission_reason_codes
-requires_full_context
-distinct_from_seed
+Source Targeted Telecom Acquisition 15.9B
 ```
 
-No Source UUID, URL, author handle, raw snippet/body, Incident UUID, or Public Problem UUID is emitted.
+Authoritative run:
+
+```text
+33032469039
+```
+
+Exact live head:
+
+```text
+6c7bda475af83685931bdcc55632b59d9b37cc0b
+```
+
+Result:
+
+```text
+SUCCESS
+```
+
+Artifact:
+
+```text
+ID: 9630761799
+name: source-targeted-telecom-acquisition-15-9b
+digest: sha256:e409aed3a7fe2c080a9991ea7ce1ca7f0f572c7b835b1b3b3955e5a1ba753e4d
+retention: 1 day
+```
 
 ---
 
-## 5. Admission semantics
+## 5. Live yield
 
-The admission result remains a **Source Admission** decision only:
-
-```text
-Candidate / Review / Reject
-```
-
-It does not answer:
+Query-level result:
 
 ```text
-is this an actual independent Incident?
-is this the same mechanism as the Gogo singleton?
-what is the problem_signature?
-should an Incident be persisted?
+01 알뜰폰 번호이동 제한 강제
+   fetched = 2
+   protected seed rediscovery = 1
+   new inserted = 1
+   new admission = Reject 1
+
+02 통신사 번호이동 제한 해제 안됨
+   fetched = 0
+   new inserted = 0
+
+03 번호이동 제한서비스 자동 가입
+   fetched = 4
+   discovery reject = 1
+   new inserted = 3
+   new admission = Reject 3
+
+04 통신사 번호이동 막힘 피해
+   fetched = 0
+   new inserted = 0
 ```
 
-Those questions require full-context evidence and a later curator gate.
+Combined new cohort:
+
+```text
+total = 4
+Candidate = 0
+Review = 0
+Reject = 4
+```
+
+Admission rejection reasons in the disposable artifact were limited to snippet/title-level policy outcomes:
+
+```text
+title_truncated_no_complaint_signal
+title_information_or_guide
+title_no_complaint_signal
+```
+
+Therefore Phase 15.9B produced **no Source eligible for selective full-context continuation**.
 
 ---
 
-## 6. No full-context or model call
+## 6. Seed protection verified
 
-15.9B is intentionally cheap and bounded:
+The seed was rediscovered once during query 01.
+
+Live result:
 
 ```text
-full source body fetches = 0
-external model calls = 0
-blind 120 reads = 0
+seed_rediscovery_hits = 1
+protected_seed_upserted = false
 ```
 
-If new Candidate/Review sources exist, a later read-only phase may reconstruct exactly this campaign cohort from ingestion-run request metadata and perform selective full-context resolution.
+Independent Supabase readback verified:
+
+```text
+seed row count = 1
+seed content hash unchanged = true
+seed Incident links = 0
+```
+
+The campaign therefore did not mutate the curator-held singleton.
 
 ---
 
-## 7. Campaign reconstruction
+## 7. Durable mutation boundary
 
-Each ingestion run stores:
+Only governed Source-supply/provenance tables changed:
+
+```text
+ar_source_signals              3245 → 3249
+ar_source_signal_observations  3537 → 3541
+ar_source_ingestion_runs       132  → 136
+```
+
+Exactly four campaign ingestion runs were independently reconstructed from:
 
 ```text
 targeted_campaign_version = phase15.9b-targeted-telecom-acquisition-v0.1
-targeted_query_key
-targeted_search_focus = telecom_port_restriction
-search_focus_authority = search_focus_not_problem_signature
-protected_seed_identity_sha256 = <frozen hash>
 ```
 
-This lets the next phase reconstruct the exact new cohort from durable Source provenance without freezing raw Source UUIDs in repository files.
-
----
-
-## 8. Live gate
-
-Live execution requires:
+Independent readback also found:
 
 ```text
-ALLOW_PHASE15_9B_TARGETED_ACQUISITION=true
-NAVER_CLIENT_ID
-NAVER_CLIENT_SECRET
-Supabase service credential
+campaign runs = 4
+campaign observations = 4
+new Source cohort = 4
+all new cohort Incident links = 0
 ```
 
-Release flow:
+Protected downstream domains remained unchanged:
 
 ```text
-implementation PR
-→ exact-head CI / PIE
-→ merge main
-→ merged-main CI
-→ one-shot live branch
-→ 4-query campaign
-→ artifact inspection
-→ independent DB readback
-→ remove temporary live trigger
-→ closeout PR / CI / PIE
-→ merge
-→ merged-main CI
+ar_raw_inputs                              10
+ar_pain_evidences                          27
+ar_public_problems                          3
+ar_public_problem_evidence_snapshots        7
+ar_public_problem_feed                      3
+ar_source_incidents                         6
+ar_source_incident_links                    7
+ar_source_full_context_resolution_outcomes 82
+```
+
+Additional live boundaries:
+
+```text
+blind 120 reads = 0
+full source body fetches = 0
+external model calls = 0
+Incident mutations = 0
+publication mutations = 0
 ```
 
 ---
 
-## 9. Authority boundary
+## 8. Interpretation
 
-15.9B authorizes only targeted source supply acquisition.
+The four frozen queries were too narrow / low-yield to produce a continuation source.
+
+This result does **not** mean the held Gogo friction is unique in reality. It means only:
+
+```text
+within this exact 4-query / Naver Blog / first-page bounded campaign,
+no newly discovered Source passed Source Admission.
+```
+
+Accordingly, the next governed step must remain upstream of full-context and Incident identity.
+
+---
+
+## 9. Next authority
+
+Phase 15.9B authorizes no semantic promotion from its live result.
 
 Not authorized:
 
 ```text
-full-context interpretation beyond existing Source Admission
+full-context review of the four Reject rows
 Incident creation
 Source→Incident linking
+same-mechanism adjudication
 problem_signature assignment
 Canonical Problem creation
 Public Evidence persistence
 publication
 ```
 
-The live yield determines the next step. In particular, `Candidate > 0` is not by itself sufficient for Incident persistence.
+The safe next step is a new **query/search-surface expansion phase** that broadens acquisition vocabulary and/or search windows while retaining the same seed protection and downstream mutation guards.
+
+That next phase must continue to treat the telecom phrase as a search focus, not a canonical problem identity.
