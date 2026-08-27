@@ -7,6 +7,7 @@ import {
   getPhase15_9BPlanSummary,
   PHASE15_9B_MAX_REQUESTS,
   PHASE15_9B_QUERY_LIMIT,
+  PHASE15_9B_SEED_CONTENT_SHA256,
   PHASE15_9B_SEED_IDENTITY_SHA256,
 } from "../lib/sources/phase15-9b-targeted-telecom-plan.mjs";
 
@@ -20,6 +21,7 @@ test("15.9B freezes exactly four bounded targeted telecom queries", () => {
   assert.equal(plan.length, 4);
   assert.equal(summary.result_opportunity_count, 200);
   assert.equal(summary.search_focus_authority, "search_focus_not_problem_signature");
+  assert.equal(summary.protected_seed_upsert, false);
   assert.deepEqual(plan.map((item) => item.input.q), [
     "알뜰폰 번호이동 제한 강제",
     "통신사 번호이동 제한 해제 안됨",
@@ -30,8 +32,9 @@ test("15.9B freezes exactly four bounded targeted telecom queries", () => {
   assert.equal(plan.every((item) => item.input.sort === "date" && item.input.start === 1 && item.input.limit === 50), true);
 });
 
-test("15.9B keeps the held seed hash-only and never treats it as a new source", () => {
+test("15.9B keeps the held seed hash-only and immutable", () => {
   assert.match(PHASE15_9B_SEED_IDENTITY_SHA256, /^[0-9a-f]{64}$/);
+  assert.match(PHASE15_9B_SEED_CONTENT_SHA256, /^[0-9a-f]{64}$/);
   assert.equal(PHASE15_9B_SEED_IDENTITY_SHA256, "1ec3b0beca3fe1278fec4c9fd0e5cc20273bf4dbeba06990b19f3ab51d0e900c");
 });
 
@@ -52,6 +55,13 @@ test("15.9B runner mutates Source supply only and forbids downstream authority",
   assert.doesNotMatch(script, /ar_create_canonical_public_problem_draft/);
   assert.doesNotMatch(script, /ar_add_incident_bound_public_problem_evidence/);
   assert.doesNotMatch(script, /ar_set_public_problem_status/);
+});
+
+test("15.9B protects the held singleton from discovery upsert", async () => {
+  const script = await read("scripts/run-targeted-telecom-acquisition-15-9b.mjs");
+  assert.match(script, /signal\.external_content_id !== PHASE15_9B_SEED_IDENTITY_SHA256/);
+  assert.match(script, /sourceRows\[0\]\.content_hash, PHASE15_9B_SEED_CONTENT_SHA256/);
+  assert.match(script, /protected_seed_upserted: false/);
 });
 
 test("15.9B artifact uses safe Source fingerprints and excludes raw lineage/location fields", async () => {
