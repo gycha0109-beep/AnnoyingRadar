@@ -2,9 +2,6 @@ name: Source Curator Formation Handoff 15.9M
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9m-live-execution
 
 permissions:
   contents: read

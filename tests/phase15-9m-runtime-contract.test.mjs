@@ -12,10 +12,11 @@ const MUTATION_PATTERNS = [
   /\.rpc\s*\(/,
 ];
 
-test("15.9M live workflow checks out authoritative main and keeps one-shot trigger explicit", async () => {
+test("15.9M closed workflow remains manual-only and checks out authoritative main", async () => {
   const workflow = await read(".github/workflows/source-curator-formation-handoff-15-9m.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9m-live-execution/);
+  assert.doesNotMatch(workflow, /agent\/phase15-9m-live-execution/);
+  assert.doesNotMatch(workflow, /^\s*push:\s*$/m);
   assert.match(workflow, /ref:\s*main/);
   assert.match(workflow, /ALLOW_PHASE15_9M_CURATOR_FORMATION_HANDOFF:\s*"true"/);
   assert.match(workflow, /retention-days:\s*1/);
