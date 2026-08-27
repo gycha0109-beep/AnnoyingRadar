@@ -67,7 +67,9 @@ test("15.9F runner is read-only, blind-gated before URL load, and model-free", a
   assert.match(runner, /database_writes: 0/);
   assert.match(runner, /external_model_calls: 0/);
   assert.doesNotMatch(runner, /judgeSourceFullContextSemantics|resolveFullContextSemantic|getSourceFullContextProviderConfig/);
-  assert.doesNotMatch(runner, /\.insert\(|\.upsert\(|\.delete\(|\.update\(/);
+  assert.doesNotMatch(runner, /\.insert\(|\.upsert\(|\.delete\(/);
+  assert.doesNotMatch(runner, /\.from\([^)]*\)[\s\S]{0,500}?\.update\(/);
+  assert.doesNotMatch(runner, /\.rpc\(/);
   assert.doesNotMatch(runner, /ar_register_source_incident|ar_set_public_problem_status/);
 });
 
