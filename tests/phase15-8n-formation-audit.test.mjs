@@ -8,6 +8,7 @@ import {
   resolveSourceProblemFormationAudit,
   SourceProblemFormationObserverError,
   SOURCE_PROBLEM_FORMATION_OBSERVER_VERSION,
+  SOURCE_PROBLEM_FORMATION_PROMPT_VERSION,
 } from "../lib/sources/source-problem-formation-observer.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -42,8 +43,9 @@ function resolvedContext() {
   };
 }
 
-test("15.8N observer is semantic-only and explicitly denies downstream authority", () => {
-  assert.equal(SOURCE_PROBLEM_FORMATION_OBSERVER_VERSION, "source-problem-formation-observer-v0.1");
+test("15.8N semantic prompt authority remains unchanged while the reusable observer may evolve", () => {
+  assert.equal(SOURCE_PROBLEM_FORMATION_PROMPT_VERSION, "source-problem-formation-semantic-v0.1");
+  assert.equal(SOURCE_PROBLEM_FORMATION_OBSERVER_VERSION, "source-problem-formation-observer-v0.2");
   const request = buildSourceProblemFormationJudgeRequest({
     title: "test",
     fullText,
@@ -51,6 +53,8 @@ test("15.8N observer is semantic-only and explicitly denies downstream authority
     model: "test-model",
   });
   assert.equal(request.body.store, false);
+  assert.equal(request.body.max_output_tokens, 1200);
+  assert.doesNotMatch(request.body.instructions, /Recovery attempt:/);
   assert.match(request.body.instructions, /Do not decide formation eligibility, incident identity, problem identity, publication/);
   assert.match(request.body.instructions, /advertisement includes sponsored promotion, affiliate\/lead-generation content/);
   assert.match(request.body.instructions, /source_origin=original/);
@@ -84,10 +88,12 @@ test("formation audit independently catches promotional and derivative surfaces"
 
 test("only provider-incomplete receives one bounded semantic retry", async () => {
   let calls = 0;
+  const controls = [];
   const result = await resolveSourceProblemFormationAudit({ source_platform: "naver_blog" }, {
     fetchContext: async () => resolvedContext(),
-    judgeContext: async () => {
+    judgeContext: async (_input, control) => {
       calls += 1;
+      controls.push(control);
       if (calls === 1) {
         throw new SourceProblemFormationObserverError(
           "source_formation_provider_incomplete",
@@ -100,6 +106,7 @@ test("only provider-incomplete receives one bounded semantic retry", async () =>
     maxSemanticAttempts: 2,
   });
   assert.equal(calls, 2);
+  assert.deepEqual(controls.map((control) => control.recovery), [false, true]);
   assert.equal(result.formation_state, "eligible");
   assert.equal(result.recovery.attempted, true);
   assert.equal(result.recovery.recovered, true);
