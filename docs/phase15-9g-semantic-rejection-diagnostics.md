@@ -2,21 +2,61 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE DIAGNOSTIC NOT YET RUN**
+**CLOSED**
 
 Phase 15.9G follows the closed Phase 15.9F external-web full-context acquisition pilot.
 
-15.9F established that all sixteen deterministic external-web pilot Sources can be acquired successfully under `bounded_public_html`. Phase 15.9G answers the next question only:
+The phase asked one bounded question only:
 
-> Do those stable full contexts support the existing Source Admission rejections, or do they expose false negatives hidden by search snippets?
+> Do the stable full contexts of the same deterministic sixteen external-web Sources support the existing Source Admission rejections, or do they expose false negatives hidden by search snippets?
 
-No durable classification or downstream authority is changed by this phase.
+The answer is partial:
+
+```text
+8 Sources  -> policy_consistent reject
+8 Sources  -> semantic diagnostic unavailable
+0 Sources  -> false_negative_confirmed
+0 Sources  -> false_negative_possible
+```
+
+Therefore Phase 15.9G does **not** establish that all sixteen Source Admission rejections are policy-consistent. It establishes that eight are policy-consistent under the existing semantic authority, while eight remain unresolved because the one-shot semantic provider/output contract did not produce an admissible structured result.
+
+No durable classification or downstream authority changed.
 
 ---
 
-## 1. Frozen sample authority
+## 1. Release authority
 
-15.9G reconstructs the same Phase 15.9C campaign and the same deterministic external sample used in 15.9F:
+Implementation:
+
+```text
+PR #134
+exact implementation head = 96f540f840466953658881c580d8ea3a1034fbb7
+exact-head CI #465 = SUCCESS
+PIE #115 = SUCCESS
+merge/main = 8c95f49846b3cf7625d45f24b2b0cd5286c5faf4
+merged-main CI #466 = SUCCESS
+```
+
+One-shot live diagnostic:
+
+```text
+workflow = Source External Semantic Rejection Diagnostics 15.9G
+run #1
+Actions run id = 33040344776
+execution head = 8c95f49846b3cf7625d45f24b2b0cd5286c5faf4
+result = SUCCESS
+artifact id = 9633646012
+artifact retention = 1 day
+```
+
+The temporary push trigger used for the one-shot execution is removed by the Phase 15.9G closeout. The workflow remains manual-only through `workflow_dispatch`.
+
+---
+
+## 2. Frozen sample authority
+
+15.9G reconstructed the same Phase 15.9C campaign and reused the same deterministic external sample used in 15.9F:
 
 ```text
 8 ingestion runs
@@ -26,7 +66,7 @@ blind overlap = 0 before canonical URL/body read
 actual origins = 5 naver_blog / 308 external_web
 ```
 
-The sample remains exactly sixteen external-web Sources:
+The diagnostic sample remained exactly sixteen external-web Sources:
 
 ```text
 4 x title_no_complaint_signal
@@ -35,22 +75,15 @@ The sample remains exactly sixteen external-web Sources:
 4 x title_information_or_guide
 ```
 
-Selection reuses `selectPhase15_9FExternalPilot()` so Phase 15.9G cannot silently choose a more favorable sample.
+Selection reused `selectPhase15_9FExternalPilot()` so Phase 15.9G could not silently select a different or more favorable sample.
 
 ---
 
-## 2. Stable-body gate
+## 3. Stable-body gate
 
-Source bodies remain ephemeral.
+Each sampled Source was fetched twice under the closed Phase 15.9F public HTML acquisition contract.
 
-Each sampled Source is fetched twice under the closed 15.9F acquisition contract:
-
-```text
-external-web-full-context-fetch-v0.1
-bounded_public_html
-```
-
-The semantic judge is allowed only when both acquisitions are:
+The semantic judge was permitted only when both acquisitions were:
 
 ```text
 resolved
@@ -61,56 +94,48 @@ same extraction_scope
 same title
 ```
 
-If any of those conditions differ, that Source receives:
+Live result:
 
 ```text
-full_context_pair_changed
+fetch_pair_stable = 16
+fetch_pair_unstable = 0
 ```
 
-or:
+Therefore the eight semantic unavailable outcomes are **not acquisition failures**. All sixteen pages passed the double-fetch stability gate.
+
+Actual source-network use:
 
 ```text
-full_context_pair_unavailable
+32 requests
+maximum authorized = 128
 ```
 
-and no model call occurs for that Source.
-
-This prevents a semantic verdict from being attached to a moving or inconsistently extracted page.
+The 32 requests correspond to two successful acquisitions per Source with no redirect-driven expansion beyond the first HTTP request.
 
 ---
 
-## 3. Semantic authority reuse
+## 4. Semantic authority reuse
 
-15.9G does not define a new semantic policy.
+15.9G did not define a new semantic policy.
 
-It reuses the existing authority:
+It reused:
 
 ```text
 source-full-context-semantic-v0.1
 resolveFullContextSemantic()
 ```
 
-The judge observes only:
+The semantic judge received the actual content origin:
 
 ```text
-problem_claim
-experience_actor
-friction_cause
-friction_specificity
-pain_centrality
-content_kind
-evidence_quote
+Source platform: external_web
 ```
 
-The existing resolver remains authoritative for:
+rather than the historical acquisition identity `source_platform = naver_blog`.
 
-```text
-candidate
-review
-reject
-```
+Stored Source identity was not changed.
 
-Interpretation remains identical to Phase 15.9D:
+Existing resolver interpretation remained:
 
 ```text
 candidate -> false_negative_confirmed
@@ -118,62 +143,98 @@ review    -> false_negative_possible
 reject    -> policy_consistent
 ```
 
-The model does not own those final policy labels; it only returns the structured semantic facts.
+Maximum model calls were sixteen, one per stable Source.
+
+Live result:
+
+```text
+model_call_attempted = 16
+model_calls = 16
+maximum authorized = 16
+```
 
 ---
 
-## 4. Origin context passed to the judge
+## 5. Live diagnostic result
 
-Historical Source identity remains:
-
-```text
-source_platform = naver_blog
-```
-
-for NAVER API HUB Blog Search results, including historical external-web results.
-
-Phase 15.9E established that this identity namespace is not the same thing as actual content origin. Therefore 15.9G passes:
+Aggregate result:
 
 ```text
-Source platform: external_web
+total = 16
+candidate = 0
+review = 0
+reject = 8
+unavailable = 8
+
+false_negative_confirmed = 0
+false_negative_possible = 0
+policy_consistent = 8
 ```
 
-into the semantic judge for these sampled pages.
+Reason distribution:
 
-This does not change the stored `source_platform`; it prevents the semantic prompt from reintroducing the provider/origin conflation repaired in 15.9E.
+```text
+source_full_context_provider_incomplete = 6
+source_full_context_invalid_evidence_quote = 2
+full_context_informational_content = 6
+full_context_nonorganic_or_borrowed = 1
+full_context_no_problem_claim = 1
+```
+
+The eight decisive rejects were:
+
+```text
+6 x full_context_informational_content
+1 x full_context_nonorganic_or_borrowed
+1 x full_context_no_problem_claim
+```
+
+The eight unresolved Sources were:
+
+```text
+6 x source_full_context_provider_incomplete
+2 x source_full_context_invalid_evidence_quote
+```
+
+No candidate or review result was observed.
+
+The authoritative diagnostic conclusion is therefore:
+
+```text
+diagnostic_inconclusive_for_some_sources
+```
+
+This must not be simplified to `sample_supports_current_source_admission_rejections`, because half of the sample did not receive a valid resolver decision.
 
 ---
 
-## 5. Bounded execution
+## 6. Interpretation boundary
 
-Maximum source fetch requests:
-
-```text
-16 Sources
-x 2 acquisitions
-x maximum 4 HTTP requests per acquisition including redirects
-= 128 source-network requests maximum
-```
-
-Maximum semantic model calls:
+Phase 15.9G supports the following claims:
 
 ```text
-16
+- the external-web acquisition path is stable for all 16 sampled Sources
+- 8/16 existing rejects are policy-consistent under the current full-context semantic authority
+- no confirmed or possible false negative was observed among the 8 decisive semantic results
+- the remaining 8 cannot be classified from this one-shot diagnostic
 ```
 
-Model authority remains the repository-configured full-context model. The live workflow freezes:
+Phase 15.9G does **not** support the following claims:
 
 ```text
-gpt-5-mini-2025-08-07
+- all 16 rejects are correct
+- the remaining 8 are rejects
+- there are no Source Admission false negatives in the external-web cohort
+- provider/output failure should be interpreted as rejection
 ```
 
-One model call maximum is permitted per Source, and only after stable-body verification.
+The next investigation, if pursued, should target semantic completion/validation reliability for the unresolved eight. It should not reopen Phase 15.9F acquisition, because acquisition stability was already 16/16.
 
 ---
 
-## 6. Artifact privacy
+## 7. Artifact privacy
 
-The one-day artifact may contain:
+The disposable artifact contains only bounded diagnostic metadata such as:
 
 ```text
 rejection stratum
@@ -191,7 +252,7 @@ model identifier and token usage
 aggregate DB counts
 ```
 
-It must not contain:
+It excludes:
 
 ```text
 Source Signal UUID
@@ -207,9 +268,9 @@ Public Problem UUID
 
 ---
 
-## 7. Read-only boundary
+## 8. Read-only boundary
 
-Phase 15.9G authorizes no writes.
+Phase 15.9G authorized no writes.
 
 ```text
 database writes = 0
@@ -217,30 +278,49 @@ full-context outcome persistence = 0
 Source Admission mutation = 0
 origin backfill = 0
 Incident creation = 0
-Source→Incident linking = 0
+Source->Incident linking = 0
 problem_signature assignment = 0
 Canonical Problem creation = 0
 Public Evidence persistence = 0
 publication = 0
 ```
 
-Candidate results, if any, are diagnostic findings only.
+Artifact DB snapshots were identical before and after:
 
-A separate human/curator-governed phase would be required before any durable Source Admission recovery, Incident creation, or downstream persistence.
+```text
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 82
+```
+
+An independent production Supabase readback after the live run returned the same counts.
+
+Candidate results would have remained diagnostic findings only even if any had appeared. Phase 15.9G created no durable Source Admission recovery, Incident, or publication authority.
 
 ---
 
-## 8. Release sequence
+## 9. Closeout
+
+Phase 15.9G is closed because its bounded diagnostic was implemented, independently gated, executed once against authoritative main, inspected, and verified read-only.
+
+The phase closes with an intentionally inconclusive semantic result for eight Sources rather than converting provider/output incompleteness into a policy verdict.
 
 ```text
-implementation PR
--> exact-head CI / PIE
--> merge main
--> merged-main CI
--> one-shot live semantic diagnostic
--> artifact inspection
--> independent DB readback
--> remove temporary push trigger
--> closeout PR
--> merged-main CI
+PHASE 15.9G = CLOSED
+
+acquisition stability = 16/16
+semantic decisive = 8/16
+policy_consistent = 8
+false_negative_confirmed = 0
+false_negative_possible = 0
+semantic unavailable = 8
+DB writes = 0
 ```
