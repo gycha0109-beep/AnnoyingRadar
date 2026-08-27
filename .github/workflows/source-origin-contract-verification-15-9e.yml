@@ -2,9 +2,6 @@ name: Source Origin Contract Verification 15.9E
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9e-live-execution
 
 permissions:
   contents: read
