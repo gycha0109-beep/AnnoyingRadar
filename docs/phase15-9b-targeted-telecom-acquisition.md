@@ -30,7 +30,7 @@ missing = one independent same-mechanism Incident
 
 The seed identity remains hash-only in repository authority.
 
-15.9B refuses live execution if that Source no longer resolves uniquely or has gained an Incident link outside a later curator decision.
+15.9B refuses live execution if that Source no longer resolves uniquely, its frozen content hash has changed, or it has gained an Incident link outside a later curator decision.
 
 ---
 
@@ -120,11 +120,14 @@ For each query, 15.9B checks which discovery-accepted Source identities existed 
 
 Only previously unseen identities are counted as the new cohort.
 
-Therefore:
+The existing Gogo seed receives stronger protection than ordinary duplicate handling:
 
-- the existing Gogo seed may be rediscovered as a duplicate;
-- it can never count as the required second independent Source;
-- a Source discovered by query 1 and then rediscovered by query 2 is counted new only once.
+- if a search response rediscoveres the seed, that hit is counted only in `seed_rediscovery_hits`;
+- the seed is removed from the persistence input before discovery upsert/observation handling;
+- the frozen seed content hash is asserted both before and after the campaign;
+- therefore the targeted campaign cannot rewrite the upstream singleton seed through generic Source upsert behavior;
+- the seed can never count as the required second independent Source;
+- a non-seed Source discovered by query 1 and then rediscovered by query 2 is counted new only once.
 
 Each new Source is recorded in the disposable artifact only as:
 
@@ -187,6 +190,7 @@ targeted_campaign_version = phase15.9b-targeted-telecom-acquisition-v0.1
 targeted_query_key
 targeted_search_focus = telecom_port_restriction
 search_focus_authority = search_focus_not_problem_signature
+protected_seed_identity_sha256 = <frozen hash>
 ```
 
 This lets the next phase reconstruct the exact new cohort from durable Source provenance without freezing raw Source UUIDs in repository files.
