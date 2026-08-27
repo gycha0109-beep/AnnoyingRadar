@@ -2,27 +2,23 @@
 
 ## Status
 
-**IMPLEMENTATION IN PROGRESS / MIGRATION NOT APPLIED / LIVE NOT RUN**
+**CLOSED**
 
-Phase 15.9N adds the missing durable authority between the closed Phase 15.9M curator read-only Formation handoff and any future curator Incident decision flow.
+Phase 15.9N establishes a durable, private, append-only Formation assessment authority between Source Admission Candidate outcomes and any future curator Incident decision flow.
 
 It does **not** create Incident identity, Source→Incident links, problem signatures, Public Evidence, Canonical Problems, or publication state.
 
 ---
 
-## 1. Why this phase exists
+## 1. Authority introduced
 
-Phase 15.9M made Formation callable from the curator runtime, but its authority is deliberately ephemeral:
+Phase 15.9M left curator Formation assessment intentionally ephemeral:
 
 ```text
 curator_read_only_formation_assessment_not_persistence
 ```
 
-A future Incident decision cannot safely trust a client-submitted Formation payload, and rerunning the model at approval time can redraw a nondeterministic observation.
-
-Historical Phase 15.8O/P cannot fill this gap because those tools are frozen to a specific 82-row cohort and hard-coded curator decisions.
-
-Therefore the missing authority is:
+Phase 15.9N adds the missing durable boundary:
 
 ```text
 Durable Source Admission Candidate
@@ -34,55 +30,147 @@ private append-only Formation assessment
 future curator Incident decision packet
 ```
 
-The last arrow is explicitly outside 15.9N.
+The last arrow remains outside this phase.
+
+A persisted `eligible` result is still **Formation authority only**. It is not an Incident decision and does not authorize publication.
 
 ---
 
-## 2. New private table
+## 2. Implementation authority
 
-Migration:
+Implementation PR:
+
+```text
+PR #150
+```
+
+Initial implementation head:
+
+```text
+82c6c1c0a26aaf16d62defd9ebe2e2d4e996f937
+```
+
+Initial gates:
+
+```text
+CI #500 = FAILURE
+PIE #134 = SUCCESS
+```
+
+CI #500 did not expose a production implementation defect. The failing unit assertion expected the downstream durable-Admission drift error, while the helper correctly failed earlier on a stricter fetch-integrity invariant: the changed `content_text` no longer matched the declared `content_hash`.
+
+The test was corrected to freeze both independent fail-closed boundaries:
+
+```text
+1. fetched content_text ↔ declared content_hash mismatch → reject
+2. internally consistent fetched context ↔ durable Source Admission drift → reject
+```
+
+Production helper/service/migration code was unchanged by this correction.
+
+Corrected exact PR head:
+
+```text
+59d3dd9e7c7f80b687b69ad2deb7140e93607e09
+```
+
+Corrected gates:
+
+```text
+CI #501 = SUCCESS
+PIE #135 = SUCCESS
+```
+
+Expected-head merge succeeded.
+
+Implementation main:
+
+```text
+d2b9fd17e360801569ea5af08cb84b6c87bf20d0
+```
+
+Merged-main gate:
+
+```text
+CI #502 = SUCCESS
+```
+
+---
+
+## 3. Migration 039 production authority
+
+Repository migration:
 
 ```text
 039_source_formation_assessments.sql
 ```
 
+Supabase production migration version:
+
+```text
+20260827090327 source_formation_assessments
+```
+
 Table:
 
 ```text
-ar_source_formation_assessments
+public.ar_source_formation_assessments
 ```
 
-The table is private, RLS-enabled, and service-role `SELECT/INSERT` only.
+Independent post-migration verification before the controlled live write proved:
 
-There is no application grant for update or delete. Assessments are append-only observations; a later observation does not silently replace an earlier one.
+```text
+table exists = true
+row count = 0
+guard trigger exists = true
+RLS enabled = true
+service_role SELECT = true
+service_role INSERT = true
+service_role UPDATE = false
+service_role DELETE = false
+```
 
-Each row is bound to:
+The table remains private and append-only.
+
+---
+
+## 4. Integrity and data-minimization contract
+
+Every durable Formation row is bound to an explicit durable Source Admission outcome by:
 
 ```text
 source_signal_id
 source_admission_outcome_id
-Source Admission schema + batch version
-Formation assessment schema/version
-observer version
-Formation deterministic mapper version
-Formation state/status/reasons
-seven Formation semantic axes
-full-context integrity metadata
-prompt/provider/model identity
-provider recovery metadata
+Source Admission schema version
+Source Admission batch version
+full-context SHA-256
+full-context JS character count
+full-context truncation state
 ```
 
-A unique `(assessment_batch_version, source_signal_id)` constraint prevents duplicate writes inside one governed assessment batch while still allowing a later separately identified assessment batch.
+Before source URL/body loading, the server requires:
 
-No consumer may infer that the newest row is automatically authoritative. A later curator decision must reference an explicit Formation assessment ID.
+1. Source exists;
+2. Source is outside Blind;
+3. exactly one durable Source Admission outcome exists for that Source;
+4. that outcome is `resolved / candidate`;
+5. its context is resolved, full-post and untruncated;
+6. the requested assessment batch does not already contain that Source;
+7. no downstream Incident/Public Evidence assignment already exists.
 
----
+Before the model call, the freshly acquired context must exactly match the durable Source Admission hash and character count. The row builder validates the same invariant again, and migration 039 repeats the lineage/context checks in PostgreSQL.
 
-## 3. Evidence grounding without raw quote persistence
+The durable row does **not** persist:
 
-Formation requires an exact grounded `evidence_quote` during evaluation.
+```text
+full source body
+canonical/fetched URL
+author identity
+provider request ID
+raw evidence quote
+```
 
-15.9N does not store the quote text itself. Instead it stores:
+Evidence grounding is stored only as:
 
 ```text
 evidence_quote_sha256
@@ -92,155 +180,171 @@ evidence_quote_end
 evidence_quote_grounded
 ```
 
-The offsets are JavaScript UTF-16 string offsets into the exact full-context text whose SHA-256 and length are stored on the row.
-
-If a future curator flow can refetch the same context hash, it can reconstruct the exact excerpt from the stored offsets and verify its SHA-256 without keeping the raw quote in the durable assessment table.
-
-The table also does not store:
-
-```text
-full source body
-canonical/fetched URL
-author identity
-provider request ID
-```
-
-The bounded non-authoritative `problem_mechanism_proposal` and `incident_summary_proposal` are retained because they are model output required to reproduce the Formation assessment packet; they do not assign Incident or Problem identity.
+Offsets are JavaScript UTF-16 offsets into the exact integrity-bound context.
 
 ---
 
-## 4. Context integrity is mandatory before persistence
+## 5. Controlled production live run
 
-A durable Formation assessment is allowed only when the currently fetched full context exactly matches the upstream durable Source Admission authority:
+Temporary execution branch:
 
 ```text
-context_status = resolved
-context_scope = full_post
-context_truncated = false
-current SHA-256 = Source Admission context SHA-256
-current JS char count = Source Admission context char count
+agent/phase15-9n-live-execution
 ```
 
-The persistence service validates this inside the Formation fetch adapter, before the Formation model call occurs.
+The workflow checked out authoritative `main`, not the temporary branch contents.
 
-Therefore source drift does not consume a model call and does not create a new durable row.
+Workflow:
 
-The row builder revalidates the same invariant before insert.
+```text
+Source Formation Assessment Persistence 15.9N
+```
 
-Migration 039 adds a database trigger that independently validates the Source Admission FK and context identity again at write time.
+Live run:
+
+```text
+run #1 = 33057599171
+execution SHA = d2b9fd17e360801569ea5af08cb84b6c87bf20d0
+status = SUCCESS
+```
+
+Disposable artifact:
+
+```text
+artifact id = 9640308569
+sha256:469d2588fb663e8254b003bb29abf0be97dffef82e3a884c5c889d65c98c9bdc
+```
+
+Controlled target:
+
+```text
+baseline ordinal = 9
+Blind member = false
+assessment batch = phase15.9n-ordinal9-persistence-v0.1
+```
+
+Execution budget/result:
+
+```text
+source network requests = 1 / max 8
+model calls = 2 / max 2
+database write statements = 1
+Formation assessments = 0 → 1
+```
+
+The first Formation provider attempt was incomplete and the existing bounded recovery policy performed exactly one retry:
+
+```text
+recovery attempted = true
+recovery recovered = true
+recovery attempt count = 2
+trigger = source_formation_provider_incomplete
+```
+
+No broader retry policy was introduced.
 
 ---
 
-## 5. Blind and downstream authority boundary
+## 6. Live Formation result
 
-Before URL/body access, the service requires:
-
-1. Source exists;
-2. Source is outside Blind;
-3. exactly one durable Source Admission outcome exists;
-4. that outcome is `resolved / candidate`;
-5. its full context is complete and untruncated;
-6. the requested assessment batch does not already contain the Source;
-7. no existing Source→Incident or Public Evidence assignment exists.
-
-Migration 039 repeats defense-in-depth checks for:
+The durable assessment observed:
 
 ```text
-Blind membership
-Source Admission Source/FK/version/batch identity
-Source Admission Candidate status
-Source Admission ↔ Formation context hash/length identity
-existing Incident/Public Evidence assignment
+status = resolved
+formation_state = eligible
+reason = formation_grounded_external_friction
 ```
 
-A race between application preflight and insert therefore fails closed in PostgreSQL.
+Semantic facts:
+
+```text
+problem_claim = yes
+experience_actor = self
+friction_specificity = concrete
+pain_centrality = central
+content_kind = organic
+source_origin = original
+friction_responsibility = external_process_or_policy
+```
+
+Context authority:
+
+```text
+context SHA-256 = 4be5eae3f5caf2bdd1de325427dfa34ad2a8b80e6b13e717797bc3f2d061e463
+context char count = 3407
+context truncated = false
+```
+
+Evidence grounding metadata:
+
+```text
+evidence quote SHA-256 = fafd5798cf5e8cc9ffb82507d550163fd84202f4d9430c053906727cef4a775c
+evidence quote char count = 44
+evidence quote start = 2361
+evidence quote end = 2405
+evidence quote grounded = true
+```
+
+Provider authority:
+
+```text
+prompt = source-problem-formation-semantic-v0.1
+provider = openai
+model = gpt-5-mini-2025-08-07
+```
 
 ---
 
-## 6. Formation authority persisted
+## 7. Independent production readback
 
-The persisted semantic axes are:
+Independent Supabase readback after the live workflow confirmed exactly one row in the controlled batch with the same `eligible / resolved` state, semantic facts, context hash/length, evidence-grounding metadata and recovery metadata recorded by the artifact.
 
-```text
-problem_claim
-experience_actor
-friction_specificity
-pain_centrality
-content_kind
-source_origin
-friction_responsibility
-```
-
-Formation states remain the existing deterministic authority:
+Protected production counts after the write:
 
 ```text
-eligible
-provenance_review
-review
-reject
+ar_source_signals = 3562
+ar_source_signal_observations = 3892
+ar_source_ingestion_runs = 144
+ar_raw_inputs = 10
+ar_pain_evidences = 27
+ar_public_problems = 3
+ar_public_problem_evidence_snapshots = 7
+ar_public_problem_feed = 3
+ar_source_incidents = 6
+ar_source_incident_links = 7
+ar_source_full_context_resolution_outcomes = 85
+ar_source_formation_assessments = 1
 ```
 
-The existing `source-problem-formation-v0.1` mapper is not changed.
+The artifact's before/after snapshots independently showed all pre-existing Source/Incident/Public/Admission domains unchanged.
 
-The existing observer v0.2 and provider-incomplete-only recovery policy are not changed.
+Only the new Formation assessment table changed:
 
-A persisted `eligible` row is still only Formation authority. It is **not** an Incident or repeated Problem decision.
+```text
+0 → 1
+```
 
 ---
 
-## 7. Runtime/API boundary
+## 8. Runtime/API boundary remains unchanged
 
-Phase 15.9N does not change the closed Phase 15.9M endpoint:
+Phase 15.9N does not convert the Phase 15.9M route into a persistence endpoint:
 
 ```text
 POST /api/radar/admin/source-signals/:signalId/formation
 ```
 
-That endpoint remains read-only.
+That route remains read-only.
 
-15.9N also does not add a public or curator write endpoint yet. The new persistence service is a server-side primitive verified through a controlled one-shot workflow.
+15.9N persistence remains a controlled server-side primitive. There is no curator/client write endpoint and no client-submitted model payload is accepted as persistence authority.
 
-A later phase may expose an explicit curator persistence action only after this primitive and its database guard are live-verified.
-
-Client-submitted model/Formation result payloads are not accepted as persistence authority.
+The temporary live push trigger has been removed at closeout. The workflow is manual-only via `workflow_dispatch`.
 
 ---
 
-## 8. Controlled live verification
+## 9. Explicitly unauthorized after closeout
 
-The first live write will reuse the frozen ordinal 9 Source Admission Candidate without committing its Source UUID to Git.
-
-Pre-live authority:
-
-```text
-full-context outcomes = 85
-Formation assessments = 0
-Blind overlap = 0
-```
-
-Expected execution budget:
-
-```text
-target = 1
-source network requests <= 8
-model calls <= 2
-Formation assessment inserts = exactly 1
-all protected Source/Incident/Public tables = unchanged
-```
-
-The controlled batch is:
-
-```text
-phase15.9n-ordinal9-persistence-v0.1
-```
-
-The resulting Formation state is not predetermined. `eligible`, `provenance_review`, `review`, and `reject` are all model-observation/deterministic-mapper outcomes permitted by the existing Formation contract. The live gate verifies integrity and authority boundaries, not a desired semantic label.
-
----
-
-## 9. Explicitly unauthorized
-
-Phase 15.9N does not authorize:
+Phase 15.9N still does not authorize:
 
 ```text
 automatic Formation persistence on ingestion
@@ -257,20 +361,30 @@ automatic retry beyond provider-incomplete once
 Blind evaluation access
 ```
 
+In particular:
+
+```text
+Formation eligible ≠ Incident approved
+Formation persisted ≠ Source linked to Incident
+Formation persisted ≠ Public Evidence
+Formation persisted ≠ publication
+```
+
 ---
 
-## 10. Closeout requirements
+## 10. Closeout conclusion
 
-15.9N closes only after:
+Phase 15.9N is closed because:
 
-1. migration/schema/helper/service/tests/workflow land through exact-head CI and PIE;
-2. expected-head merge succeeds;
-3. merged-main CI succeeds;
-4. migration 039 is applied to production and independently verified;
-5. the table is empty before the controlled run;
-6. one-shot live persistence succeeds from exact authoritative main;
-7. exactly one Formation assessment row is independently read back;
-8. all pre-existing Source/Incident/Public/Admission counts remain unchanged;
-9. temporary live push trigger is removed;
-10. live SHA/artifact/DB authority is frozen in docs/tests;
-11. closeout exact-head CI/PIE and merged-main CI succeed.
+1. private append-only Formation persistence landed through exact-head CI/PIE;
+2. the only initial CI failure was a stricter fail-closed test expectation mismatch and was corrected without weakening production code;
+3. implementation merged and merged-main CI passed;
+4. migration 039 was applied and independently verified in production;
+5. the table was empty before the controlled run;
+6. one exact authoritative live run persisted exactly one integrity-bound Formation assessment;
+7. independent DB readback matched the disposable artifact;
+8. all pre-existing protected domains remained unchanged;
+9. the temporary live push trigger was removed;
+10. the resulting `eligible` row remains explicitly outside Incident/Public Evidence/publication authority.
+
+**PHASE 15.9N = CLOSED**
