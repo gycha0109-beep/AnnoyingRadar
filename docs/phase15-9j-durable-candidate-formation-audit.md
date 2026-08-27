@@ -2,140 +2,146 @@
 
 ## Status
 
-**IMPLEMENTED — pending PR / CI / PIE / one-shot live audit**
+**IMPLEMENTED v0.2 — context-drift correction pending PR / gates / rerun**
 
-Phase 15.9J follows closed Phase 15.9I.
+Phase 15.9J follows closed Phase 15.9I and evaluates only its three durable full-context Candidate outcomes under the existing Problem Formation authority.
 
-Phase 15.9I durably preserved exactly three full-context Source Admission false negatives in:
-
-```text
-ar_source_full_context_resolution_outcomes
-batch = phase15.9i-confirmed-false-negative-candidates-v0.1
-rows = 3
-ordinals = 4, 9, 16
-```
-
-All three are durable `resolved / candidate` outcomes under the Source Admission full-context authority. They are still **not Incidents**.
-
-Phase 15.9J asks the next, narrower question:
-
-> Do these three durable Candidates satisfy the already-existing Problem Formation authority when evaluated against the same verified full context?
-
-It does not create or approve Incidents.
-
----
+It does **not** create or approve Incidents.
 
 ## 1. Upstream authority
 
-Required closed baseline:
+Required baseline:
 
 ```text
 Phase 15.9I final main = d8a12671c5e04f75eb3e71f17bad13edf99ddc22
 full-context outcome total = 85
-source batch version = phase15.9i-confirmed-false-negative-candidates-v0.1
+source batch = phase15.9i-confirmed-false-negative-candidates-v0.1
 batch rows = 3
+ordinals = 4, 9, 16
+sample fingerprint = 2a96219b35056ebd9b8947363477cb59615833890ab10636cf7e151b4c17218e
 ```
 
-Exact upstream sample fingerprint remains:
+The three durable rows must still match the H/I authority exactly on Candidate decision, semantic facts, context hash/count/scope, and non-truncated status. Persisted-authority drift remains a hard failure.
 
-```text
-2a96219b35056ebd9b8947363477cb59615833890ab10636cf7e151b4c17218e
-```
+## 2. Blind and downstream boundary
 
-The three durable rows must still match the frozen H/I authority on:
-
-```text
-status = resolved
-decision = candidate
-reason = full_context_first_hand_external_friction
-problem_claim = yes
-experience_actor = self
-friction_cause = external_service_or_product
-friction_specificity = concrete
-pain_centrality = central
-content_kind = organic
-context_status = resolved
-context_scope = full_post
-context SHA-256 = exact H/I value
-context char count = exact H/I value
-context_truncated = false
-```
-
-Any durable-row drift aborts the phase.
-
----
-
-## 2. Blind boundary
-
-Phase 15.9J loads only privacy-safe durable outcome fields first.
-
-Before canonical URL or body access it must prove:
+Before canonical URL or body reads Phase 15.9J proves:
 
 ```text
 Blind overlap = 0
 ```
 
-It also verifies that none of the three target Sources is already assigned to:
+It also requires no pre-existing target assignment in:
 
 ```text
 ar_source_incident_links
 ar_public_problem_evidence_snapshots
 ```
 
-Only after those checks may URL/body fields be loaded.
-
----
+Only then may URL/body fields be loaded.
 
 ## 3. External-web context integrity
 
-The targets originated from external-web surfaces discovered through the Phase 15.9C acquisition campaign.
-
-The generic full-context fetcher supports external pages only with the explicit bounded policy:
+Each target is fetched twice with:
 
 ```text
 SOURCE_FULL_CONTEXT_EXTERNAL_POLICY = bounded_public_html
 ```
 
-Each target is fetched twice.
-
-Required stable pair:
+The pair is compared for stability, and each fetch is compared with frozen H/I authority on:
 
 ```text
-resolved
-not truncated
-same content hash
-same original char count
-same extraction scope
-same title
-```
-
-Both fetches must also match the exact Phase 15.9H/I frozen authority:
-
-```text
+status = resolved
+truncated = false
+content_scope = full_post
 content SHA-256
-char count
-full_post scope
+original char count
+body length
 extraction scope
 title SHA-256
 ```
-
-A context drift aborts Formation evaluation for the run.
 
 Bounds:
 
 ```text
 targets = 3
-successful body acquisitions = 6
+body acquisitions = 6
 maximum HTTP requests including redirects = 24
 ```
 
----
+### 3.1 First live attempt exposed real context drift
 
-## 4. Formation semantic authority reused
+Implementation PR #140:
 
-No new Formation policy is introduced.
+```text
+exact head = 774121523ea3d1f5dc4b5aedf8a82b3d12bbd6aa
+CI #479 = SUCCESS
+PIE #123 = SUCCESS
+implementation main = 6f509ca290ed8b705f4081948b38daf60e15f19f
+merged-main CI #480 = SUCCESS
+```
 
-Phase 15.9J reuses:
+First one-shot live:
+
+```text
+workflow run = 33044887515
+execution SHA = 6f509ca290ed8b705f4081948b38daf60e15f19f
+result = FAILURE
+artifact = 9635238500
+```
+
+The failure occurred before any Formation model evaluation:
+
+```text
+Phase 15.9J first.content_hash drifted from frozen authority
+```
+
+This means at least one current external page/extraction no longer matches the exact H/I context bytes. The strict integrity gate behaved correctly, but v0.1 aborted at the first drift and therefore lost privacy-safe diagnostics for that ordinal and prevented evaluation of independent stable targets.
+
+No evidence from this failed run may be treated as Formation eligibility.
+
+## 4. v0.2 context-drift correction
+
+The integrity requirement is **not relaxed**.
+
+For every target v0.2 still performs the same double-fetch and frozen H/I comparison. The difference is only control flow:
+
+```text
+integrity matches H/I
+  -> Formation model may evaluate that frozen-equivalent body
+
+stable pair but current context differs from H/I
+  -> audit_status = context_drift
+  -> model calls for that Source = 0
+  -> preserve privacy-safe current/expected fingerprints
+  -> continue to independent targets
+
+pair itself unstable
+  -> audit_status = context_pair_unstable
+  -> model calls for that Source = 0
+  -> continue to independent targets
+```
+
+A drifted body is never silently accepted as a substitute for the H/I Candidate context.
+
+Privacy-safe drift diagnostics may include only:
+
+```text
+baseline ordinal
+failure codes
+stable-pair boolean
+expected content hash / char count / extraction scope / title hash
+observed content hash / char count / extraction scope / title hash
+status / scope / truncation
+```
+
+They exclude Source UUID, URL, raw body, snippet, author, and exact evidence quote.
+
+## 5. Formation authority reused
+
+No new semantic or deterministic Formation policy is introduced.
+
+Reused authority:
 
 ```text
 source-problem-formation-observer-v0.1
@@ -143,7 +149,7 @@ source-problem-formation-semantic-v0.1
 source-problem-formation-v0.1
 ```
 
-The Formation observer collects:
+For integrity-stable Sources only, the observer collects:
 
 ```text
 problem_claim
@@ -158,7 +164,7 @@ problem_mechanism_proposal
 incident_summary_proposal
 ```
 
-The existing deterministic resolver alone maps those facts to:
+The deterministic resolver maps these to:
 
 ```text
 eligible
@@ -167,62 +173,33 @@ review
 reject
 ```
 
-### Actual source origin supplied to the model
-
-The historical acquisition `source_platform` label is not treated as content-origin truth.
-
-For these three Sources the prompt receives:
+The model receives actual origin:
 
 ```text
 Source platform: external_web
 ```
 
-based on the current canonical URL origin classifier.
+rather than the historical acquisition adapter label.
 
-This preserves the Phase 15.9G/H rule that semantic evaluation receives the actual content origin rather than the acquisition adapter label.
+## 6. Formation eligibility remains stricter than Admission Candidate
 
----
+A durable Source Admission Candidate is not automatically Formation eligible.
 
-## 5. Formation eligibility is stricter than Admission Candidate
+Existing Formation authority additionally requires appropriate original-source provenance, external/structural responsibility, concrete central friction, attributable experience, acceptable content kind, and an exact grounded evidence quote.
 
-A Source Admission Candidate does not automatically become Formation eligible.
+Derivative evidence may become `provenance_review`; uncertain semantics remain `review`; deterministic exclusion conditions remain `reject`.
 
-The existing Formation resolver additionally requires, among other conditions:
+## 7. Evidence quote and retry boundary
 
-```text
-source_origin = original
-friction_responsibility in:
-  external_service_or_product
-  external_process_or_policy
-  structural_system
+An evidence quote must be an exact contiguous excerpt of the fetched body.
 
-experience_actor attributable
-content_kind organic/news
-concrete central friction
-exact grounded evidence quote
-```
-
-Derivative/reposted evidence becomes `provenance_review`.
-
-Advertisement/informational surfaces, self-caused friction, contractual-term-only complaints, natural-event-only complaints, or other deterministic exclusion cases are rejected.
-
-Uncertain semantics remain review.
-
----
-
-## 6. Evidence quote contract
-
-The Formation observer requires `evidence_quote` to be either null or an exact contiguous excerpt from the fetched full post.
-
-The existing observer validates this before the deterministic Formation resolver runs.
-
-For an `eligible` result Phase 15.9J additionally requires:
+For `eligible`:
 
 ```text
 evidence_quote_grounded = true
 ```
 
-The disposable artifact does **not** emit the quote itself. It records only:
+Artifact stores only:
 
 ```text
 evidence_quote_sha256
@@ -230,85 +207,65 @@ evidence_quote_char_count
 evidence_quote_grounded
 ```
 
-No quote-repair retry is authorized.
+No raw quote is emitted.
 
----
-
-## 7. Provider recovery boundary
-
-Maximum semantic attempts per Source:
+Maximum semantic attempts per integrity-stable Source:
 
 ```text
 2
 ```
 
-The existing Formation observer retries only:
+Only this trigger may retry:
 
 ```text
 source_formation_provider_incomplete
 ```
 
-No retry is granted for:
+No invalid-quote retry or semantic-result retry is authorized.
+
+Maximum model calls remain:
 
 ```text
-invalid evidence quote
-invalid JSON
-semantic uncertainty
-formation rejection
-other terminal provider/output errors
+6
 ```
 
-Maximum model calls:
+and will be lower when one or more Sources are isolated by context drift.
+
+## 8. Artifact and conclusion semantics
+
+Each target must end in exactly one audit status:
 
 ```text
-3 Sources x 2 = 6
+formation_evaluated
+context_drift
+context_pair_unstable
 ```
 
----
+A context-drift status is **not** a Formation state.
 
-## 8. Artifact boundary
-
-The disposable artifact may contain:
+Possible overall conclusions include:
 
 ```text
-baseline ordinal
-prior rejection stratum
-Formation state / reason codes
-Formation semantic facts
-hashed evidence-quote metadata
-non-authoritative mechanism proposal
-non-authoritative incident summary proposal
-context hash / char count / extraction scope
-recovery metadata
-aggregate execution counts
+formation_eligible_candidates_detected
+formation_followup_required
+formation_rejects_only
+formation_inconclusive_due_context_drift
+formation_eligible_detected_with_context_drift_unresolved
 ```
 
-It does not contain:
+Any unresolved drift prevents a claim that all three durable Candidates completed Formation audit.
 
-```text
-Source UUID
-canonical URL
-fetched URL
-raw snippet
-full body
-author handle
-exact evidence quote
-provider request ID
-```
-
-The artifact authority is explicitly:
+Artifact authority remains:
 
 ```text
 empirical_formation_audit_not_incident_authority
 ```
 
----
-
 ## 9. Database boundary
 
 Phase 15.9J is read-only.
 
-All of the following counts must be identical before and after:
+Protected before/after counts must be identical for:
 
 ```text
 ar_source_signals
@@ -330,7 +287,7 @@ Authorized DB writes:
 0
 ```
 
-Forbidden:
+Still forbidden:
 
 ```text
 Source mutation
@@ -344,9 +301,7 @@ Public Evidence persistence
 publication
 ```
 
----
-
-## 10. Workflow
+## 10. Workflow and close criterion
 
 Workflow:
 
@@ -354,7 +309,7 @@ Workflow:
 .github/workflows/source-durable-candidate-formation-audit-15-9j.yml
 ```
 
-Temporary one-shot live branch:
+Temporary live branch:
 
 ```text
 agent/phase15-9j-live-execution
@@ -362,39 +317,12 @@ agent/phase15-9j-live-execution
 
 The workflow always checks out authoritative `main`.
 
-The temporary push trigger must be removed during closeout.
+Phase 15.9J may close only after the v0.2 correction passes exact-head CI/PIE, merges by expected head, passes merged-main CI, then completes a one-shot rerun that accounts for all three targets as either Formation-evaluated or explicitly context-isolated, while Blind overlap remains zero and all DB domains remain unchanged. The artifact and independent DB readback must then be inspected, and the temporary push trigger must be removed in a closeout PR.
 
----
+## 11. Next authority
 
-## 11. Close criterion
+Only Formation `eligible` Sources with intact context authority may be considered by a later curator packet/decision phase analogous to Phase 15.8O.
 
-Phase 15.9J may close only after:
+A drifted Source requires a separate governed decision about whether to re-establish current-context Source Admission/Formation authority. Phase 15.9J does not perform that replacement.
 
-1. implementation diff review;
-2. exact-head CI success;
-3. exact-head PIE success;
-4. expected-head implementation merge;
-5. merged-main CI success;
-6. one-shot live run from exact merged main;
-7. exact three-row Phase 15.9I authority reconstruction;
-8. Blind overlap 0 before URL/body reads;
-9. no pre-existing Incident/Public Evidence assignment;
-10. all three double-fetch context-integrity gates pass;
-11. actual prompt origin is `external_web`;
-12. Formation audit covers all three Sources;
-13. provider recovery remains provider-incomplete-only;
-14. DB writes remain 0 and all protected domains are unchanged;
-15. disposable artifact inspection;
-16. independent production DB readback;
-17. temporary push trigger removal;
-18. closeout exact-head CI/PIE and merged-main CI success.
-
----
-
-## 12. Next authority after 15.9J
-
-If one or more Sources are Formation `eligible`, that still does not create Incident authority.
-
-The next governed step should be a separate curator packet/decision phase analogous to Phase 15.8O, where potential Incident identity and mechanism comparisons are reviewed without silently inferring approval from Candidate or Formation state.
-
-Only a later explicitly approved persistence phase may create Incident rows or Source-to-Incident links.
+Even an `eligible` result does not itself create Incident identity or persistence authority.
