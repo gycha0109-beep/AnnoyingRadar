@@ -4,8 +4,9 @@ import { writeFile } from "node:fs/promises";
 import { getEvaluationSampleIds } from "../lib/sources/blind-evaluation.mjs";
 import { comparePhase15_9GFetches } from "../lib/sources/phase15-9g-semantic-rejection-diagnostics.mjs";
 import {
-  assertPhase15_9JContextIntegrity,
   buildPhase15_9JArtifactItem,
+  buildPhase15_9JContextDriftItem,
+  inspectPhase15_9JContextIntegrity,
   PHASE15_9J_EXPECTED_OUTCOME_TOTAL,
   PHASE15_9J_MAX_MODEL_CALLS,
   PHASE15_9J_MAX_SOURCE_NETWORK_REQUESTS,
@@ -74,16 +75,8 @@ async function loadPhase15_9IOutcomes(client) {
 
 async function assertNoDownstreamAssignments(client, sourceIds) {
   const [{ data: links, error: linkError }, { data: evidence, error: evidenceError }] = await Promise.all([
-    client
-      .from("ar_source_incident_links")
-      .select("source_signal_id")
-      .in("source_signal_id", sourceIds)
-      .limit(TARGET_LOOKUP_LIMIT),
-    client
-      .from("ar_public_problem_evidence_snapshots")
-      .select("source_signal_id")
-      .in("source_signal_id", sourceIds)
-      .limit(TARGET_LOOKUP_LIMIT),
+    client.from("ar_source_incident_links").select("source_signal_id").in("source_signal_id", sourceIds).limit(TARGET_LOOKUP_LIMIT),
+    client.from("ar_public_problem_evidence_snapshots").select("source_signal_id").in("source_signal_id", sourceIds).limit(TARGET_LOOKUP_LIMIT),
   ]);
   if (linkError) throw linkError;
   if (evidenceError) throw evidenceError;
@@ -106,15 +99,22 @@ function summarize(items) {
   const states = { eligible: 0, provenance_review: 0, review: 0, reject: 0 };
   const reasons = {};
   for (const item of items) {
-    const state = Object.hasOwn(states, item.formation_state) ? item.formation_state : "review";
-    states[state] += 1;
+    if (item.audit_status === "formation_evaluated" && Object.hasOwn(states, item.formation_state)) {
+      states[item.formation_state] += 1;
+    }
     for (const reason of item.reason_codes ?? []) reasons[reason] = (reasons[reason] ?? 0) + 1;
   }
+  const formationEvaluated = items.filter((item) => item.audit_status === "formation_evaluated").length;
+  const contextDrift = items.filter((item) => item.audit_status === "context_drift").length;
+  const contextPairUnstable = items.filter((item) => item.audit_status === "context_pair_unstable").length;
   return {
     total: items.length,
+    formation_evaluated: formationEvaluated,
+    context_drift: contextDrift,
+    context_pair_unstable: contextPairUnstable,
     ...states,
-    resolved: items.filter((item) => item.resolved).length,
-    unresolved: items.filter((item) => !item.resolved).length,
+    resolved: items.filter((item) => item.audit_status === "formation_evaluated" && item.resolved).length,
+    unresolved: items.filter((item) => item.audit_status === "formation_evaluated" && !item.resolved).length,
     reason_codes: Object.fromEntries(Object.entries(reasons).sort(([left], [right]) => left.localeCompare(right))),
     provider_recovery_attempted: items.filter((item) => item.recovery.attempted).length,
     provider_recovery_recovered: items.filter((item) => item.recovery.recovered).length,
@@ -122,6 +122,11 @@ function summarize(items) {
 }
 
 function conclusionFor(summary) {
+  if (summary.context_drift > 0 || summary.context_pair_unstable > 0) {
+    return summary.eligible > 0
+      ? "formation_eligible_detected_with_context_drift_unresolved"
+      : "formation_inconclusive_due_context_drift";
+  }
   if (summary.eligible > 0) return "formation_eligible_candidates_detected";
   if (summary.provenance_review > 0 || summary.review > 0 || summary.unresolved > 0) return "formation_followup_required";
   return "formation_rejects_only";
@@ -156,6 +161,7 @@ async function main() {
       upstream_sample_fingerprint: PHASE15_9J_SAMPLE_FINGERPRINT,
       target_ordinals: PHASE15_9J_TARGET_ORDINALS,
       target_count: PHASE15_9J_TARGET_COUNT,
+      context_drift_policy: "skip_semantic_and_record_privacy_safe_diagnostics",
       max_source_network_requests: PHASE15_9J_MAX_SOURCE_NETWORK_REQUESTS,
       max_model_calls: PHASE15_9J_MAX_MODEL_CALLS,
       database_write_statements: 0,
@@ -190,8 +196,7 @@ async function main() {
 
   const sourceFetchImpl = async (...args) => {
     sourceNetworkRequests += 1;
-    assert.ok(sourceNetworkRequests <= PHASE15_9J_MAX_SOURCE_NETWORK_REQUESTS,
-      "15.9J source network budget exceeded");
+    assert.ok(sourceNetworkRequests <= PHASE15_9J_MAX_SOURCE_NETWORK_REQUESTS, "15.9J source network budget exceeded");
     return globalThis.fetch(...args);
   };
   const modelFetchImpl = async (...args) => {
@@ -215,7 +220,13 @@ async function main() {
       fetchImpl: sourceFetchImpl,
       externalWebPolicy: SOURCE_FULL_CONTEXT_EXTERNAL_POLICY,
     });
-    assertPhase15_9JContextIntegrity(first, second, target, { compareFetches: comparePhase15_9GFetches });
+    const integrity = inspectPhase15_9JContextIntegrity(first, second, target, { compareFetches: comparePhase15_9GFetches });
+    if (!integrity.ok) {
+      const driftItem = buildPhase15_9JContextDriftItem({ target, integrity });
+      items.push(driftItem);
+      console.log(`[15.9J] ${index + 1}/${PHASE15_9J_TARGET_COUNT} ordinal=${target.baseline_ordinal} audit=${driftItem.audit_status} model_call=false failures=${driftItem.reason_codes.join(",")}`);
+      continue;
+    }
 
     const formationResult = await resolveSourceProblemFormationAudit(source, {
       fetchContext: async () => first,
@@ -238,14 +249,18 @@ async function main() {
         "Formation eligible requires an exact grounded evidence quote");
     }
     items.push(item);
-    console.log(`[15.9J] ${index + 1}/${PHASE15_9J_TARGET_COUNT} ordinal=${target.baseline_ordinal} state=${item.formation_state} resolved=${item.resolved} retry=${item.recovery.attempted}`);
+    console.log(`[15.9J] ${index + 1}/${PHASE15_9J_TARGET_COUNT} ordinal=${target.baseline_ordinal} audit=formation_evaluated state=${item.formation_state} resolved=${item.resolved} retry=${item.recovery.attempted}`);
   }
 
-  assert.equal(items.length, PHASE15_9J_TARGET_COUNT, "15.9J must audit exactly three durable Candidates");
+  assert.equal(items.length, PHASE15_9J_TARGET_COUNT, "15.9J must account for exactly three durable Candidates");
   const protectedAfter = await snapshotProtectedDomains(client);
   assert.deepEqual(protectedAfter, protectedBefore, "Phase 15.9J must remain database read-only");
 
   const summary = summarize(items);
+  assert.equal(summary.total, PHASE15_9J_TARGET_COUNT);
+  assert.equal(summary.formation_evaluated + summary.context_drift + summary.context_pair_unstable, PHASE15_9J_TARGET_COUNT,
+    "every target must be formation-evaluated or explicitly isolated by context integrity");
+
   const artifact = {
     version: PHASE15_9J_VERSION,
     authority: "empirical_formation_audit_not_incident_authority",
@@ -255,6 +270,7 @@ async function main() {
       target_ordinals: PHASE15_9J_TARGET_ORDINALS,
       target_count: PHASE15_9J_TARGET_COUNT,
       blind_overlap_before_url_body_read: blindOverlap,
+      context_drift_semantic_policy: "skip",
     },
     formation_authority: {
       observer_version: SOURCE_PROBLEM_FORMATION_OBSERVER_VERSION,
@@ -276,7 +292,8 @@ async function main() {
       protected_domains_unchanged: true,
     },
     downstream_authority: {
-      formation_audit_completed: true,
+      formation_audit_completed_for_integrity_stable_sources: summary.formation_evaluated,
+      context_drift_unresolved_sources: summary.context_drift + summary.context_pair_unstable,
       incident_identity_assigned: false,
       incident_rows_written: 0,
       source_incident_links_written: 0,
