@@ -13,6 +13,7 @@ import {
   buildPhase15_9BTargetedPlan,
   getPhase15_9BPlanSummary,
   PHASE15_9B_CAMPAIGN_VERSION,
+  PHASE15_9B_SEED_CONTENT_SHA256,
   PHASE15_9B_SEED_IDENTITY_SHA256,
   PHASE15_9B_SOURCE_PLATFORM,
 } from "../lib/sources/phase15-9b-targeted-telecom-plan.mjs";
@@ -77,11 +78,13 @@ async function resolveOwnerCurator(client) {
 async function assertSeedStillHeld(client) {
   const { data: sourceRows, error } = await client
     .from("ar_source_signals")
-    .select("id, external_content_id")
+    .select("id, external_content_id, content_hash")
     .eq("source_platform", PHASE15_9B_SOURCE_PLATFORM)
     .eq("external_content_id", PHASE15_9B_SEED_IDENTITY_SHA256);
   if (error) throw error;
   assert.equal(sourceRows?.length, 1, "Phase 15.9B seed must resolve uniquely");
+  assert.equal(sourceRows[0].content_hash, PHASE15_9B_SEED_CONTENT_SHA256,
+    "Phase 15.9B must preserve the frozen singleton seed content hash");
   const { count, error: linkError } = await client
     .from("ar_source_incident_links")
     .select("*", { count: "exact", head: true })
@@ -135,7 +138,7 @@ async function main() {
       status: "PLAN_ONLY",
       plan: summary,
       queries: plan.map((item) => ({ query_key: item.query_key, q: item.input.q, limit: item.input.limit })),
-      source_supply_mutation_authorized: false,
+      live_source_supply_mutation_authorized: true,
       incident_creation_authorized: false,
       problem_signature_authorized: false,
       publication_authorized: false,
@@ -168,19 +171,23 @@ async function main() {
 
     try {
       const result = await searchNaverBlogPosts(item.input);
-      const discovery = filterDiscoverySignals(result.signals);
-      const existing = await loadExistingIdentitySet(client, discovery.accepted);
-      const newlyObserved = discovery.accepted.filter((signal) => !existing.has(sourceIdentityKey(signal)));
-      seedRediscoveryHits += result.signals.filter(
+      const seedHits = result.signals.filter(
         (signal) => signal.external_content_id === PHASE15_9B_SEED_IDENTITY_SHA256,
       ).length;
+      seedRediscoveryHits += seedHits;
+      const acquisitionSignals = result.signals.filter(
+        (signal) => signal.external_content_id !== PHASE15_9B_SEED_IDENTITY_SHA256,
+      );
+      const discovery = filterDiscoverySignals(acquisitionSignals);
+      const existing = await loadExistingIdentitySet(client, discovery.accepted);
+      const newlyObserved = discovery.accepted.filter((signal) => !existing.has(sourceIdentityKey(signal)));
 
       const persisted = await persistDiscoveredSourceSignals(client, {
         runId: run.id,
         queryText: item.input.q,
-        signals: result.signals,
+        signals: acquisitionSignals,
         fetchedCount: result.fetched_count,
-        skippedCount: result.skipped_count,
+        skippedCount: result.skipped_count + seedHits,
       });
 
       assert.equal(persisted.run.inserted_count, newlyObserved.length,
@@ -192,6 +199,7 @@ async function main() {
         query_key: item.query_key,
         q: item.input.q,
         fetched_count: result.fetched_count,
+        protected_seed_hits: seedHits,
         discovery_continue_count: persisted.discovery.summary.continue_count,
         discovery_reject_count: persisted.discovery.summary.reject_count,
         inserted_count: persisted.run.inserted_count,
@@ -230,6 +238,7 @@ async function main() {
     new_source_summary: newSummary,
     new_sources: distinctNewSignals,
     seed_rediscovery_hits: seedRediscoveryHits,
+    protected_seed_upserted: false,
     database_before: before,
     database_after: after,
     blind_120_reads: 0,
@@ -254,6 +263,7 @@ async function main() {
     requests: plan.length,
     new_source_summary: newSummary,
     seed_rediscovery_hits: seedRediscoveryHits,
+    protected_seed_upserted: false,
     full_source_body_fetches: 0,
     incident_mutations: 0,
     publication_mutations: 0,
