@@ -2,72 +2,55 @@
 
 ## Status
 
-**IMPLEMENTATION READY / LIVE NOT YET RUN**
+**CLOSED**
 
-Phase 15.9L promotes the provider-incomplete recovery mechanics proven in Phase 15.9K into the reusable Problem Formation observer.
+Phase 15.9L promoted the provider-incomplete recovery mechanics proven in Phase 15.9K into the reusable Problem Formation observer and verified the promoted path against the exact frozen ordinal 9/16 contexts.
 
-It does not change Formation semantic policy, Incident identity, Problem identity, Public Evidence, publication, ranking, or Source Admission.
+It did not change Formation semantic policy, Incident identity, Problem identity, Public Evidence, publication, ranking, or Source Admission.
 
 ---
 
-## 1. Upstream authority
+## 1. Implementation authority
 
-Phase 15.9K closed with:
-
-```text
-final main:
-58fc84127a21cb2f54c466355131550990bd38e8
-
-CI #488: SUCCESS
-```
-
-The authoritative 15.9K live reproduction established:
+Implementation PR:
 
 ```text
-ordinal 9
-  first attempt max_output_tokens = 1200
-  provider status = incomplete
-  incomplete_details.reason = max_output_tokens
-  bounded retry max_output_tokens = 2400
-  retry completed
-  deterministic Formation = reject / formation_incidental_friction
+PR #145
+exact head:
+4b5e6ce5067bdd2612e76ae84bff57df25f88de8
 
-ordinal 16
-  fresh 1200-token request completed
-  deterministic Formation = review / formation_semantic_uncertain
-
-Formation eligible = 0
-DB writes = 0
+CI #489: SUCCESS
+PIE #128: SUCCESS
 ```
 
-Historical Phase 15.8N also observed provider-incomplete recovery pressure:
+Expected-head merge produced:
 
 ```text
-8 durable Candidates
-provider-incomplete retry attempted = 3
-recovered = 2
-exhausted = 1
+implementation main:
+a20d2d0abc5eec31966d3e1f35c87e9b666cf91b
+
+merged-main CI #490: SUCCESS
 ```
 
-The 15.8N observer retried the same 1200-token request. Phase 15.9K supplied the missing provider diagnostic showing that at least one such failure was directly caused by the output-token ceiling and was recoverable with a bounded larger response budget.
+No migration was added.
 
 ---
 
 ## 2. Promoted observer authority
 
-Reusable observer version:
+Reusable observer:
 
 ```text
 source-problem-formation-observer-v0.2
 ```
 
-Semantic prompt version remains:
+Semantic prompt remains:
 
 ```text
 source-problem-formation-semantic-v0.1
 ```
 
-Recovery mechanics version:
+Recovery mechanics:
 
 ```text
 source-problem-formation-provider-recovery-v0.1
@@ -85,7 +68,6 @@ Base attempt:
 attempt = 1
 max_output_tokens = 1200
 recovery instruction = absent
-semantic prompt/schema/input = existing Formation contract
 ```
 
 Exactly one recovery attempt is allowed only when:
@@ -107,155 +89,307 @@ same semantic authority instructions
 + concise recovery instruction
 ```
 
-The recovery instruction asks only for the required structured fields and shorter proposals. It does not alter semantic labels or Formation eligibility rules.
+The observer hard-caps total semantic attempts at 2.
 
-The observer caps semantic attempts at 2 even if a caller supplies a larger `maxSemanticAttempts` value.
-
----
-
-## 4. Errors that do not receive this recovery
-
-15.9L does not widen retry policy to:
-
-```text
-source_formation_provider_timeout
-source_formation_provider_network_error
-source_formation_provider_rejected
-source_formation_provider_invalid_json
-source_formation_invalid_evidence_quote
-source_formation_provider_missing_output
-```
-
-Only retryable `source_formation_provider_incomplete` receives the enlarged-budget retry.
-
-Invalid evidence quote remains terminal for the semantic attempt because exact quote grounding is an evidence boundary, not a provider-output-budget failure.
+The recovery policy does not extend to timeout, network, provider rejection, invalid JSON, missing output, or invalid evidence quote errors.
 
 ---
 
-## 5. Runtime metadata
+## 4. Upstream evidence for promotion
 
-Resolved and unresolved observer results expose bounded recovery metadata:
-
-```text
-version
-attempted
-recovered
-attempt_count
-trigger_reason_code
-base_max_output_tokens
-recovery_max_output_tokens
-```
-
-Recovered semantics additionally record:
+Historical Phase 15.8N observed:
 
 ```text
-provider_recovery_version
-provider_recovery_applied
+8 durable Candidates
+provider-incomplete retry attempted = 3
+recovered = 2
+exhausted = 1
 ```
 
-These fields describe provider transport/recovery only. They do not change deterministic Formation state authority.
+Those retries reused the same 1200-token Formation budget.
+
+Phase 15.9K then directly observed ordinal 9 fail with:
+
+```text
+provider status = incomplete
+incomplete_details.reason = max_output_tokens
+```
+
+and recover under a bounded 2400-token retry.
+
+This established that provider-incomplete was not merely an abstract transient condition; at least one real Formation attempt was blocked by the output ceiling.
 
 ---
 
-## 6. Verification target
+## 5. Authoritative live verification
 
-The live shadow verification reuses only the two frozen Phase 15.9J/K targets:
+Workflow:
 
 ```text
-ordinals = [9, 16]
-full-context outcome baseline = 85
+Source Formation Recovery Promotion 15.9L
+run #1
+Actions run id:
+33049313973
+
+execution SHA:
+a20d2d0abc5eec31966d3e1f35c87e9b666cf91b
+
+conclusion: SUCCESS
 ```
 
-Before any canonical URL or body read, the runner proves zero overlap with the Blind evaluation set.
+Artifact:
 
-Each target is fetched twice and must match the frozen Phase 15.9H/I context authority through the existing 15.9J integrity check before any model call.
+```text
+artifact id:
+9636946230
 
-If context drifts, that target receives zero model calls.
+name:
+source-formation-recovery-promotion-15-9l
+
+digest:
+sha256:95268f584029671988a75b23e7c6a869b9b78dfc4471b685d06f9e234b1279bb
+```
+
+Artifact authority:
+
+```text
+read_only_shadow_verification_of_promoted_formation_provider_recovery_policy
+```
 
 ---
 
-## 7. Production observer verification
-
-The live runner does not use the Phase 15.9K phase-local recovery wrapper.
-
-It invokes:
-
-```text
-resolveSourceProblemFormationAudit()
-```
-
-directly with the promoted observer v0.2 and instrumented provider transport.
-
-The transport records only privacy-safe request/provider metadata:
-
-```text
-requested max_output_tokens
-recovery instruction present/absent
-semantic authority instruction present/absent
-HTTP status
-provider status
-incomplete reason
-output token count
-reasoning token count
-```
-
-A valid live result requires:
-
-```text
-first request = 1200, no recovery instruction
-second request, if any = 2400, recovery instruction present
-second request only when recovery.trigger_reason_code = source_formation_provider_incomplete
-provider attempts per target = 1 or 2
-```
-
-Provider nondeterminism is not converted into a false failure: if both targets complete on their first 1200-token requests, the shadow verifies the base production path while unit/contract tests and Phase 15.9K remain the recovery-path authority.
-
----
-
-## 8. Budgets and mutation boundary
+## 6. Live aggregate result
 
 ```text
 targets = 2
-source network requests max = 16
-model calls max = 4
+context integrity passed = 2
+context drift = 0
+
+resolved = 2
+unresolved = 0
+
+provider recovery attempted = 2
+provider recovery recovered = 2
+provider recovery exhausted = 0
+
+incomplete reason:
+max_output_tokens = 2
+
+eligible = 0
+provenance_review = 0
+review = 0
+reject = 2
+```
+
+Execution budget:
+
+```text
+source network requests = 4 / max 16
+model calls = 4 / max 4
 database writes = 0
 ```
 
-Protected domains are snapshotted before and after and must be exactly equal.
+Conclusion:
 
-The runner additionally requires no existing Incident links or Public Evidence rows for the two targets.
+```text
+production_formation_recovery_policy_shadow_verified
+```
 
 ---
 
-## 9. Artifact privacy
+## 7. Ordinal 9
 
-The disposable one-day artifact may contain:
+Frozen upstream stratum:
 
 ```text
-baseline ordinal
-prior rejection stratum
-Formation state/reason
-safe semantic facts
-SHA-256 and length of grounded evidence quote
-recovery metadata
-privacy-safe provider attempt metadata
-aggregate protected-table counts
+title_truncated_no_complaint_signal
 ```
 
-It must not contain:
+Production observer request sequence:
+
+```text
+attempt 1
+  max_output_tokens = 1200
+  recovery instruction = false
+  semantic authority instruction = true
+  HTTP = 200
+  provider status = incomplete
+  incomplete reason = max_output_tokens
+
+attempt 2
+  max_output_tokens = 2400
+  recovery instruction = true
+  semantic authority instruction = true
+  HTTP = 200
+  provider status = completed
+```
+
+Recovery metadata:
+
+```text
+attempted = true
+recovered = true
+attempt_count = 2
+trigger = source_formation_provider_incomplete
+```
+
+Final deterministic Formation result:
+
+```text
+reject
+reason = formation_incidental_friction
+```
+
+Observed semantic facts included:
+
+```text
+problem_claim = yes
+experience_actor = self
+friction_specificity = concrete
+pain_centrality = incidental
+content_kind = organic
+source_origin = original
+friction_responsibility = external_process_or_policy
+```
+
+The evidence quote was exact-grounded, but only its SHA-256 and character count were retained in the disposable artifact.
+
+---
+
+## 8. Ordinal 16
+
+Frozen upstream stratum:
+
+```text
+title_information_or_guide
+```
+
+Production observer request sequence:
+
+```text
+attempt 1
+  max_output_tokens = 1200
+  recovery instruction = false
+  semantic authority instruction = true
+  HTTP = 200
+  provider status = incomplete
+  incomplete reason = max_output_tokens
+  output tokens = 1200
+  reasoning tokens = 1024
+
+attempt 2
+  max_output_tokens = 2400
+  recovery instruction = true
+  semantic authority instruction = true
+  HTTP = 200
+  provider status = completed
+```
+
+Recovery metadata:
+
+```text
+attempted = true
+recovered = true
+attempt_count = 2
+trigger = source_formation_provider_incomplete
+```
+
+Final deterministic Formation result:
+
+```text
+reject
+reason = formation_non_evidence_content
+```
+
+Observed semantic facts included:
+
+```text
+problem_claim = yes
+experience_actor = self
+friction_specificity = concrete
+pain_centrality = central
+content_kind = informational
+source_origin = original
+friction_responsibility = mixed
+```
+
+This also resolves the 15.9K variability in which ordinal 16 had once completed at 1200 and remained Review. Under the authoritative 15.9L live run, the first 1200 request was incomplete and the promoted 2400 recovery completed to deterministic Reject.
+
+This does not rewrite historical 15.9K output; it records a later independent Formation observation.
+
+---
+
+## 9. Database read-only verification
+
+Artifact before/after counts were identical:
+
+```text
+ar_source_signals                         3562
+ar_source_signal_observations             3892
+ar_source_ingestion_runs                   144
+ar_raw_inputs                               10
+ar_pain_evidences                           27
+ar_public_problems                           3
+ar_public_problem_evidence_snapshots         7
+ar_public_problem_feed                       3
+ar_source_incidents                          6
+ar_source_incident_links                     7
+ar_source_full_context_resolution_outcomes  85
+```
+
+Independent post-live Supabase readback reproduced the same counts exactly.
+
+Therefore:
+
+```text
+DB mutations = 0
+full-context outcomes remain 85
+Incident rows remain 6
+Incident links remain 7
+Public Problems remain 3
+Public Evidence remains 7
+```
+
+---
+
+## 10. Blind and context-integrity boundary
+
+Before canonical URL/body reads:
+
+```text
+Blind overlap = 0
+```
+
+Both targets passed double-fetch integrity against the frozen Phase 15.9H/I context authority:
+
+```text
+context integrity passed = 2 / 2
+context drift = 0
+```
+
+No target with context drift would have received a model call.
+
+---
+
+## 11. Artifact privacy
+
+The disposable artifact excludes:
 
 ```text
 Source Signal ID
-canonical/fetched URL
+canonical URL
+fetched URL
 raw/full source body
 author handle
 provider request ID
 raw evidence quote
 ```
 
+It retains only privacy-safe provider diagnostics and hashed/length evidence-grounding metadata.
+
 ---
 
-## 10. Authority explicitly not granted
+## 12. Authority explicitly not granted
 
 Phase 15.9L does not authorize:
 
@@ -271,20 +405,12 @@ publication
 ordinal 4 current-context replacement
 ```
 
-A recovered Formation result remains subject to the existing deterministic Formation mapper and downstream curator-governed boundaries.
+A recovered semantic observation still passes through the unchanged deterministic Formation resolver and all existing downstream curator-governed boundaries.
 
 ---
 
-## 11. Closeout requirements
+## 13. Closeout state
 
-15.9L can close only after:
+The temporary push trigger was removed. The Phase 15.9L workflow is now manual `workflow_dispatch` only and always checks out authoritative `main`.
 
-1. implementation PR exact-head CI succeeds;
-2. PIE prospective shadow succeeds;
-3. expected-head merge succeeds;
-4. merged-main CI succeeds;
-5. one-shot live shadow runs from exact merged implementation main;
-6. artifact confirms the production observer request contract;
-7. independent DB readback confirms protected domains unchanged;
-8. temporary live push trigger is removed;
-9. closeout PR exact-head CI/PIE and merged-main CI succeed.
+Phase 15.9L is CLOSED after closeout PR exact-head CI/PIE and merged-main CI succeed.

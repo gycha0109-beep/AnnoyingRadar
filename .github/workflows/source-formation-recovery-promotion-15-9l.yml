@@ -2,9 +2,6 @@ name: Source Formation Recovery Promotion 15.9L
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9l-live-execution
 
 permissions:
   contents: read
