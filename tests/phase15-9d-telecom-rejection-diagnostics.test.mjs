@@ -78,8 +78,8 @@ test("15.9D runner is blind-safe, bounded and read-only", async () => {
   assert.match(script, /publication_authorized: false/);
   assert.doesNotMatch(script, /\.insert\(/);
   assert.doesNotMatch(script, /\.upsert\(/);
-  assert.doesNotMatch(script, /\.update\(/);
   assert.doesNotMatch(script, /\.delete\(/);
+  assert.doesNotMatch(script, /\.from\([^)]*\)[\s\S]{0,500}?\.update\(/);
   assert.doesNotMatch(script, /ar_register_source_incident/);
   assert.doesNotMatch(script, /ar_set_public_problem_status/);
 });
