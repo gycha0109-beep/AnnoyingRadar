@@ -1,0 +1,63 @@
+name: Source Durable Candidate Formation Audit 15.9J
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9j-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-durable-candidate-formation-audit-15-9j
+  cancel-in-progress: false
+
+jobs:
+  formation-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$OPENAI_API_KEY"
+      - name: Audit durable Phase 15.9I Candidates for Problem Formation readiness
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SOURCE_FORMATION_MODEL: ${{ secrets.OPENAI_SOURCE_FORMATION_MODEL || secrets.OPENAI_SOURCE_FULL_CONTEXT_MODEL || 'gpt-5-mini-2025-08-07' }}
+          ALLOW_PHASE15_9J_FORMATION_AUDIT: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-durable-candidate-formation-audit-15-9j.mjs --live --output=phase15-9j-durable-candidate-formation-audit.json 2>&1 | tee phase15-9j-durable-candidate-formation-audit.log
+      - name: Upload disposable Phase 15.9J audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-durable-candidate-formation-audit-15-9j
+          path: |
+            phase15-9j-durable-candidate-formation-audit.log
+            phase15-9j-durable-candidate-formation-audit.json
+          if-no-files-found: ignore
+          retention-days: 1
