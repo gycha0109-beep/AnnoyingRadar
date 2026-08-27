@@ -59,7 +59,10 @@ test("15.9F runner is read-only, blind-gated before URL load, and model-free", a
   const runner = await read("scripts/run-external-web-full-context-pilot-15-9f.mjs");
   assert.match(runner, /getEvaluationSampleIds/);
   assert.match(runner, /blind_overlap_before_url_read/);
-  assert.ok(runner.indexOf("assert.equal(blindOverlap, 0") < runner.indexOf("loadUrlFields(client"));
+  assert.ok(
+    runner.indexOf("assert.equal(blindOverlap, 0")
+      < runner.indexOf("const urlFieldsById = await loadUrlFields(client"),
+  );
   assert.match(runner, /SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
   assert.match(runner, /database_writes: 0/);
   assert.match(runner, /external_model_calls: 0/);
