@@ -2,9 +2,9 @@
 
 ## Status
 
-**IMPLEMENTED / PRODUCTION SCHEMA VERIFIED / EXPLICIT CURATOR DECISION PENDING**
+**CLOSED / LIVE CURATOR DECISION VERIFIED**
 
-Phase 15.9P implements the generic durable authority layer between the closed Phase 15.9O read-only packet and any later Incident execution.
+Phase 15.9P implements and has now exercised the durable authority boundary between the closed Phase 15.9O read-only packet and any later Incident execution.
 
 It records only an explicit curator decision. It does not create or reuse an Incident, create a Source→Incident link, persist Public Evidence, mutate a Canonical/Public Problem, or publish anything.
 
@@ -14,8 +14,6 @@ curator packet ≠ curator approval
 curator approval ≠ Incident mutation
 Incident ≠ Public Problem publication
 ```
-
-Phase 15.9P is **not CLOSED** because no curator decision has been supplied or persisted. The production schema is ready and verified with zero decision rows.
 
 ---
 
@@ -44,6 +42,12 @@ Merged-main verification:
 
 ```text
 CI #515: SUCCESS
+```
+
+Production-schema verification closeout was merged through PR #156 and produced current pre-live-decision main:
+
+```text
+adf221bb73f1744246e7f785bcb5f798f1e67e96
 ```
 
 ---
@@ -112,47 +116,11 @@ accept + create_new     → true
 accept + reuse_existing → true
 ```
 
-`incident_persistence_authorized = true` is only downstream execution authority. Phase 15.9P itself still performs zero Incident writes.
+`incident_persistence_authorized = true` is only downstream execution authority. Phase 15.9P itself performs zero Incident writes.
 
 ---
 
-## 4. Database guards
-
-Insertion fails closed unless:
-
-```text
-Formation assessment exists
-Formation belongs to exact Source
-Formation is resolved + eligible
-reviewed context SHA/length matches Formation
-reviewed evidence SHA/length matches Formation
-Formation evidence is grounded
-Source is outside Blind evaluation
-Source has no Incident link
-Source has no Public Evidence assignment
-curator exists and is Radar-authorized
-```
-
-Action-specific guards:
-
-```text
-create_new
-  → proposed incident_key must be absent at decision-record time
-
-reuse_existing
-  → exact existing Incident must exist
-
-hold / reject
-  → no Incident identity fields allowed
-```
-
-A later Incident execution phase must repeat `create_new`/`reuse_existing` preconditions atomically. The 15.9P record-time check alone never mutates Incident authority.
-
----
-
-## 5. Production migration authority
-
-Migration 040 was applied only after PR exact-head CI/PIE, expected-head merge, and merged-main CI all succeeded.
+## 4. Production schema authority
 
 Supabase migration ledger:
 
@@ -160,180 +128,156 @@ Supabase migration ledger:
 20260828005305 source_incident_curator_decisions
 ```
 
-Production table readback:
+Production verification confirmed:
 
 ```text
-ar_source_incident_curator_decisions = exists
-rows = 0
-RLS = enabled
+RLS enabled
+service_role SELECT/INSERT = true
+service_role UPDATE/DELETE = false
+anon/authenticated table access = false
+RPC execute: service_role only
+append-only UPDATE/DELETE blocker present
+Formation/source/integrity guard present
+UNIQUE(formation_assessment_id) present
+decision-shape CHECK present
 ```
 
-Privileges:
-
-```text
-service_role:
-  SELECT = true
-  INSERT = true
-  UPDATE = false
-  DELETE = false
-
-anon:
-  SELECT = false
-  INSERT = false
-
-authenticated:
-  SELECT = false
-  INSERT = false
-```
-
-Write RPC privilege:
-
-```text
-ar_record_source_incident_curator_decision(...)
-service_role execute = true
-anon execute = false
-authenticated execute = false
-```
-
-Production trigger readback confirmed both:
-
-```text
-ar_trg_guard_source_incident_curator_decision
-  BEFORE INSERT
-
-ar_trg_block_source_incident_curator_decision_mutation
-  BEFORE UPDATE OR DELETE
-```
-
-Production constraint readback confirmed:
-
-```text
-ar_source_incident_curator_decisions_unique_formation
-  UNIQUE (formation_assessment_id)
-
-ar_source_incident_curator_decisions_shape_check
-  reject / hold / create_new / reuse_existing authority shapes
-```
+The table stores reviewed hashes/counts plus decision authority only. It does not store raw source body, canonical URL, author handle, raw evidence quote, or provider request ID.
 
 ---
 
-## 6. Append-only and privacy boundary
+## 5. Explicit live curator decision
 
-A mutation-blocking trigger rejects UPDATE/DELETE attempts even independently of table grants.
+The human curator explicitly approved the eligible telecom Formation for a new Incident.
 
-The decision table does not persist:
-
-```text
-full source body
-canonical URL
-author handle
-raw evidence quote
-provider request ID
-```
-
-It stores only reviewed integrity hashes/counts plus the explicit decision.
-
----
-
-## 7. Zero-downstream-mutation production readback
-
-Pre-migration protected counts:
+Durable decision identity:
 
 ```text
-Source Signals           3562
-Source Observations      3892
-Source Ingestion Runs     144
-Raw Inputs                 10
-Pain Evidences             27
-Source Incidents            6
-Source→Incident links        7
-Public Problems              3
-Public Evidence              7
-Public Feed                  3
-Full-context Outcomes       85
-Formation assessments        1
-```
+decision_id:
+b58973c3-92ed-4a4a-ad1b-07780881e961
 
-Post-migration independent readback:
+formation_assessment_id:
+f90fb17a-c2c8-4b0e-89c1-fc2487ffc99e
 
-```text
-Source Signals           3562
-Source Observations      3892
-Source Ingestion Runs     144
-Raw Inputs                 10
-Pain Evidences             27
-Source Incidents            6
-Source→Incident links        7
-Public Problems              3
-Public Evidence              7
-Public Feed                  3
-Full-context Outcomes       85
-Formation assessments        1
-Curator Incident decisions   0
-```
+source_signal_id:
+42fe1c20-62b0-454b-88b2-61d9e1554c12
 
-Therefore migration 040 introduced schema authority only:
-
-```text
-Incident writes = 0
-Source→Incident link writes = 0
-Public Problem writes = 0
-Public Evidence writes = 0
-Public Feed writes = 0
-curator decision writes = 0
-```
-
----
-
-## 8. Live decision boundary
-
-The implementation must not fabricate a curator decision for verification.
-
-A live row requires real explicit decision fields supplied by a curator. Current durable state remains:
-
-```text
-Formation assessments = 1
-resolved eligible Formation assessments = 1
-curator Incident decisions = 0
-```
-
-When a real decision is supplied, the authorized live mutation budget is exactly:
-
-```text
-ar_source_incident_curator_decisions +1
-```
-
-with all of the following unchanged:
-
-```text
-ar_source_incidents
-ar_source_incident_links
-ar_public_problems
-ar_public_problem_evidence_snapshots
-ar_public_problem_feed
-all other protected domains
-```
-
-Model calls remain zero.
-
-Until that explicit decision is supplied and persisted/read back, Phase 15.9P remains **PENDING LIVE CURATOR DECISION**, not CLOSED.
-
----
-
-## 9. Downstream boundary
-
-Only after a durable row exists with:
-
-```text
+evidence_decision = accept
+incident_action = create_new
 incident_persistence_authorized = true
+
+new_incident_key:
+carrier_csc_feature_restriction_case
+
+new_incident_label:
+통신사 CSC 변경 후 전용 기능 제한 사례
 ```
 
-may a later phase consume an explicit curator decision ID and consider Incident execution.
+Reviewed integrity authority exactly matches the durable Formation:
 
-Proposed downstream phase:
+```text
+context_sha256:
+4be5eae3f5caf2bdd1de325427dfa34ad2a8b80e6b13e717797bc3f2d061e463
+context_char_count = 3407
+
+evidence_sha256:
+fafd5798cf5e8cc9ffb82507d550163fd84202f4d9430c053906727cef4a775c
+evidence_char_count = 44
+```
+
+The decision was recorded by the existing Radar curator identity and is append-only.
+
+---
+
+## 6. Live execution note
+
+The first manual SQL invocation used PostgreSQL composite expansion syntax:
+
+```sql
+select (public.ar_record_source_incident_curator_decision(...)).*;
+```
+
+Because the RPC is volatile and returns a composite row, field expansion caused repeated function evaluation inside the same statement. The second evaluation hit the Formation uniqueness constraint. PostgreSQL rolled back the entire statement; independent readback confirmed the decision table still contained zero rows and no downstream table changed.
+
+The authoritative invocation then called the RPC exactly once using:
+
+```sql
+select *
+from public.ar_record_source_incident_curator_decision(...);
+```
+
+That statement succeeded and produced the single durable decision above. The failed statement is not part of durable authority.
+
+---
+
+## 7. Independent production readback
+
+Immediately before the successful live decision:
+
+```text
+Source Signals            3562
+Source Observations       3892
+Source Ingestion Runs      144
+Raw Inputs                  10
+Pain Evidences              27
+Source Incidents             6
+Source→Incident links         7
+Public Problems               3
+Public Evidence               7
+Public Feed                   3
+Full-context Outcomes        85
+Formation assessments         1
+Curator Incident decisions    0
+```
+
+After the successful live decision:
+
+```text
+Source Signals            3562
+Source Observations       3892
+Source Ingestion Runs      144
+Raw Inputs                  10
+Pain Evidences              27
+Source Incidents             6
+Source→Incident links         7
+Public Problems               3
+Public Evidence               7
+Public Feed                   3
+Full-context Outcomes        85
+Formation assessments         1
+Curator Incident decisions    1
+```
+
+Target readback also confirmed:
+
+```text
+exact approved decision rows for decision_id = 1
+target Source→Incident links                 = 0
+target Source Public Evidence assignments    = 0
+```
+
+Therefore the only authorized live mutation was:
+
+```text
+ar_source_incident_curator_decisions 0 → 1
+```
+
+No Incident, link, Public Problem, Public Evidence, or feed mutation occurred. Model calls were zero.
+
+---
+
+## 8. Downstream authority
+
+Phase 15.9P is now **CLOSED**.
+
+The exact durable decision above authorizes the next governed phase:
 
 ```text
 15.9Q — Approved Incident Decision Execution
 ```
 
-15.9Q must never infer the latest approved decision and must never reinterpret `Formation eligible` as approval.
+15.9Q must consume the explicit decision ID `b58973c3-92ed-4a4a-ad1b-07780881e961`; it must never infer a latest approved decision.
+
+For this `create_new` decision, execution must atomically re-check that the approved Incident key is still absent. If the key now exists, execution must fail rather than silently reuse it. The exact Source must still be unlinked. The resulting Incident/link must preserve durable lineage back to this decision authority.
+
+15.9Q may create the approved Incident and its exact Source→Incident link only. Public Problem persistence, Public Evidence persistence, feed mutation, and publication remain outside its authority.
