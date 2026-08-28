@@ -1,0 +1,59 @@
+name: Source Curator Incident Decision Packet 15.9O
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/phase15-9o-live-execution
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-curator-incident-decision-packet-15-9o
+  cancel-in-progress: false
+
+jobs:
+  curator-incident-decision-packet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required Supabase secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+      - name: Build one read-only curator Incident decision packet
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ALLOW_PHASE15_9O_CURATOR_INCIDENT_DECISION_PACKET: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-curator-incident-decision-packet-15-9o.mjs --live --output=phase15-9o-curator-incident-decision-packet.json 2>&1 | tee phase15-9o-curator-incident-decision-packet.log
+      - name: Upload disposable Phase 15.9O artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-curator-incident-decision-packet-15-9o
+          path: |
+            phase15-9o-curator-incident-decision-packet.log
+            phase15-9o-curator-incident-decision-packet.json
+          if-no-files-found: ignore
+          retention-days: 1
