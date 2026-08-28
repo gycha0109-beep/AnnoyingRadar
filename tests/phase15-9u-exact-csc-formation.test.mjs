@@ -46,9 +46,10 @@ test("15.9U performs only Formation persistence and keeps downstream authority f
 
 test("15.9U preserves bounded provider authority and artifact privacy", async () => {
   const script = await read("scripts/run-exact-csc-formation-assessment-15-9u.mjs");
+  const workflow = await read(".github/workflows/source-exact-csc-formation-15-9u.yml");
   assert.match(script, /MAX_SOURCE_NETWORK_REQUESTS = 1/);
   assert.match(script, /MAX_MODEL_CALLS = 2/);
-  assert.match(script, /OPENAI_API_KEY/);
+  assert.match(workflow, /OPENAI_API_KEY/);
   for (const forbidden of [
     "source_signal_id",
     "source_admission_outcome_id",
