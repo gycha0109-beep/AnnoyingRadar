@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -58,19 +58,9 @@ test("15.9W mutation boundary is one decision, one link and one execution with n
   assert.match(script, /publication_authorized: false/);
 });
 
-test("15.9W temporary workflow is gated by successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-approved-existing-incident-link-15-9w.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9W_APPROVED_EXISTING_INCIDENT_LINK: "true"/);
-  assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9W one-shot live workflow stays removed after closeout", async () => {
+  const workflowUrl = new URL("../.github/workflows/source-approved-existing-incident-link-15-9w.yml", import.meta.url);
+  await assert.rejects(access(workflowUrl));
 });
 
 test("15.9W artifact excludes internal identity and raw content fields", async () => {
