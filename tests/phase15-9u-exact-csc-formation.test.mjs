@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -46,10 +46,8 @@ test("15.9U performs only Formation persistence and keeps downstream authority f
 
 test("15.9U preserves bounded provider authority and artifact privacy", async () => {
   const script = await read("scripts/run-exact-csc-formation-assessment-15-9u.mjs");
-  const workflow = await read(".github/workflows/source-exact-csc-formation-15-9u.yml");
   assert.match(script, /MAX_SOURCE_NETWORK_REQUESTS = 1/);
   assert.match(script, /MAX_MODEL_CALLS = 2/);
-  assert.match(workflow, /OPENAI_API_KEY/);
   for (const forbidden of [
     "source_signal_id",
     "source_admission_outcome_id",
@@ -66,17 +64,7 @@ test("15.9U preserves bounded provider authority and artifact privacy", async ()
   assert.match(script, /evidence_quote\\"/);
 });
 
-test("15.9U temporary workflow is gated by successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-exact-csc-formation-15-9u.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9U_EXACT_FORMATION: "true"/);
-  assert.match(workflow, /OPENAI_SOURCE_FORMATION_MODEL/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9U temporary live workflow is removed after closeout", async () => {
+  const workflowUrl = new URL("../.github/workflows/source-exact-csc-formation-15-9u.yml", import.meta.url);
+  await assert.rejects(access(workflowUrl));
 });
