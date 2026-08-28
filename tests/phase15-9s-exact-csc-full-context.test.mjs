@@ -68,18 +68,9 @@ test("15.9S artifact excludes raw source and authority identifiers", async () =>
   assert.match(script, /evidence_quote\\"/);
 });
 
-test("15.9S temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-exact-csc-full-context-15-9s.yml");
-
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9S_EXACT_FULL_CONTEXT: "true"/);
-  assert.match(workflow, /OPENAI_API_KEY/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9S closeout removes the temporary live workflow trigger", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-exact-csc-full-context-15-9s.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
