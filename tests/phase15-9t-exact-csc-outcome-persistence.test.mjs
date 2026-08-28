@@ -50,7 +50,7 @@ test("15.9T re-fetches one full post and appends exactly one durable outcome", a
   assert.match(script, /rows: \[row\]/);
   assert.match(script, /expectedCount: 1/);
   assert.match(script, /outcomeTotalAfter, outcomeTotalBefore \+ 1/);
-  assert.match(script, /target Source.*pre-existing durable full-context outcome/i);
+  assert.match(script, /pre-existing durable full-context outcome for the target Source/i);
   assert.match(script, /live rerun is forbidden/);
   assert.doesNotMatch(script, /\.insert\(/);
   assert.doesNotMatch(script, /\.rpc\(/);
