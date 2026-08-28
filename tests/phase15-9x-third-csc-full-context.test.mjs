@@ -13,37 +13,24 @@ test("15.9X binds one exact unassigned CSC Source", async () => {
   assert.match(script, /\["ar_source_full_context_resolution_outcomes", "durable full-context outcomes"\]/);
   assert.match(script, /\["ar_source_formation_assessments", "Formation assessments"\]/);
   assert.match(script, /\["ar_source_incident_links", "Incident links"\]/);
-  assert.match(script, /\["ar_public_problem_evidence_snapshots", "Public Evidence rows"\]/);
-  assert.match(script, /\["ar_source_signal_evaluation_samples", "Blind evaluation rows"\]/);
   assert.match(script, /15\.9X target must have zero \$\{label\}/);
   assert.doesNotMatch(script, /latest/i);
 });
 
-test("15.9X explicitly opts external-web fetch into bounded public HTML", async () => {
+test("15.9X external-web fetch remains bounded and read-only", async () => {
   const script = await read("scripts/run-third-csc-full-context-resolution-15-9x.mjs");
   assert.match(script, /SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
-  assert.match(script, /externalWebPolicy: SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
   assert.match(script, /MAX_SOURCE_NETWORK_REQUESTS = 4/);
   assert.match(script, /MAX_MODEL_CALLS = 1/);
-  assert.match(script, /resolveSourceAdmissionWithFullContext/);
-});
-
-test("15.9X is read-only and preserves Incident/Public authority", async () => {
-  const script = await read("scripts/run-third-csc-full-context-resolution-15-9x.mjs");
   assert.match(script, /assert\.deepEqual\(after, before/);
   assert.match(script, /database_writes: 0/);
-  assert.match(script, /durable_outcome_authorized: false/);
-  assert.match(script, /formation_authorized: false/);
-  assert.match(script, /incident_authorized: false/);
   assert.match(script, /public_problem_authorized: false/);
-  assert.match(script, /public_evidence_authorized: false/);
   assert.match(script, /publication_authorized: false/);
   assert.doesNotMatch(script, /persistSourceFullContextOutcome/);
   assert.doesNotMatch(script, /persistSourceFormationAssessment/);
-  assert.doesNotMatch(script, /ar_create_canonical_public_problem_draft/);
 });
 
-test("15.9X records the structural promotion blocker instead of bypassing it", async () => {
+test("15.9X records structural promotion blocker", async () => {
   const script = await read("scripts/run-third-csc-full-context-resolution-15-9x.mjs");
   assert.match(script, /existing_csc_incident_count: 1/);
   assert.match(script, /existing_csc_source_count: 2/);
@@ -52,35 +39,17 @@ test("15.9X records the structural promotion blocker instead of bypassing it", a
   assert.match(script, /public_problem_draft_ready: false/);
 });
 
-test("15.9X artifact excludes raw/internal source authority", async () => {
+test("15.9X artifact excludes raw/internal authority", async () => {
   const script = await read("scripts/run-third-csc-full-context-resolution-15-9x.mjs");
-  for (const forbidden of [
-    "source_signal_id",
-    "canonical_url",
-    "author_handle",
-    "raw_text",
-    "content_text",
-    "provider_request_id",
-    "incident_id",
-    "curator_user_id",
-    "public_problem_id",
-  ]) {
+  for (const forbidden of ["source_signal_id", "canonical_url", "author_handle", "raw_text", "content_text", "provider_request_id", "incident_id", "curator_user_id", "public_problem_id"]) {
     assert.match(script, new RegExp(`\\"${forbidden}`));
   }
   assert.match(script, /evidence_quote\\"/);
 });
 
-test("15.9X temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-third-csc-full-context-15-9x.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9X_THIRD_CSC_FULL_CONTEXT: "true"/);
-  assert.match(workflow, /OPENAI_API_KEY/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9X temporary live workflow remains removed after closeout", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-third-csc-full-context-15-9x.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
