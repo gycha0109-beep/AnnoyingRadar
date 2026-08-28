@@ -10,9 +10,12 @@ test("15.9X binds one exact unassigned CSC Source", async () => {
   assert.match(script, /a1b35603bfd16782a77edf0b5dba3488e1fc03bf550bb24e4733c8ca0f4d1fc6/);
   assert.match(script, /conetrue\.tistory\.com/);
   assert.match(script, /carrier_csc_feature_restriction_case/);
-  assert.match(script, /must have zero durable full-context outcomes/);
-  assert.match(script, /must have zero Formation assessments/);
-  assert.match(script, /must have zero Incident links/);
+  assert.match(script, /\["ar_source_full_context_resolution_outcomes", "durable full-context outcomes"\]/);
+  assert.match(script, /\["ar_source_formation_assessments", "Formation assessments"\]/);
+  assert.match(script, /\["ar_source_incident_links", "Incident links"\]/);
+  assert.match(script, /\["ar_public_problem_evidence_snapshots", "Public Evidence rows"\]/);
+  assert.match(script, /\["ar_source_signal_evaluation_samples", "Blind evaluation rows"\]/);
+  assert.match(script, /15\.9X target must have zero \$\{label\}/);
   assert.doesNotMatch(script, /latest/i);
 });
 
