@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -108,17 +108,7 @@ test("15.9V artifact excludes source and authority identifiers", async () => {
   assert.match(script, /evidence_quote\\"/);
 });
 
-test("15.9V temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-exact-csc-evidence-grounding-recovery-15-9v.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9V_EVIDENCE_GROUNDING_RECOVERY: "true"/);
-  assert.match(workflow, /OPENAI_API_KEY/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9V temporary live workflow is removed after closeout", async () => {
+  const workflowUrl = new URL("../.github/workflows/source-exact-csc-evidence-grounding-recovery-15-9v.yml", import.meta.url);
+  await assert.rejects(access(workflowUrl));
 });
