@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTATION IN REVIEW / PRODUCTION MIGRATION AND LIVE DECISION PENDING**
+**IMPLEMENTED / PRODUCTION SCHEMA VERIFIED / EXPLICIT CURATOR DECISION PENDING**
 
 Phase 15.9P implements the generic durable authority layer between the closed Phase 15.9O read-only packet and any later Incident execution.
 
@@ -15,7 +15,40 @@ curator approval ≠ Incident mutation
 Incident ≠ Public Problem publication
 ```
 
-## Implemented surface
+Phase 15.9P is **not CLOSED** because no curator decision has been supplied or persisted. The production schema is ready and verified with zero decision rows.
+
+---
+
+## 1. Implementation authority
+
+Implementation PR:
+
+```text
+PR #155
+corrected exact head:
+5d340d674ef17f2b688598e3258e4a19b30ac232
+
+CI #514:  SUCCESS
+PIE #143: SUCCESS
+```
+
+The first CI attempt, CI #513, exposed only a contract-test indexing error: the static ordering test matched the earlier `validateDecisionAgainstPacket` function definition rather than the later call site. Production migration/service/route logic was unchanged; the corrected head changed exactly one test line.
+
+Expected-head merge produced authoritative implementation main:
+
+```text
+3a18b4d77af7cae16006df0dff40f05f853ba78d
+```
+
+Merged-main verification:
+
+```text
+CI #515: SUCCESS
+```
+
+---
+
+## 2. Implemented surface
 
 Migration:
 
@@ -51,7 +84,9 @@ The write service requires explicit `sourceSignalId` and `formationAssessmentId`
 
 Client-supplied context/evidence hashes are not accepted as authority. The reviewed hashes/counts written to the decision row are derived from the server-validated Formation packet.
 
-## Durable decision contract
+---
+
+## 3. Durable decision contract
 
 One exact Formation assessment may receive at most one final decision:
 
@@ -71,15 +106,17 @@ accepted evidence:
 Persistence authorization is derived, not client supplied:
 
 ```text
-reject                 → false
-accept + hold          → false
-accept + create_new    → true
-accept + reuse_existing→ true
+reject                  → false
+accept + hold           → false
+accept + create_new     → true
+accept + reuse_existing → true
 ```
 
 `incident_persistence_authorized = true` is only downstream execution authority. Phase 15.9P itself still performs zero Incident writes.
 
-## Database guards
+---
+
+## 4. Database guards
 
 Insertion fails closed unless:
 
@@ -111,18 +148,78 @@ hold / reject
 
 A later Incident execution phase must repeat `create_new`/`reuse_existing` preconditions atomically. The 15.9P record-time check alone never mutates Incident authority.
 
-## Append-only and privacy boundary
+---
+
+## 5. Production migration authority
+
+Migration 040 was applied only after PR exact-head CI/PIE, expected-head merge, and merged-main CI all succeeded.
+
+Supabase migration ledger:
 
 ```text
-RLS = enabled
-service_role SELECT = allowed
-service_role INSERT = allowed
-UPDATE = forbidden
-DELETE = forbidden
-browser direct write = forbidden
+20260828005305 source_incident_curator_decisions
 ```
 
-A mutation-blocking trigger also rejects UPDATE/DELETE attempts.
+Production table readback:
+
+```text
+ar_source_incident_curator_decisions = exists
+rows = 0
+RLS = enabled
+```
+
+Privileges:
+
+```text
+service_role:
+  SELECT = true
+  INSERT = true
+  UPDATE = false
+  DELETE = false
+
+anon:
+  SELECT = false
+  INSERT = false
+
+authenticated:
+  SELECT = false
+  INSERT = false
+```
+
+Write RPC privilege:
+
+```text
+ar_record_source_incident_curator_decision(...)
+service_role execute = true
+anon execute = false
+authenticated execute = false
+```
+
+Production trigger readback confirmed both:
+
+```text
+ar_trg_guard_source_incident_curator_decision
+  BEFORE INSERT
+
+ar_trg_block_source_incident_curator_decision_mutation
+  BEFORE UPDATE OR DELETE
+```
+
+Production constraint readback confirmed:
+
+```text
+ar_source_incident_curator_decisions_unique_formation
+  UNIQUE (formation_assessment_id)
+
+ar_source_incident_curator_decisions_shape_check
+  reject / hold / create_new / reuse_existing authority shapes
+```
+
+---
+
+## 6. Append-only and privacy boundary
+
+A mutation-blocking trigger rejects UPDATE/DELETE attempts even independently of table grants.
 
 The decision table does not persist:
 
@@ -136,32 +233,69 @@ provider request ID
 
 It stores only reviewed integrity hashes/counts plus the explicit decision.
 
-## Current production preflight
+---
 
-Before migration 040:
+## 7. Zero-downstream-mutation production readback
 
-```text
-latest applied migration = source_formation_assessments
-Formation assessments = 1
-resolved eligible Formation assessments = 1
-```
-
-Existing curator guard privilege:
+Pre-migration protected counts:
 
 ```text
-ar_require_radar_curator(uuid)
-service_role execute = true
-anon execute = false
-authenticated execute = false
+Source Signals           3562
+Source Observations      3892
+Source Ingestion Runs     144
+Raw Inputs                 10
+Pain Evidences             27
+Source Incidents            6
+Source→Incident links        7
+Public Problems              3
+Public Evidence              7
+Public Feed                  3
+Full-context Outcomes       85
+Formation assessments        1
 ```
 
-No Phase 15.9P decision row has been created yet.
+Post-migration independent readback:
 
-## Live boundary
+```text
+Source Signals           3562
+Source Observations      3892
+Source Ingestion Runs     144
+Raw Inputs                 10
+Pain Evidences             27
+Source Incidents            6
+Source→Incident links        7
+Public Problems              3
+Public Evidence              7
+Public Feed                  3
+Full-context Outcomes       85
+Formation assessments        1
+Curator Incident decisions   0
+```
+
+Therefore migration 040 introduced schema authority only:
+
+```text
+Incident writes = 0
+Source→Incident link writes = 0
+Public Problem writes = 0
+Public Evidence writes = 0
+Public Feed writes = 0
+curator decision writes = 0
+```
+
+---
+
+## 8. Live decision boundary
 
 The implementation must not fabricate a curator decision for verification.
 
-A live row requires real explicit decision fields supplied by a curator. Until then the implementation may be merged and migration 040 may be applied/verified, but Phase 15.9P remains **not live-closed**.
+A live row requires real explicit decision fields supplied by a curator. Current durable state remains:
+
+```text
+Formation assessments = 1
+resolved eligible Formation assessments = 1
+curator Incident decisions = 0
+```
 
 When a real decision is supplied, the authorized live mutation budget is exactly:
 
@@ -182,7 +316,11 @@ all other protected domains
 
 Model calls remain zero.
 
-## Downstream boundary
+Until that explicit decision is supplied and persisted/read back, Phase 15.9P remains **PENDING LIVE CURATOR DECISION**, not CLOSED.
+
+---
+
+## 9. Downstream boundary
 
 Only after a durable row exists with:
 
