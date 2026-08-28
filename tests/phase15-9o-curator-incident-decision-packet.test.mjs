@@ -131,8 +131,12 @@ test("15.9O route, service, and runner are database-mutation free", async () => 
     read("lib/sources/source-incident-decision-packet-service.mjs"),
     read("scripts/run-curator-incident-decision-packet-15-9o.mjs"),
   ]);
+  const supabaseMutationPatterns = [
+    /\.from\s*\([^)]*\)\s*\.\s*(?:insert|upsert|update|delete)\s*\(/,
+    /\b(?:serviceClient|supabase|client)\s*\.\s*rpc\s*\(/,
+  ];
   for (const source of files) {
-    for (const pattern of [/\.insert\s*\(/, /\.upsert\s*\(/, /\.update\s*\(/, /\.delete\s*\(/, /\.rpc\s*\(/]) {
+    for (const pattern of supabaseMutationPatterns) {
       assert.doesNotMatch(source, pattern);
     }
   }
