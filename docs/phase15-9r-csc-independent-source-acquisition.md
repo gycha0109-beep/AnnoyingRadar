@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTATION IN REVIEW / LIVE ACQUISITION NOT EXECUTED**
+**CLOSED — LIVE ACQUISITION VERIFIED**
 
 Phase 15.9Q closed one governed Incident:
 
@@ -11,11 +11,9 @@ carrier_csc_feature_restriction_case
 통신사 CSC 변경 후 전용 기능 제한 사례
 ```
 
-The curator has approved continuing toward public promotion. That approval does not waive the existing Public Problem publishability contract.
+The curator approved continuing toward public promotion. That approval does not waive the existing Public Problem publishability contract.
 
-Current production authority has only one Incident for this mechanism, while `ar_assert_public_problem_publishable(...)` requires at least two distinct Incident IDs, two distinct Source Signals, and two distinct source keys.
-
-Therefore Phase 15.9R does **not** create a Public Problem draft. It acquires bounded additional Source supply so a second independent organic case can be evaluated through the normal semantic / Formation / curator authority chain.
+Production still has only one governed Incident for this mechanism. `ar_assert_public_problem_publishable(...)` requires at least two distinct Incident IDs, two distinct Source Signals, and two distinct source keys. Phase 15.9R therefore acquired additional Source supply only; it did not create a Public Problem draft.
 
 ---
 
@@ -45,131 +43,162 @@ CSC 변경 RCS 안됨
 통신사 CSC 기능 제한
 ```
 
-The search focus is discovery vocabulary only:
+The search focus remained discovery vocabulary only:
 
 ```text
 search_focus_authority = search_focus_not_problem_signature_or_incident_authority
 ```
 
-A query match is not a Problem match, Incident match, Formation decision, or publication decision.
+A query match was not treated as a Problem match, Incident match, Formation decision, or publication decision.
 
 ---
 
-## 2. Protected authority seed
+## 2. Implementation authority
 
-The runner freezes the already-approved Source identity/content hashes and the exact durable Incident decision / Incident key.
-
-Before and after acquisition it independently verifies:
+Implementation PR:
 
 ```text
-protected Source resolves uniquely
-protected Source content hash is unchanged
-durable decision exists and remains accept + create_new + authorized
-protected Incident was created from that exact decision
-protected Source has exactly one link to that Incident
-link carries that exact decision lineage
-execution ledger contains exactly one execution for that decision
-protected Source has zero Public Evidence rows
+PR #160
+exact PR head:
+c44a0202be0beaa7137f547a79bcbb9b0c11291f
+
+PR CI #524 = SUCCESS
+PIE #148 = SUCCESS
+
+implementation merge/main:
+fb30a980879480351a73aea903e7c15901907ee5
+merged-main CI #525 = SUCCESS
 ```
 
-The protected Source is excluded from acquisition inserts even if rediscovered by the provider.
+The temporary live workflow was restricted to a successful `CI` workflow run on a `main` push and checked out the exact `workflow_run.head_sha`.
 
 ---
 
-## 3. Mutation boundary
+## 3. Authoritative live run
 
-Authorized live mutations:
+Live workflow:
 
 ```text
-ar_source_ingestion_runs
-ar_source_signals
-ar_source_signal_observations
+Source CSC Feature Restriction Search 15.9R
+run id: 33135871365
+conclusion: SUCCESS
+head sha: fb30a980879480351a73aea903e7c15901907ee5
 ```
 
-Forbidden in this phase:
+Disposable artifact:
 
 ```text
-full-context outcome writes
-Formation writes
-curator Incident decision writes
-Incident writes
-Source→Incident link writes
-Public Problem writes
-Public Evidence writes
-Public Feed writes
-publication status changes
+artifact id: 9672010483
+name: source-csc-feature-restriction-search-15-9r
+digest: sha256:9d3cbf60119d513125b27d2c0d39f0ffc98b0250e983d1e5aae1814020db5033
+retention: 1 day
 ```
 
-External model calls are zero and full source body fetches are zero.
-
-The runner snapshots protected domain counts before and after acquisition and fails if any forbidden domain changes.
-
----
-
-## 4. One-shot live execution
-
-The live campaign version is:
+The artifact reported:
 
 ```text
-phase15.9r-csc-feature-restriction-search-v0.1
-```
-
-Before the first provider request, the runner requires zero existing ingestion runs carrying that campaign version. Any second live execution fails closed rather than silently creating another acquisition campaign.
-
-Because the repository integration surface available for this phase cannot dispatch a manual workflow directly, the implementation contains a temporary `workflow_run` trigger. It is restricted to:
-
-```text
-workflow = CI
-branch = main
-event = push
-conclusion = success
-```
-
-It checks out the exact CI-verified `workflow_run.head_sha`. Thus provider/production writes cannot occur from PR CI and cannot occur before merged-main CI succeeds.
-
-After the authoritative live run is verified, this temporary workflow must be removed in the Phase 15.9R closeout PR.
-
----
-
-## 5. Live verification contract
-
-Before live acquisition, production must still show the 15.9Q authority boundary:
-
-```text
-Public Problem count = 3
-Public Evidence count = 7
-Public Feed count = 3
-Source Incident count = 7
-Source→Incident link count = 8
-curator Incident decisions = 1
-Incident decision executions = 1
-```
-
-After the campaign:
-
-```text
-exactly 8 campaign ingestion runs exist
-Source growth equals the unique newly inserted cohort
-protected authority lineage is unchanged
-Incident/Public/Formation/full-context counts are unchanged
-model calls = 0
+requests = 8
+new Source Signals = 148
+admission candidate = 0
+admission review = 4
+admission reject = 144
+protected Source rediscovery hits = 7
+external model calls = 0
 full source body fetches = 0
+Incident mutations = 0
+Public Problem mutations = 0
+publication mutations = 0
 ```
-
-The disposable artifact may expose only sanitized provider-derived Source identity/content hashes, publication timestamps, admission decisions/reasons, aggregate counts, and query telemetry. It must not expose Source UUIDs, URLs, authors, raw text, Incident IDs, curator decision IDs, or Public Problem IDs.
 
 ---
 
-## 6. Downstream gate
+## 4. Independent production readback
 
-If the new cohort contains promising candidate/review rows, those rows must proceed through the existing semantic and full-context authority path. No newly acquired row becomes a second Incident automatically.
-
-A future second Formation that is eligible must receive its own curator Incident decision packet and its own explicit human curator approval.
-
-Only after two genuinely independent governed Incidents exist may a later phase evaluate canonical Public Problem draft readiness.
-
-If Phase 15.9R finds no qualifying independent case, public promotion remains approved in principle but blocked by:
+The artifact's before/after counts were independently re-read from Supabase.
 
 ```text
+Source Signals             3562 → 3710
+Source Observations        3892 → 4056
+Source Ingestion Runs       144 → 152
+campaign ingestion runs       0 → 8
+campaign inserted Sources     0 → 148
+
+Source Incidents              7 → 7
+Source→Incident links         8 → 8
+full-context outcomes        85 → 85
+Formation assessments         1 → 1
+curator Incident decisions    1 → 1
+Incident executions           1 → 1
+Public Problems               3 → 3
+Public Evidence               7 → 7
+Public Feed                   3 → 3
+```
+
+The already-approved authority seed was also independently revalidated after acquisition:
+
+```text
+protected Source rows = 1
+protected Source content hash unchanged = true
+protected curator decision rows = 1
+protected Incident rows = 1
+protected Source→Incident lineage rows = 1
+protected execution rows = 1
+protected Source Public Evidence rows = 0
+```
+
+Thus the live mutation stayed inside the Source supply boundary.
+
+---
+
+## 5. Review cohort triage
+
+The deterministic admission gate surfaced four `review` rows requiring context. A read-only inspection of their stored search snippets showed:
+
+```text
+3 rows = unrelated keyword collisions / different complaint mechanisms
+1 row = direct CSC-change + carrier dual-number feature failure signal
+```
+
+The single high-priority row is frozen for downstream resolution only by sanitized identity/content hashes:
+
+```text
+source_identity_sha256:
+b3fc24092df04938ff473f2e405e2cff2bfd6d7b698ce4df7dd093883fecef0c
+
+source_content_sha256:
+db6e21b5f66e4fcd387484d8b3f791ac9d17886c42945c831d0be51d8184aef4
+
+published_at:
+2020-04-09T15:00:00.000Z
+
+admission_decision = review
+requires_full_context = true
+```
+
+This triage is not a full-context semantic decision, Formation decision, Incident decision, or Problem signature.
+
+---
+
+## 6. Closeout boundary
+
+The temporary `workflow_run` live trigger is removed by the Phase 15.9R closeout PR so future main CI runs cannot repeat the one-shot campaign.
+
+The reusable plan and runner remain as historical/replayable implementation evidence, but the runner itself refuses a second live execution because eight campaign ingestion rows already exist.
+
+---
+
+## 7. Downstream gate
+
+The next authorized step is an exact-source full-context resolution slice for only the frozen high-priority review Source above.
+
+That downstream slice may determine whether the Source is an independent organic complaint compatible with the CSC/carrier-feature mechanism, but it may not automatically create or reuse an Incident.
+
+If a future Formation becomes eligible, it must receive its own curator Incident decision packet and its own explicit human curator approval.
+
+Until a second genuinely independent governed Incident exists:
+
+```text
+public promotion approval = retained
+canonical Public Problem draft = blocked
 independent Incident count = 1 / required 2
 ```

@@ -79,19 +79,9 @@ test("15.9R runner is one-shot Source acquisition only", async () => {
   assert.doesNotMatch(script, /ar_set_public_problem_status/);
 });
 
-test("15.9R temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-csc-feature-restriction-search-15-9r.yml");
-
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9R_CSC_ACQUISITION: "true"/);
-  assert.match(workflow, /run-csc-feature-restriction-search-15-9r\.mjs --live/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
+test("15.9R closeout removes the temporary live workflow trigger", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-csc-feature-restriction-search-15-9r.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
