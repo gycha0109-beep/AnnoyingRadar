@@ -2,11 +2,11 @@
 
 ## Status
 
-**IMPLEMENTATION IN REVIEW / LIVE PERSISTENCE NOT EXECUTED**
+**CLOSED — DURABLE CANDIDATE OUTCOME PERSISTED / PRODUCTION VERIFIED**
 
-Phase 15.9S resolved one exact CSC / carrier-feature Source as a full-context `candidate` without database mutation. Phase 15.9T may append only that exact resolved outcome to the private durable full-context outcome layer.
+Phase 15.9S resolved one exact CSC / carrier-feature Source as a full-context `candidate` without database mutation. Phase 15.9T appended only that exact resolved outcome to the private durable full-context outcome layer.
 
-This phase does not perform Formation assessment, Incident creation/linking, Public Problem creation, evidence publication, or feed publication.
+No Formation assessment, Incident creation/linking, Public Problem creation, evidence publication, or feed publication occurred in this phase.
 
 ---
 
@@ -65,21 +65,28 @@ evidence_quote_char_count = 44
 Phase 15.9S grounding = true
 ```
 
-The raw evidence quote is not persisted by Phase 15.9T.
+The raw evidence quote was not persisted by Phase 15.9T.
 
 ---
 
-## 2. Persistence authority
-
-Batch:
+## 2. Implementation verification
 
 ```text
-phase15.9t-exact-csc-outcome-v0.1
+PR #164
+corrected exact PR head:
+7efdab0b50ad4b07604634070a2aeca5bbc2510a
+
+PR CI #534 = SUCCESS
+PIE #154 = SUCCESS
+
+implementation merge/main:
+b89aeb89906521b0cf70705899aac5b4015f178d
+merged-main CI #535 = SUCCESS
 ```
 
-The runner must re-resolve the Source using both immutable Source hashes. `latest` inference is forbidden.
+The runner re-resolved the exact Source using both immutable Source hashes; no `latest` inference was used.
 
-Before any write it requires:
+Before the write it required:
 
 ```text
 exact Source hash pair resolves exactly one row
@@ -93,95 +100,154 @@ existing Public Evidence rows for this Source = 0
 protected carrier_csc_feature_restriction_case Incident count = 1
 ```
 
-The production outcome table currently guarantees uniqueness only for `(batch_version, source_signal_id)`. Therefore Phase 15.9T explicitly checks that **no durable outcome of any batch already exists for this Source** before inserting.
+Production schema inspection confirmed that the durable outcome table's uniqueness authority is `(batch_version, source_signal_id)`, so the runner additionally rejected any pre-existing outcome for the target Source regardless of batch.
 
 ---
 
 ## 3. No model replay
 
-Phase 15.9T must not invoke OpenAI or any semantic provider.
+Phase 15.9T did not invoke OpenAI or another semantic provider.
 
-It performs exactly one bounded Naver full-post fetch, then requires the fetched content to match the Phase 15.9S content authority exactly:
+The runner performed one bounded Naver full-post fetch and required exact equality with the Phase 15.9S context authority:
 
 ```text
-content hash = frozen 15.9S hash
+content hash = 751cf7c75b608ec3ae28c7abce7f10bd60521cc8d985a27981b0c7f85e364540
 character count = 3035
 content scope = full_post
 extraction scope = naver_post_body
 truncated = false
 ```
 
-The Phase 15.9S semantic enum fields are frozen into the candidate result and re-evaluated only by the deterministic local `resolveFullContextSemantic` function.
+The frozen Phase 15.9S semantic enum fields still deterministically resolved to `candidate` through the local semantic resolver.
 
 ```text
 external model calls = 0
-source network requests max = 1
+source network requests = 1 / 1
 ```
 
 ---
 
-## 4. Exact write boundary
+## 4. Authoritative live persistence
 
-After all integrity checks succeed, the runner builds one row with the existing governed outcome builder and performs one bulk insert of exactly one row through:
-
-```text
-buildSourceFullContextOutcomeRow(...)
-persistSourceFullContextOutcomeRows(... expectedCount: 1)
-```
-
-Required post-write state:
+Live workflow:
 
 ```text
-target Source durable outcomes: 0 → 1
-15.9T batch rows: 0 → 1
-total full-context outcomes: +1
-all protected domain counts: unchanged
+Source Exact CSC Outcome Persistence 15.9T
+run id: 33137419293
+head sha: b89aeb89906521b0cf70705899aac5b4015f178d
+conclusion: SUCCESS
 ```
 
-Protected domains include Source ingestion, Raw Input, Pain Evidence, Formation, Incident, Source→Incident links, curator decisions, Incident executions, Public Problems, Public Evidence, and Public Feed.
+Disposable artifact:
+
+```text
+artifact id: 9672563812
+digest: sha256:6793b05b5edf9ca252799aa94ad0c3d9e93523f49b51f70f7a80d301d80f6aaa
+retention: 1 day
+```
+
+Persisted batch:
+
+```text
+phase15.9t-exact-csc-outcome-v0.1
+```
+
+Live artifact result:
+
+```text
+status = resolved
+decision = candidate
+reason = full_context_first_hand_external_friction
+context_integrity_verified = true
+model_calls = 0
+network_requests = 1
+database_write_statements = 1
+outcome_rows_before = 85
+outcome_rows_inserted = 1
+outcome_rows_after = 86
+```
+
+Protected before/after counts were identical:
+
+```text
+Source Signals = 3710
+Source Observations = 4056
+Source Ingestion Runs = 152
+Raw Inputs = 10
+Pain Evidences = 27
+Source Incidents = 7
+Source→Incident links = 8
+Formation assessments = 1
+curator Incident decisions = 1
+Incident executions = 1
+Public Problems = 3
+Public Evidence = 7
+Public Feed = 3
+```
 
 ---
 
-## 5. Artifact privacy
+## 5. Independent production readback
 
-The disposable one-day live artifact may contain only sanitized hashes, semantic enums, context integrity metadata, aggregate counts, and mutation counters.
+Supabase was independently queried after the live workflow.
 
-It must not contain:
+Count readback:
 
 ```text
-Source UUID
-canonical URL
-author handle
-stored raw/snippet text
-full source body
-raw evidence quote
-provider request ID
-Incident UUID
-curator decision UUID
-Public Problem UUID
+full-context outcomes = 86
+target Source durable outcomes = 1
+15.9T batch rows = 1
+Source Incidents = 7
+Source→Incident links = 8
+Formation assessments = 1
+curator decisions = 1
+Incident executions = 1
+Public Problems = 3
+Public Evidence = 7
+Public Feed = 3
 ```
+
+Exact durable row readback:
+
+```text
+batch_version = phase15.9t-exact-csc-outcome-v0.1
+resolution_version = source-full-context-resolution-v0.1
+status = resolved
+decision = candidate
+reason_codes = [full_context_first_hand_external_friction]
+problem_claim = yes
+experience_actor = self
+friction_cause = external_service_or_product
+friction_specificity = concrete
+pain_centrality = central
+content_kind = organic
+context_status = resolved
+context_scope = full_post
+context_content_sha256 = 751cf7c75b608ec3ae28c7abce7f10bd60521cc8d985a27981b0c7f85e364540
+context_char_count = 3035
+context_truncated = false
+prompt_version = source-full-context-semantic-v0.1
+provider = openai
+model_name = gpt-5-mini-2025-08-07
+recovery_attempted = false
+recovery_recovered = false
+recovery_attempt_count = 1
+```
+
+This independently confirms the live artifact and proves the only production mutation was one durable full-context outcome row.
 
 ---
 
-## 6. Live gate and closeout
+## 6. Closeout boundary
 
-The temporary live workflow may execute only after:
+The temporary `workflow_run` trigger is removed by the Phase 15.9T closeout PR. Future main CI runs cannot repeat the production insert path automatically.
 
-```text
-exact PR-head CI = SUCCESS
-PIE = SUCCESS
-expected-head merge = complete
-merged-main CI = SUCCESS
-```
-
-It checks out the exact merged-main CI SHA and does not receive `OPENAI_API_KEY`.
-
-After one successful production persistence and independent Supabase readback, the temporary workflow must be removed in a closeout PR before the next authority phase begins.
+The exact runner remains as replayable implementation evidence, but rerunning it would also fail its durable target-outcome and batch guards.
 
 ---
 
-## 7. Downstream boundary
+## 7. Downstream authority
 
-A durable `candidate` outcome is still not a Formation or Incident.
+The exact Source now has one durable `candidate` outcome. This still does not make it a Formation or Incident.
 
-If Phase 15.9T succeeds, the next phase may assess Formation eligibility for this exact durable outcome. Any later Incident creation/reuse still requires a separate explicit human curator decision.
+The next phase may assess Formation eligibility for this exact durable outcome. If that later Formation becomes `eligible`, a second Incident still requires a new explicit human curator decision; no generic continuation instruction substitutes for that approval.

@@ -23,7 +23,6 @@ test("15.9T freezes the exact Phase 15.9S Source and context authority", async (
 
 test("15.9T freezes Phase 15.9S semantics and performs zero model calls", async () => {
   const script = await read("scripts/run-exact-csc-outcome-persistence-15-9t.mjs");
-  const workflow = await read(".github/workflows/source-exact-csc-outcome-persistence-15-9t.yml");
 
   assert.match(script, /problem_claim: "yes"/);
   assert.match(script, /experience_actor: "self"/);
@@ -36,7 +35,6 @@ test("15.9T freezes Phase 15.9S semantics and performs zero model calls", async 
   assert.doesNotMatch(script, /resolveSourceAdmissionWithFullContext/);
   assert.doesNotMatch(script, /judgeSourceFullContextSemantics/);
   assert.doesNotMatch(script, /OPENAI_API_KEY/);
-  assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
 });
 
 test("15.9T re-fetches one full post and appends exactly one durable outcome", async () => {
@@ -97,19 +95,9 @@ test("15.9T artifact excludes raw source and authority identifiers", async () =>
   assert.match(script, /evidence_quote_persisted: false/);
 });
 
-test("15.9T temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-exact-csc-outcome-persistence-15-9t.yml");
-
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9T_EXACT_OUTCOME_PERSISTENCE: "true"/);
-  assert.match(workflow, /run-exact-csc-outcome-persistence-15-9t\.mjs --live/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /OPENAI_API_KEY/);
+test("15.9T closeout removes the temporary live workflow trigger", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-exact-csc-outcome-persistence-15-9t.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
