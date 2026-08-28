@@ -2,11 +2,13 @@
 
 ## Status
 
-**IMPLEMENTED / LIVE NOT YET RUN**
+**CLOSED**
 
 Phase 15.9O consumes an explicit durable Phase 15.9N Formation assessment and constructs a curator-readable Incident decision packet without creating any new authority-bearing decision or database mutation.
 
 It generalizes the useful read-only boundary from historical Phase 15.8O while removing the old fixed-cohort/hash-map approval model.
+
+Closeout authority is recorded in section 13.
 
 ---
 
@@ -238,16 +240,19 @@ It uses the existing `requireRadarCurator()` authority.
 
 There is no POST/PUT/PATCH/DELETE write endpoint in this phase.
 
-The route/service contain no:
+The route/service contain no Supabase mutation path:
 
 ```text
-insert
-upsert
-update
-delete
-RPC mutation
-Formation model invocation
+.from(...).insert(...)
+.from(...).upsert(...)
+.from(...).update(...)
+.from(...).delete(...)
+serviceClient.rpc(...)
 ```
+
+The mutation-free contract intentionally targets Supabase write shapes rather than generic method names such as Node crypto `Hash.update()`.
+
+There is no Formation model invocation.
 
 ---
 
@@ -364,3 +369,146 @@ publication
 ```
 
 The next phase may introduce an explicit curator decision record or controlled Incident persistence only after a real curator decision exists as a separate governed authority.
+
+---
+
+## 13. Closeout evidence
+
+### 13.1 Implementation correction and exact-head gates
+
+The first PR gate failed only because a generic static mutation detector matched Node crypto `createHash(...).update(...)`.
+
+The production route/service/runner were not changed. The contract was narrowed to Supabase-specific write shapes.
+
+```text
+PR = #152
+corrected PR exact head = 6fd601633c85c6e9896ec36440fe2e9ccecd3d11
+corrected exact-head CI = #507 SUCCESS
+corrected exact-head PIE = #139 SUCCESS
+implementation main = d49a8dd9585346f0f8fc1022b1def27351315844
+merged-main CI = #508 SUCCESS
+```
+
+### 13.2 Live execution
+
+The temporary live branch was created from the exact implementation main above.
+
+The workflow trigger branch was only a trigger authority. The job itself checked out:
+
+```text
+ref: main
+```
+
+Live result:
+
+```text
+run id = 33129277194
+run number = 1
+status = SUCCESS
+target count = 1
+target assessment batch = phase15.9n-ordinal9-persistence-v0.1
+target status = resolved
+target formation_state = eligible
+source network requests = 1 / 8
+model calls = 0
+database writes = 0
+curator decision fields completed = 0
+persistence authorized = false
+```
+
+Integrity readback:
+
+```text
+context SHA-256 = 4be5eae3f5caf2bdd1de325427dfa34ad2a8b80e6b13e717797bc3f2d061e463
+context char count = 3407
+evidence quote SHA-256 = fafd5798cf5e8cc9ffb82507d550163fd84202f4d9430c053906727cef4a775c
+evidence quote char count = 44
+evidence quote grounding reconstructed = true
+```
+
+The disposable artifact intentionally omits Source/Formation UUIDs and raw source/evidence material. Independent production readback resolved the exact singleton assessment from the durable batch and matched the artifact's integrity authority.
+
+### 13.3 Artifact
+
+```text
+artifact id = 9669603709
+artifact name = source-curator-incident-decision-packet-15-9o
+artifact digest = sha256:893540eee95d3c4cae74926dc988681707bfcf552aeb2ac0be187318bff34ef4
+retention = 1 day
+```
+
+Privacy assertions were all satisfied:
+
+```text
+Source Signal UUID emitted = false
+Formation assessment UUID emitted = false
+canonical URL emitted = false
+author handle emitted = false
+full source body emitted = false
+raw evidence quote emitted = false
+provider request ID emitted = false
+```
+
+### 13.4 Independent production zero-mutation readback
+
+Independent Supabase readback was executed before and after the live workflow.
+
+Both reads returned the same singleton Formation target and exactly the same protected-domain counts:
+
+```text
+source_signals = 3562
+source_observations = 3892
+source_ingestion_runs = 144
+raw_inputs = 10
+pain_evidences = 27
+public_problems = 3
+public_evidence = 7
+public_feed = 3
+source_incidents = 6
+source_incident_links = 7
+full_context_outcomes = 85
+formation_assessments = 1
+```
+
+Therefore:
+
+```text
+Formation assessment count unchanged
+Incident rows unchanged
+Incident links unchanged
+Public Problem unchanged
+Public Evidence unchanged
+Public Feed unchanged
+all other protected counts unchanged
+```
+
+No packet row was persisted.
+
+### 13.5 Closed authority
+
+Phase 15.9O closes with this boundary:
+
+```text
+explicit durable Formation assessment
+→ read-only context/evidence integrity validation
+→ read-only current Incident/Public Problem comparison
+→ blank curator decision packet
+```
+
+And explicitly not:
+
+```text
+Formation eligible
+→ automatic Incident approval
+```
+
+The packet is decision material only.
+
+```text
+packet ≠ curator approval
+Formation eligible ≠ curator approval
+curator approval is required before any Incident mutation
+Incident identity does not authorize Public Problem publication
+```
+
+The temporary `push` live trigger is removed in closeout. The phase workflow is manual-only after closure.
