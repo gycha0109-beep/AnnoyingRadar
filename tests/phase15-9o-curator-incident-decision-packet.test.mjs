@@ -142,11 +142,12 @@ test("15.9O route, service, and runner are database-mutation free", async () => 
   }
 });
 
-test("15.9O one-shot workflow is no-model, authoritative-main, and disposable", async () => {
+test("15.9O closeout workflow is manual-only, no-model, authoritative-main, and disposable", async () => {
   const workflow = await read(".github/workflows/source-curator-incident-decision-packet-15-9o.yml");
   const runner = await read("scripts/run-curator-incident-decision-packet-15-9o.mjs");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /agent\/phase15-9o-live-execution/);
+  assert.doesNotMatch(workflow, /^\s*push:\s*$/m);
+  assert.doesNotMatch(workflow, /agent\/phase15-9o-live-execution/);
   assert.match(workflow, /ref:\s*main/);
   assert.match(workflow, /ALLOW_PHASE15_9O_CURATOR_INCIDENT_DECISION_PACKET:\s*"true"/);
   assert.match(workflow, /retention-days:\s*1/);

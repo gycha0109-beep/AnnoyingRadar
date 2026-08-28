@@ -2,9 +2,6 @@ name: Source Curator Incident Decision Packet 15.9O
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - agent/phase15-9o-live-execution
 
 permissions:
   contents: read
