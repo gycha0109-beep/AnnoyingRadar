@@ -2,17 +2,17 @@
 
 ## Status
 
-**IMPLEMENTATION IN REVIEW / LIVE RESOLUTION NOT EXECUTED**
+**CLOSED — LIVE RESOLUTION VERIFIED / DURABLE OUTCOME NOT YET PERSISTED**
 
 Phase 15.9R acquired 148 new Source Signals and surfaced four deterministic `review` rows. Read-only triage identified exactly one high-priority row directly describing a CSC-change / carrier dual-number service failure.
 
-Phase 15.9S resolves only that frozen Source through the existing full-context fetch + semantic judge. It is read-only.
+Phase 15.9S resolved only that frozen Source through the existing full-context fetch + semantic judge. The phase remained read-only.
 
 ---
 
 ## 1. Exact target authority
 
-The target is selected only by both sanitized immutable hashes:
+The target was selected only by both sanitized immutable hashes:
 
 ```text
 source_identity_sha256:
@@ -22,9 +22,9 @@ source_content_sha256:
 db6e21b5f66e4fcd387484d8b3f791ac9d17886c42945c831d0be51d8184aef4
 ```
 
-No Source UUID is frozen into the public artifact and no `latest` inference exists.
+No Source UUID was frozen into the public artifact and no `latest` inference exists.
 
-Before network access the runner requires:
+Before network access the runner verified:
 
 ```text
 exact hash pair resolves one Source
@@ -41,113 +41,141 @@ protected CSC Incident count = 1
 
 ---
 
-## 2. Resolution authority
-
-The runner reuses the existing governed resolver:
+## 2. Implementation authority
 
 ```text
-resolveSourceAdmissionWithFullContext(...)
+PR #162
+exact PR head:
+75858891e9416a97f7c2ca87364325bb267280ab
+
+PR CI #529 = SUCCESS
+PIE #151 = SUCCESS
+
+implementation merge/main:
+92635476f35b3350970787e4e5ee67b7c68f26cf
+merged-main CI #530 = SUCCESS
 ```
 
-That path performs:
-
-```text
-Naver full-post fetch
-→ structured semantic observation
-→ deterministic final Admission resolution
-```
-
-The semantic model observes only:
-
-```text
-problem_claim
-experience_actor
-friction_cause
-friction_specificity
-pain_centrality
-content_kind
-evidence_quote
-```
-
-The model does not decide Formation eligibility, Incident identity, Public Problem identity, or publication.
-
-Network budget is bounded to the single Source resolution path. The live workflow supplies the existing `OPENAI_SOURCE_FULL_CONTEXT_MODEL` authority.
+The temporary live workflow was restricted to successful merged-main CI and checked out the exact verified main SHA.
 
 ---
 
-## 3. Mutation boundary
+## 3. Authoritative live result
 
-Phase 15.9S is strictly read-only.
+Live workflow:
 
 ```text
-database writes = 0
-full-context outcome persistence = false
-Formation persistence = false
-Incident mutation = false
-Public Problem mutation = false
-publication = false
+Source Exact CSC Full Context 15.9S
+run id: 33136461477
+head sha: 92635476f35b3350970787e4e5ee67b7c68f26cf
+conclusion: SUCCESS
 ```
 
-All governed table counts are snapshotted before and after resolution and must be byte-for-byte equivalent as a count map.
+Disposable artifact:
+
+```text
+artifact id: 9672213199
+digest: sha256:afe8baf0624f44b58101544e211aba5b5243e507a355f49b30ffdeb05a7c0be5
+retention: 1 day
+```
+
+Resolution:
+
+```text
+status = resolved
+decision = candidate
+reason = full_context_first_hand_external_friction
+
+problem_claim = yes
+experience_actor = self
+friction_cause = external_service_or_product
+friction_specificity = concrete
+pain_centrality = central
+content_kind = organic
+```
+
+Full-context integrity:
+
+```text
+fetch_status = resolved
+content_scope = full_post
+extraction_scope = naver_post_body
+content_sha256 = 751cf7c75b608ec3ae28c7abce7f10bd60521cc8d985a27981b0c7f85e364540
+original_char_count = 3035
+truncated = false
+http_status = 200
+```
+
+Evidence integrity:
+
+```text
+evidence_quote_sha256 = 159d475f746d30cb9052b24d0354007ab11206ad0cc181e56c0fd675196a5fb9
+evidence_quote_char_count = 44
+evidence_quote_grounded = true
+```
+
+Judge authority:
+
+```text
+prompt_version = source-full-context-semantic-v0.1
+provider = openai
+model = gpt-5-mini-2025-08-07
+input_tokens = 2311
+output_tokens = 612
+network_requests = 2 / 2
+```
+
+The raw evidence quote, full source body, canonical URL, author, Source UUID, and provider request ID were not emitted in the artifact.
 
 ---
 
-## 4. Artifact privacy
+## 4. Independent production readback
 
-The one-day disposable artifact may include:
-
-```text
-sanitized Source identity/content hashes
-resolution status / decision / reason codes
-full-context content hash and character count
-truncation status
-semantic enum fields
-hash + character count of the exact evidence quote
-grounding boolean
-model/provider name and token usage
-aggregate DB count snapshot
-```
-
-It may not expose:
+The live artifact recorded identical before/after governed counts, and Supabase was independently queried after the run:
 
 ```text
-Source UUID
-canonical URL
-author handle
-stored snippet/raw text
-full source body
-raw evidence quote
-provider request ID
-Incident ID
-curator decision ID
-Public Problem ID
+Source Signals = 3710
+Source Observations = 4056
+Source Ingestion Runs = 152
+Source Incidents = 7
+Source→Incident links = 8
+full-context outcomes = 85
+Formation assessments = 1
+curator Incident decisions = 1
+Incident executions = 1
+Public Problems = 3
+Public Evidence = 7
+Public Feed = 3
+exact target durable full-context outcomes = 0
 ```
+
+Therefore Phase 15.9S performed zero database writes and did not cross the durable-outcome, Formation, Incident, or Public boundary.
 
 ---
 
-## 5. Live execution gate
+## 5. Closeout boundary
 
-The temporary live workflow can run only after:
+The temporary `workflow_run` trigger is removed by the Phase 15.9S closeout PR. Future main CI runs cannot repeat the model-backed resolution automatically.
 
-```text
-PR exact-head CI = SUCCESS
-PIE = SUCCESS
-expected-head merge = complete
-merged-main CI = SUCCESS
-```
-
-It is a temporary `workflow_run` trigger restricted to successful `CI` push runs on `main` and checks out the exact `workflow_run.head_sha`.
-
-The trigger must be removed in Phase 15.9S closeout.
+The exact target runner remains as replayable implementation evidence but no longer has a live automatic trigger.
 
 ---
 
-## 6. Downstream interpretation
+## 6. Downstream authority
 
-A `candidate` result is still not a durable outcome, Formation, Incident, or Public Problem.
+The live result is strong enough to authorize a **separate durable full-context outcome persistence slice**, not an Incident.
 
-If the live result is resolved `candidate`, a later persistence slice may append the exact full-context outcome after independently verifying the artifact hashes and current Source authority.
+The next phase must:
 
-If the result is resolved `reject`, the second-Incident path stops for this Source.
+```text
+re-resolve the exact Source by the same identity/content hash pair
+re-fetch the full post without invoking another semantic model
+require content hash = 751cf7c75b608ec3ae28c7abce7f10bd60521cc8d985a27981b0c7f85e364540
+require char count = 3035
+require untruncated full_post scope
+freeze the Phase 15.9S semantic facts exactly
+append exactly one durable full-context outcome row
+leave Formation / Incident / Public domains unchanged
+```
 
-If the result remains unresolved `review`, only a bounded technical/provider recovery path may continue; semantic uncertainty must not be rewritten as approval.
+A durable `candidate` outcome will still not authorize Incident creation. It must continue through Formation assessment and a new explicit curator Incident decision.
