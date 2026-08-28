@@ -80,13 +80,13 @@ test("15.9V allows at most one source fetch, two model calls and one Formation w
 });
 
 test("15.9V recovery module never lets the quote-selection model author quote text", async () => {
-  const module = await read("lib/sources/source-formation-evidence-grounding-recovery.mjs");
-  assert.match(module, /The semantic enum fields are frozen facts/);
-  assert.match(module, /Do not return or rewrite source text/);
-  assert.match(module, /server will map the selected id to the exact stored excerpt/i);
-  assert.match(module, /candidate_id/);
-  assert.match(module, /selection\.candidate\.text/);
-  assert.match(module, /fullContext\.content_text\.includes\(exactQuote\)/);
+  const recoverySource = await read("lib/sources/source-formation-evidence-grounding-recovery.mjs");
+  assert.match(recoverySource, /The semantic enum fields are frozen facts/);
+  assert.match(recoverySource, /Do not return or rewrite source text/);
+  assert.match(recoverySource, /server will map the selected id to the exact stored excerpt/i);
+  assert.match(recoverySource, /candidate_id/);
+  assert.match(recoverySource, /selection\.candidate\.text/);
+  assert.match(recoverySource, /fullContext\.content_text\.includes\(exactQuote\)/);
 });
 
 test("15.9V artifact excludes source and authority identifiers", async () => {
