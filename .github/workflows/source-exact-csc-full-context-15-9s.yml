@@ -1,0 +1,67 @@
+name: Source Exact CSC Full Context 15.9S
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-exact-csc-full-context-15-9s
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout CI-verified authoritative main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
+          test -n "$OPENAI_API_KEY"
+      - name: Resolve exact CSC review Source with full context
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_SOURCE_FULL_CONTEXT_MODEL: ${{ secrets.OPENAI_SOURCE_FULL_CONTEXT_MODEL || 'gpt-5-mini-2025-08-07' }}
+          ALLOW_PHASE15_9S_EXACT_FULL_CONTEXT: "true"
+        run: |
+          set -euo pipefail
+          node scripts/run-exact-csc-full-context-resolution-15-9s.mjs --live --output=phase15-9s-exact-csc-full-context.json 2>&1 | tee phase15-9s-exact-csc-full-context.log
+      - name: Upload disposable Phase 15.9S artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-exact-csc-full-context-15-9s
+          path: |
+            phase15-9s-exact-csc-full-context.json
+            phase15-9s-exact-csc-full-context.log
+          if-no-files-found: ignore
+          retention-days: 1
