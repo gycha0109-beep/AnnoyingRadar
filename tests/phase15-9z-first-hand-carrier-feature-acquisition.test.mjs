@@ -18,6 +18,7 @@ test("15.9Z freezes eight first-hand carrier-feature search queries", async () =
   ]) assert.match(plan, new RegExp(query));
   assert.match(plan, /PHASE15_9Z_QUERY_LIMIT = 50/);
   assert.match(plan, /PHASE15_9Z_MAX_REQUESTS = 8/);
+  assert.match(plan, /carrier_csc_feature_restriction_case/);
   assert.match(plan, /result_opportunity_count/);
 });
 
@@ -25,7 +26,7 @@ test("15.9Z acquisition is one-shot and protects the governed CSC baseline", asy
   const script = await read("scripts/run-first-hand-carrier-feature-search-15-9z.mjs");
   assert.match(script, /first_hand_carrier_feature_campaign_version/);
   assert.match(script, /campaign already executed; duplicate live run forbidden/);
-  assert.match(script, /carrier_csc_feature_restriction_case/);
+  assert.match(script, /PHASE15_9Z_PROTECTED_INCIDENT_KEY/);
   assert.match(script, /exactly two Sources linked to the existing CSC Incident/);
   assert.match(script, /existing CSC Incident must remain outside Public Evidence/);
   assert.doesNotMatch(script, /latest/i);
