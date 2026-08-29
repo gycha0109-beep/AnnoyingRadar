@@ -74,17 +74,9 @@ test("15.9AA artifact hashes provider identity and exposes no raw Threads identi
   ]) assert.match(script, new RegExp(`\\"${forbidden}`));
 });
 
-test("15.9AA temporary workflow waits for successful merged-main CI and validates Threads secret", async () => {
-  const workflow = await read(".github/workflows/source-threads-carrier-feature-acquisition-15-9aa.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /THREADS_ACCESS_TOKEN: \$\{\{ secrets\.THREADS_ACCESS_TOKEN \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9AA_THREADS_CARRIER_FEATURE_ACQUISITION: "true"/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9AA temporary live workflow is removed after credential-blocked closeout", async () => {
+  await assert.rejects(
+    () => read(".github/workflows/source-threads-carrier-feature-acquisition-15-9aa.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
