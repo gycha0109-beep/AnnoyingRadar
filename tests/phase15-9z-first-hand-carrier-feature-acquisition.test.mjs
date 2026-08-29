@@ -46,7 +46,7 @@ test("15.9Z writes only acquisition supply and freezes downstream domains", asyn
   assert.doesNotMatch(script, /ar_create_canonical_public_problem_draft/);
 });
 
-test("15.9Z artifact contains only sanitized Source hashes and Admission summaries", async () => {
+test("15.9Z artifact excludes raw/internal Source authority", async () => {
   const script = await read("scripts/run-first-hand-carrier-feature-search-15-9z.mjs");
   assert.match(script, /source_identity_sha256/);
   assert.match(script, /source_content_sha256/);
@@ -65,18 +65,9 @@ test("15.9Z artifact contains only sanitized Source hashes and Admission summari
   ]) assert.match(script, new RegExp(`\\"${forbidden}`));
 });
 
-test("15.9Z temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-first-hand-carrier-feature-search-15-9z.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9Z_FIRST_HAND_CARRIER_FEATURE_ACQUISITION: "true"/);
-  assert.match(workflow, /NAVER_CLIENT_ID/);
-  assert.match(workflow, /NAVER_CLIENT_SECRET/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9Z temporary workflow is removed after live closeout", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-first-hand-carrier-feature-search-15-9z.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
