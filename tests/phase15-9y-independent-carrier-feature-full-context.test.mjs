@@ -13,7 +13,7 @@ test("15.9Y binds one exact independent carrier-feature Source", async () => {
   assert.doesNotMatch(script, /latest/i);
 });
 
-test("15.9Y freezes deterministic Admission review before network use", async () => {
+test("15.9Y probe froze its expected deterministic Admission before network use", async () => {
   const script = await read("scripts/run-independent-carrier-feature-full-context-15-9y.mjs");
   assert.match(script, /title_explicit_complaint_requires_context/);
   assert.match(script, /admission\.decision, "review"/);
@@ -21,7 +21,7 @@ test("15.9Y freezes deterministic Admission review before network use", async ()
   assert.match(script, /classifySourceAdmission/);
 });
 
-test("15.9Y uses bounded external-web full-context resolution", async () => {
+test("15.9Y probe used bounded external-web full-context resolution", async () => {
   const script = await read("scripts/run-independent-carrier-feature-full-context-15-9y.mjs");
   assert.match(script, /SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
   assert.match(script, /externalWebPolicy: SOURCE_FULL_CONTEXT_EXTERNAL_POLICY/);
@@ -72,17 +72,9 @@ test("15.9Y artifact excludes raw/internal source authority", async () => {
   assert.match(script, /evidence_quote\\"/);
 });
 
-test("15.9Y temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-independent-carrier-feature-full-context-15-9y.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9Y_INDEPENDENT_CARRIER_FEATURE_FULL_CONTEXT: "true"/);
-  assert.match(workflow, /OPENAI_API_KEY/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9Y temporary workflow is removed after live closeout", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-independent-carrier-feature-full-context-15-9y.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });
