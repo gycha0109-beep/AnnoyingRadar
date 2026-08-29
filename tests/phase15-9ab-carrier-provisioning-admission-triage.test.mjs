@@ -42,16 +42,9 @@ test("15.9AB artifact excludes raw Source and curator/public identifiers", async
   }
 });
 
-test("15.9AB temporary workflow waits for successful merged-main CI", async () => {
-  const workflow = await read(".github/workflows/source-carrier-provisioning-admission-triage-15-9ab.yml");
-  assert.match(workflow, /workflow_run:/);
-  assert.match(workflow, /workflows: \["CI"\]/);
-  assert.match(workflow, /branches: \[main\]/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
-  assert.match(workflow, /workflow_run\.event == 'push'/);
-  assert.match(workflow, /workflow_run\.head_branch == 'main'/);
-  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
-  assert.match(workflow, /ALLOW_PHASE15_9AB_CARRIER_PROVISIONING_ADMISSION_TRIAGE: "true"/);
-  assert.match(workflow, /retention-days: 1/);
-  assert.doesNotMatch(workflow, /workflow_dispatch:/);
+test("15.9AB temporary workflow is removed after live closeout", async () => {
+  await assert.rejects(
+    read(".github/workflows/source-carrier-provisioning-admission-triage-15-9ab.yml"),
+    (error) => error?.code === "ENOENT",
+  );
 });

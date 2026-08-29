@@ -2,11 +2,9 @@
 
 ## Status
 
-**IMPLEMENTATION IN REVIEW / LIVE READ-ONLY TRIAGE NOT EXECUTED**
+**CLOSED — LIVE READ-ONLY TRIAGE VERIFIED / ONE FULL-CONTEXT REVIEW TARGET FOUND**
 
-Phase 15.9AA closed credential-blocked with zero Threads acquisition writes. Phase 15.9F authority review also confirms that `external-web` is a full-context fetch path for already-acquired Sources, not an arbitrary discovery/intake mechanism.
-
-Before launching another Naver campaign, current canonical Source inventory contains several unassigned carrier provisioning / activation friction matches. Phase 15.9AB evaluates exactly eight of those existing Sources under the current deterministic Admission authority.
+Phase 15.9AB evaluated exactly eight already-acquired, unassigned carrier provisioning / activation Sources under the existing deterministic Admission authority. It performed no source fetch, no model call, and no database write.
 
 The Public Problem blocker remains:
 
@@ -20,84 +18,107 @@ blocking reason = distinct_incident_support_missing
 
 ---
 
-## 1. Exact Source authority
-
-The runner binds eight frozen `(external_content_id, content_hash)` pairs. They represent retrieval families only:
+## 1. Implementation / verification authority
 
 ```text
-self_purchased_sim_activation
-imported_esim_activation
-retail_activation_delay
-device_change_activation_gap
-network_registration_failure
-post_activation_service_loss
-imei_activation_mismatch
-sim_replacement_recognition
+implementation PR = #180
+exact PR head = 33360b68aab5986cb163b746d3bee550961c8e15
+PR-head CI #570 = SUCCESS
+PIE #177 = SUCCESS
+implementation main = dc36ff7284e95440fe2d935ccd743208528b15c3
+merged-main CI #571 = SUCCESS
+live run = 33237137048
+live result = SUCCESS
+artifact id = 9710252918
+artifact digest = sha256:bfdf927de29dcff1880577462765c8d784e3e33170a6fe5949d895f948171d89
 ```
 
-Each exact Source must resolve uniquely and must have zero:
-
-```text
-full-context outcomes
-Formation assessments
-Incident links
-Public Evidence rows
-```
-
-No latest-row inference is permitted.
+The live workflow checked out the exact CI-verified merged-main SHA.
 
 ---
 
-## 2. Admission authority
-
-The only classification executed is the existing repository function:
+## 2. Exact live result
 
 ```text
-classifySourceAdmission(signal)
-```
-
-Phase 15.9AB does not modify Admission policy and does not override a reject result based on manual relevance judgments.
-
-The artifact records only deterministic decision, reason codes, full-context requirement, published timestamp, and frozen Source/content hashes.
-
-No raw Source text, URL, author, internal Source UUID, Incident UUID, curator identity, or Public Problem identity is exported.
-
----
-
-## 3. Mutation boundary
-
-Phase 15.9AB is strictly read-only.
-
-Budgets:
-
-```text
+total targets = 8
+candidate = 0
+review = 1
+reject = 7
+full-context required = 1
 source network requests = 0
 model calls = 0
 database writes = 0
 ```
 
-All governed counts must remain equal before and after execution:
+The deterministic results were:
 
 ```text
-Source / Observation / Ingestion
-Raw Input / Pain Evidence
-full-context outcomes
-Formation assessments
-Incidents / Source→Incident links
-curator decisions / executions
-Public Problems / Public Evidence / Public Feed
+self_purchased_sim_activation = reject / snippet_information_only
+imported_esim_activation = reject / title_truncated_no_complaint_signal
+retail_activation_delay = review / title_truncated_complaint_ambiguous / requires_full_context=true
+device_change_activation_gap = reject / title_no_complaint_signal
+network_registration_failure = reject / title_truncated_topic_without_event
+post_activation_service_loss = reject / title_no_complaint_signal
+imei_activation_mismatch = reject / title_no_complaint_signal
+sim_replacement_recognition = reject / title_truncated_topic_without_event
 ```
 
-The existing `carrier_csc_feature_restriction_case` baseline must remain exactly one Incident with two linked Sources and zero Public Evidence.
+No reject result is overridden by this phase.
 
 ---
 
-## 4. Next transition
+## 3. Surviving exact Source authority
 
-If every target is deterministically rejected, the next slice may run a new bounded Naver acquisition with a different provisioning/activation retrieval taxonomy.
+Only the `retail_activation_delay` Source may advance to the next full-context phase:
 
-If one or more targets are `review + requires_full_context`, a later exact Source phase may perform bounded full-context semantic resolution for the strongest mechanism-relevant target.
+```text
+external_content_id = 7ff6763ae09d4d04952fe30e074a72952d155e6e5889573cb547947981c1bc89
+canonical content_hash = 4ee142cf0651b03b1f146b3167493814b0546d8a450b96ca0ff90b482c65f7c0
+published_at = 2023-10-04T15:00:00.000Z
+Admission decision = review
+Admission reason = title_truncated_complaint_ambiguous
+requires_full_context = true
+```
 
-If a target is directly `candidate`, only the normal durable outcome → Formation path may proceed.
+This pair is final canonical DB authority after all earlier acquisition upserts. No latest-row inference is permitted.
 
-Even an eligible Formation does not create a second Incident automatically. A semantically distinct Incident identity still requires an explicit human curator decision. Public Problem publication remains separately gated.
+---
+
+## 4. Independent database readback
+
+Artifact counts and independent Supabase readback agree:
+
+```text
+Source Signals = 3893
+Source Observations = 4278
+Source Ingestion Runs = 160
+Raw Inputs = 10
+Pain Evidences = 27
+Full-context outcomes = 86
+Formation assessments = 3
+Source Incidents = 7
+Source→Incident links = 9
+Curator decisions = 2
+Incident executions = 2
+Public Problems = 3
+Public Evidence = 7
+Public Feed = 3
+```
+
+The surviving Source remains:
+
+```text
+full-context outcomes = 0
+Formation assessments = 0
+Incident links = 0
+```
+
+Thus live execution was strictly read-only.
+
+---
+
+## 5. Closeout
+
+The temporary `source-carrier-provisioning-admission-triage-15-9ab.yml` workflow is removed in this closeout. Re-execution is forbidden.
+
+The next governed transition is one exact read-only full-context semantic resolution for the surviving `retail_activation_delay` Source. A later candidate may proceed through durable outcome and Formation authority, but an eligible Formation cannot create a second Incident without explicit human curator approval. Public Problem publication remains separately gated.
