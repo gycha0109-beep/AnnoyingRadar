@@ -1,0 +1,18 @@
+name: PIE Historical Policy Ambiguity Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pie-calibration-policy-ambiguity.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ambiguity:
+    uses: gycha0109-beep/Project_Intelligence_Engine/.github/workflows/calibration-policy-ambiguity.yml@e09b937f27b93c8c4a65452d3a175c6356367fdc
+    with:
+      repository: ${{ github.repository }}
+      source_pie_revision: 96f9061d7538e92dbb8fdc8567147b3d6c01744e
+      diagnostic_revision: e09b937f27b93c8c4a65452d3a175c6356367fdc
