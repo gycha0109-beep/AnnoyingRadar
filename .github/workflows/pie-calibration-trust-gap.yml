@@ -1,0 +1,18 @@
+name: PIE Historical Trust Gap Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pie-calibration-trust-gap.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnostic:
+    uses: gycha0109-beep/Project_Intelligence_Engine/.github/workflows/calibration-trust-gap.yml@fb09517dc9302d2ebe7fd9020efc0291c0c947c5
+    with:
+      repository: ${{ github.repository }}
+      source_pie_revision: 96f9061d7538e92dbb8fdc8567147b3d6c01744e
+      diagnostic_revision: fb09517dc9302d2ebe7fd9020efc0291c0c947c5
